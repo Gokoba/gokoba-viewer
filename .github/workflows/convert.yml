@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: gokoba-convert
@@ -94,3 +95,13 @@ jobs:
             git commit -m "Viewer erstellt/aktualisiert"
             git push
           fi
+
+      - name: GitHub Pages veroeffentlichen
+        if: always()
+        run: |
+          echo "Stosse GitHub-Pages-Veroeffentlichung an..."
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || true
+          echo "Fertig."
