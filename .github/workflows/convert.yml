@@ -53,6 +53,11 @@ jobs:
               continue
             fi
             echo "::group::Job $id"
+            # Stückweise hochgeladene Teile wieder zusammenfügen
+            if ls "$jobdir"model.stp.gz.part* >/dev/null 2>&1; then
+              cat "$jobdir"model.stp.gz.part* > "$jobdir/model.stp.gz"
+              rm -f "$jobdir"model.stp.gz.part*
+            fi
             # STEP entpacken falls als GZip hochgeladen
             if [ -f "$jobdir/model.stp.gz" ]; then
               gunzip -f "$jobdir/model.stp.gz"
