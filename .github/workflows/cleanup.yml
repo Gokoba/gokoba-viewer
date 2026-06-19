@@ -1,0 +1,50 @@
+name: Alte Viewer aufräumen
+
+# Läuft täglich und löscht Viewer, die älter als 20 Tage sind
+on:
+  schedule:
+    - cron: '0 3 * * *'   # täglich 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Abgelaufene Viewer entfernen
+        run: |
+          set -e
+          shopt -s nullglob
+          NOW=$(date -u +%s)
+          MAXAGE=$((20*24*3600))   # 20 Tage in Sekunden
+          for marker in jobs/*/.done; do
+            id=$(basename "$(dirname "$marker")")
+            created=$(cat "$marker" 2>/dev/null || echo "")
+            if [ -z "$created" ]; then continue; fi
+            # ISO-Datum in Sekunden umrechnen
+            cts=$(date -u -d "$created" +%s 2>/dev/null || echo 0)
+            if [ "$cts" -eq 0 ]; then continue; fi
+            age=$((NOW - cts))
+            if [ "$age" -gt "$MAXAGE" ]; then
+              echo "Lösche abgelaufenen Viewer: $id (Alter: $((age/86400)) Tage)"
+              rm -rf "docs/v/$id"
+              rm -rf "jobs/$id"
+            fi
+          done
+
+      - name: Änderungen committen
+        run: |
+          git config user.name "gokoba-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nichts zu löschen."
+          else
+            git commit -m "Abgelaufene Viewer entfernt"
+            git push
+          fi
