@@ -1,0 +1,96 @@
+name: STEP zu 3D-Viewer
+
+# Läuft automatisch, sobald das Plugin eine STEP-Datei in jobs/ hochlädt
+on:
+  push:
+    paths:
+      - 'jobs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gokoba-convert
+  cancel-in-progress: false
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install cadquery-ocp==7.8.1.1.post1 trimesh numpy scipy
+          npm install -g gltfpack
+
+      - name: Offene Jobs verarbeiten
+        run: |
+          set -e
+          shopt -s nullglob
+          for jobdir in jobs/*/; do
+            id=$(basename "$jobdir")
+            # Schon fertig konvertiert? -> überspringen
+            if [ -f "docs/v/$id/index.html" ]; then
+              continue
+            fi
+            # Bereits abgeschlossen-Marker? -> überspringen
+            if [ -f "$jobdir/.done" ]; then
+              continue
+            fi
+            echo "::group::Job $id"
+            # STEP entpacken falls als GZip hochgeladen
+            if [ -f "$jobdir/model.stp.gz" ]; then
+              gunzip -f "$jobdir/model.stp.gz"
+            fi
+            step=$(ls "$jobdir"*.stp "$jobdir"*.step 2>/dev/null | head -1 || true)
+            if [ -z "$step" ]; then
+              echo "Keine STEP-Datei in $jobdir gefunden, überspringe."
+              echo "::endgroup::"
+              continue
+            fi
+            # Projektname (optional)
+            name="Modell"
+            if [ -f "$jobdir/name.txt" ]; then
+              name=$(cat "$jobdir/name.txt")
+            fi
+            mkdir -p "docs/v/$id"
+            python convert.py \
+              --input "$step" \
+              --output "docs/v/$id/index.html" \
+              --assets-dir assets \
+              --model-name "$name" \
+              --expiry-days 20 \
+              --gltfpack gltfpack
+            # STEP-Datei aus dem Repo entfernen (Speicher sparen, Datenschutz),
+            # nur einen kleinen Marker mit Erstelldatum behalten
+            rm -rf "$jobdir"
+            mkdir -p "jobs/$id"
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > "jobs/$id/.done"
+            echo "::endgroup::"
+          done
+
+      - name: Ergebnisse committen
+        run: |
+          git config user.name "gokoba-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen."
+          else
+            git commit -m "Viewer erstellt/aktualisiert"
+            git push
+          fi
