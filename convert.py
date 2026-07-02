@@ -319,11 +319,9 @@ header{position:fixed;top:0;left:0;right:0;height:60px;z-index:100;background:#f
       <div class="fl">
         <span class="fmark"><svg viewBox="0 0 100 100"><defs><linearGradient id="gkG_ftr" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#BD6D40"/><stop offset="0.5" stop-color="#AC5A2C"/><stop offset="1" stop-color="#9C4B1D"/></linearGradient><filter id="gkS_ftr" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="1" dy="2.4" stdDeviation="2.2" flood-color="#331A06" flood-opacity="0.34"/></filter></defs><rect width="100" height="100" rx="23" fill="url(#gkG_ftr)"/><path d="M13.6 76 L13.6 63 L31.8 63 L31.8 50 L50 50 L50 37 L68.2 37 L68.2 24 L86.4 24 L86.4 41 Z" fill="#F5F2EB" filter="url(#gkS_ftr)"/></svg></span>
         <span class="fwm">Gokoba</span>
-        <span class="cpr">&copy; 2026 <a href="mailto:info@gokoba.com">Paul Thomas</a> &middot; <a href="mailto:info@gokoba.com">info@gokoba.com</a></span>
+        <span class="cpr">&copy; 2026 <a href="mailto:info@gokoba.com">Paul Thomas</a> &middot; <a href="mailto:info@gokoba.com">info@gokoba.com</a> &middot; <a href="https://www.gokoba.com" target="_blank" rel="noopener">www.gokoba.com</a></span>
       </div>
-      <div class="fc">Erstellt mit Autodesk Advance Steel</div>
       <div class="fr">
-        <a class="fweb" href="https://www.gokoba.com" target="_blank" rel="noopener">www.gokoba.com</a>
         <span class="hint">Ziehen: drehen &middot; Scroll: zoomen &middot; Rechtsklick: verschieben</span>
       </div>
     </div>
