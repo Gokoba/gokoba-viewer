@@ -115,11 +115,11 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 @media (min-width:900px){.ralpanel{width:min(1180px,96vw);}.ralhead{padding-left:104px;}.ralfam{flex-wrap:nowrap;}.ralfl{width:104px;flex:none;margin:0;white-space:nowrap;}}
 .ralpanel.dekorwahl .ralgrid,.ralpanel.dekorwahl .ralnormal,.ralpanel.dekorwahl .raltyp,.ralpanel.dekorwahl .ralfin[data-fin],.ralpanel.dekorwahl .ralfinsep{display:none}
 #dekorstrip{max-height:240px;overflow:auto;align-items:flex-start;}
-.dkcard{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:1px solid rgba(128,128,128,0.45);border-radius:8px;padding:6px;cursor:pointer;color:inherit;font:inherit;}
+.dkcard{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px;cursor:pointer;color:#C9D3DA;font:inherit;}
 .dkcard.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
 .dkcard canvas{width:84px;height:84px;border-radius:5px;display:block;}
 .dkcard .dkl{font-size:11px;line-height:1.25;text-align:center;max-width:100px;}
-.dktr{display:flex;align-items:center;gap:8px;border:1px solid rgba(128,128,128,0.45);border-radius:6px;padding:4px 8px;cursor:pointer;background:transparent;color:inherit;font:inherit;font-size:12px;}
+.dktr{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:4px 8px;cursor:pointer;background:transparent;color:#C9D3DA;font:inherit;font-size:12px;}
 .dktr.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
 .dktr .sw{width:22px;height:22px;border-radius:4px;flex:0 0 auto;border:1px solid rgba(0,0,0,0.3);}
 </style></head>
@@ -5196,8 +5196,8 @@ var GOKOBA_LAYER_ACI = {
   function dekorWert(k){var m=GOKOBA_DEKOR.match(new RegExp('(?:^|;)'+k+'=([^;]*)'));return (m&&m[1]&&m[1].indexOf('__')<0)?m[1]:'';}
   /* ★ BWS Betonwerkstein: eine Kachel = 40x40 cm Platte, geschliffen (Werte aus den Musterfotos, aufgehellt) */
   var GOKOBA_BWS_DEKORE={
-    'G11013':{art:'marmor',   grund:'#DACFC1', ader:'#C39B95', hell:'#EADFD2'},
-    'G11213':{art:'marmor',   grund:'#D9D3C6', ader:'#8E98A6', hell:'#EAE4D8'},
+    'G11013':{art:'marmor',   grund:'#DACFC1', ader:'#B4807A', hell:'#EADFD2'},
+    'G11213':{art:'marmor',   grund:'#D9D3C6', ader:'#76839A', hell:'#EAE4D8'},
     'G25013':{art:'sprenkel', grund:'#ABABA7', p1:'#62625D', p2:'#D6D6D2', p3:'#8C95A0'},
     'G51013':{art:'sprenkel', grund:'#E7E1D4', p1:'#3B3934', p2:'#F3EEE2', p3:'#6C685F'},
     'G82313':{art:'sprenkel', grund:'#8494A8', p1:'#CBD2DA', p2:'#5E7086', p3:'#A2AEBD'}
@@ -5225,7 +5225,7 @@ var GOKOBA_LAYER_ACI = {
         for(j=0;j<seg;j++){
           var l=1+Math.random()*2.6;a+=(Math.random()-0.5)*1.1;
           var nx=x+Math.cos(a)*l,ny=y+Math.sin(a)*l;
-          g.globalAlpha=0.08+Math.random()*0.16;g.lineWidth=0.4+Math.random()*0.9;
+          g.globalAlpha=0.22+Math.random()*0.24;g.lineWidth=0.4+Math.random()*0.9;
           g.beginPath();g.moveTo(x,y);g.lineTo(nx,ny);g.stroke();
           if(Math.random()<0.12){var b=a+(Math.random()<0.5?1:-1)*(0.7+Math.random()*0.8);
             g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(b)*l*2,y+Math.sin(b)*l*2);g.stroke();}
@@ -5233,7 +5233,7 @@ var GOKOBA_LAYER_ACI = {
         }
       }
       g.globalAlpha=1;
-      for(i=0;i<7000;i++){g.fillStyle=(Math.random()<0.5)?d.ader:d.hell;g.globalAlpha=0.15;g.fillRect(Math.random()*n,Math.random()*n,1,1);}
+      for(i=0;i<7000;i++){g.fillStyle=(Math.random()<0.5)?d.ader:d.hell;g.globalAlpha=0.25;g.fillRect(Math.random()*n,Math.random()*n,1,1);}
       g.globalAlpha=1;
     }
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
@@ -5414,9 +5414,15 @@ var GOKOBA_LAYER_ACI = {
     if(!ralpanel)return;
     var head=ralpanel.querySelector('.ralhead');if(!head)return;
     var anker=head.querySelector('.ralmode[data-grp="gelaender"]');
-    var reihen=[['gitter',gitterMats],['bws',dekorMats.bws],['min',dekorMats.min],['t1',dekorMats.t1],['t2',dekorMats.t2],['t3',dekorMats.t3],['t4',dekorMats.t4]];
+    var reihen=[['gitter',gitterMats,true],
+      ['bws',dekorMats.bws,dekorWert('bws')!==''],
+      ['min',dekorMats.min,dekorWert('min')!==''],
+      ['t1',dekorMats.t1,dekorWert('t1')!==''],
+      ['t2',dekorMats.t2,dekorWert('t2')!==''],
+      ['t3',dekorMats.t3,dekorWert('t3')!==''],
+      ['t4',dekorMats.t4,dekorWert('t4')!=='']];
     reihen.forEach(function(r){
-      if(!r[1].length)return; /* ★ nur wenn im Modell vorhanden */
+      if(!r[1].length||!r[2])return; /* ★ nur wenn im Modell vorhanden UND im Dialog gewaehlt (nicht 'Keine') */
       var b=document.createElement('button');b.className='ralmode';b.setAttribute('data-grp',r[0]);b.textContent=GOKOBA_GRP_NAMEN[r[0]];
       if(anker&&anker.nextSibling)head.insertBefore(b,anker.nextSibling);else head.appendChild(b);
       anker=b;
