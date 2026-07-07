@@ -94,7 +94,7 @@ VORLAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "viewer-templ
 def _hex(t):
     return "" if not t else "#%02X%02X%02X" % (t[0], t[1], t[2])
 
-def erzeuge_viewer(step, out_html, model_name, def_stahl, def_gel, def_gitter, expiry_iso, gltfpack):
+def erzeuge_viewer(step, out_html, model_name, def_stahl, def_gel, def_gitter, dekor_str, expiry_iso, gltfpack):
     if cascadio is None:
         raise SystemExit("Modul 'cascadio' fehlt. Bitte einmalig: pip install cascadio")
     with tempfile.TemporaryDirectory() as tmp:
@@ -112,6 +112,7 @@ def erzeuge_viewer(step, out_html, model_name, def_stahl, def_gel, def_gitter, e
     html = html.replace("__DEF_STAHL__", def_stahl)
     html = html.replace("__DEF_GEL__", def_gel)
     html = html.replace("__GITTER_TEX__", def_gitter)
+    html = html.replace("__DEKOR__", dekor_str)
     html = html.replace("__EXPIRY__", expiry_iso)
     open(out_html, "w", encoding="utf-8").write(html)
 
@@ -127,8 +128,16 @@ def main():
     ap.add_argument("--def-stahl", default="", help="Stahlbau-Startfarbe (verzinkt/edelstahl/grau/#RRGGBB)")
     ap.add_argument("--def-gel", default="", help="Gelaender-Startfarbe")
     ap.add_argument("--gitter", default="", help="Gitterrost-Textur: leer, 3030 oder 3010")
+    ap.add_argument("--bws", default="", help="BWS-Dekor: G11013/G11213/G25013/G51013/G82313")
+    ap.add_argument("--mineralit", default="", help="Mineralit-Dekor, z.B. 'granit hell'")
+    ap.add_argument("--trespa1", default="", help="Trespa 1 Farbe #RRGGBB")
+    ap.add_argument("--trespa2", default="", help="Trespa 2 Farbe #RRGGBB")
+    ap.add_argument("--trespa3", default="", help="Trespa 3 Farbe #RRGGBB")
+    ap.add_argument("--trespa4", default="", help="Trespa 4 Farbe #RRGGBB")
     args = ap.parse_args()
     def_stahl, def_gel, def_gitter = args.def_stahl, args.def_gel, args.gitter
+    d_bws, d_min = args.bws, args.mineralit
+    d_t = [args.trespa1, args.trespa2, args.trespa3, args.trespa4]
     # ★ Begleit-JSON neben der STEP (vom Advance-Steel-Knopf erzeugt): gleiche Basis + .json
     import json as _json
     _sc = os.path.splitext(args.input)[0] + ".json"
@@ -140,6 +149,10 @@ def main():
             def_stahl  = _j.get("stahlbau", def_stahl) or def_stahl
             def_gel    = _j.get("gelaender", def_gel) or def_gel
             def_gitter = _j.get("gitter", def_gitter) or def_gitter
+            d_bws = _j.get("bws", d_bws) or d_bws
+            d_min = _j.get("mineralit", d_min) or d_min
+            for _i in range(4):
+                d_t[_i] = _j.get("trespa" + str(_i + 1), d_t[_i]) or d_t[_i]
         except Exception as _e:
             print("Hinweis: Begleit-JSON unlesbar:", _e)
     if not args.no_dialog:
@@ -153,7 +166,8 @@ def main():
     expiry = datetime.datetime.utcnow() + datetime.timedelta(days=args.expiry_days)
     expiry_iso = expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"Gokoba-Viewer: {os.path.basename(args.input)} | gueltig bis {expiry_iso}")
-    erzeuge_viewer(args.input, args.output, args.model_name, def_stahl, def_gel, def_gitter, expiry_iso, args.gltfpack)
+    dekor_str = "bws=" + d_bws + ";min=" + d_min + ";t1=" + d_t[0] + ";t2=" + d_t[1] + ";t3=" + d_t[2] + ";t4=" + d_t[3]  # ★ Dekor-Auswahl fuer den Viewer
+    erzeuge_viewer(args.input, args.output, args.model_name, def_stahl, def_gel, def_gitter, dekor_str, expiry_iso, args.gltfpack)
     print(f"FERTIG -> {args.output}")
 
 if __name__ == "__main__":

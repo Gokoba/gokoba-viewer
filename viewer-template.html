@@ -113,6 +113,15 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .ralnc:hover{transform:scale(1.2);border-color:#fff;}
 .ralnrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 @media (min-width:900px){.ralpanel{width:min(1180px,96vw);}.ralhead{padding-left:104px;}.ralfam{flex-wrap:nowrap;}.ralfl{width:104px;flex:none;margin:0;white-space:nowrap;}}
+.ralpanel.dekorwahl .ralgrid,.ralpanel.dekorwahl .ralnormal,.ralpanel.dekorwahl .raltyp,.ralpanel.dekorwahl .ralfin[data-fin],.ralpanel.dekorwahl .ralfinsep{display:none}
+#dekorstrip{max-height:240px;overflow:auto;align-items:flex-start;}
+.dkcard{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:1px solid rgba(128,128,128,0.45);border-radius:8px;padding:6px;cursor:pointer;color:inherit;font:inherit;}
+.dkcard.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
+.dkcard canvas{width:84px;height:84px;border-radius:5px;display:block;}
+.dkcard .dkl{font-size:11px;line-height:1.25;text-align:center;max-width:100px;}
+.dktr{display:flex;align-items:center;gap:8px;border:1px solid rgba(128,128,128,0.45);border-radius:6px;padding:4px 8px;cursor:pointer;background:transparent;color:inherit;font:inherit;font-size:12px;}
+.dktr.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
+.dktr .sw{width:22px;height:22px;border-radius:4px;flex:0 0 auto;border:1px solid rgba(0,0,0,0.3);}
 </style></head>
 <body class="dunkel">
 <div class="toplogo"></div>
@@ -138,7 +147,7 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
       </div>
     </div>
   </div></header>
-  <div id="vpanel"><canvas id="cv"></canvas><div class="loading" id="loading">Modell wird geladen ...</div><div class="ralpanel" id="ralpanel"><div class="ralhead"><span class="rallbl">Farbe für</span><button class="ralmode active" data-grp="stahlbau">Stahlbau</button><button class="ralmode" data-grp="gelaender">Geländer</button><span class="ralfinsep"></span><button class="raltyp active" data-typ="ral">RAL</button><button class="raltyp" data-typ="normal">Normal</button><span class="ralfinsep"></span><button class="ralfin" data-fin="verzinkt">Verzinkt</button><button class="ralfin" data-fin="edelstahl">Edelstahl</button><button class="ralclose" id="ralclose" aria-label="einklappen">&#9652;</button></div><div class="ralgrid"><div class="ralfam"><span class="ralfl">Gelb</span><button class="ralc" data-h="#CDBA88" title="RAL 1000 Gruenbeige" style="background:#CDBA88"></button><button class="ralc" data-h="#D0B084" title="RAL 1001 Beige" style="background:#D0B084"></button><button class="ralc" data-h="#D2AA6D" title="RAL 1002 Sandgelb" style="background:#D2AA6D"></button><button class="ralc" data-h="#F9A800" title="RAL 1003 Signalgelb" style="background:#F9A800"></button><button class="ralc" data-h="#E49E00" title="RAL 1004 Goldgelb" style="background:#E49E00"></button><button class="ralc" data-h="#CB8E00" title="RAL 1005 Honiggelb" style="background:#CB8E00"></button><button class="ralc" data-h="#E29000" title="RAL 1006 Maisgelb" style="background:#E29000"></button><button class="ralc" data-h="#E88C00" title="RAL 1007 Narzissengelb" style="background:#E88C00"></button><button class="ralc" data-h="#AF804F" title="RAL 1011 Braunbeige" style="background:#AF804F"></button><button class="ralc" data-h="#DDAF27" title="RAL 1012 Zitronengelb" style="background:#DDAF27"></button><button class="ralc" data-h="#E3D9C6" title="RAL 1013 Perlweiss" style="background:#E3D9C6"></button><button class="ralc" data-h="#DDC49A" title="RAL 1014 Elfenbein" style="background:#DDC49A"></button><button class="ralc" data-h="#E6D2B5" title="RAL 1015 Hellelfenbein" style="background:#E6D2B5"></button><button class="ralc" data-h="#F1DD38" title="RAL 1016 Schwefelgelb" style="background:#F1DD38"></button><button class="ralc" data-h="#F6A950" title="RAL 1017 Safrangelb" style="background:#F6A950"></button><button class="ralc" data-h="#FACA30" title="RAL 1018 Zinkgelb" style="background:#FACA30"></button><button class="ralc" data-h="#A48F7A" title="RAL 1019 Graubeige" style="background:#A48F7A"></button><button class="ralc" data-h="#A08F65" title="RAL 1020 Olivgelb" style="background:#A08F65"></button><button class="ralc" data-h="#F6B600" title="RAL 1021 Rapsgelb" style="background:#F6B600"></button><button class="ralc" data-h="#F7B500" title="RAL 1023 Verkehrsgelb" style="background:#F7B500"></button><button class="ralc" data-h="#BA8F4C" title="RAL 1024 Ockergelb" style="background:#BA8F4C"></button><button class="ralc" data-h="#FFFF00" title="RAL 1026 Leuchtgelb" style="background:#FFFF00"></button><button class="ralc" data-h="#A77F0E" title="RAL 1027 Curry" style="background:#A77F0E"></button><button class="ralc" data-h="#FF9B00" title="RAL 1028 Melonengelb" style="background:#FF9B00"></button><button class="ralc" data-h="#E2A300" title="RAL 1032 Ginstergelb" style="background:#E2A300"></button><button class="ralc" data-h="#F99A1C" title="RAL 1033 Dahliengelb" style="background:#F99A1C"></button><button class="ralc" data-h="#EB9C52" title="RAL 1034 Pastellgelb" style="background:#EB9C52"></button><button class="ralc" data-h="#908370" title="RAL 1035 Perlbeige" style="background:#908370"></button><button class="ralc" data-h="#806440" title="RAL 1036 Perlgold" style="background:#806440"></button><button class="ralc" data-h="#F09200" title="RAL 1037 Sonnengelb" style="background:#F09200"></button></div><div class="ralfam"><span class="ralfl">Orange</span><button class="ralc" data-h="#ED760E" title="RAL 2000 Gelborange" style="background:#ED760E"></button><button class="ralc" data-h="#BE4E20" title="RAL 2001 Rotorange" style="background:#BE4E20"></button><button class="ralc" data-h="#C63927" title="RAL 2002 Blutorange" style="background:#C63927"></button><button class="ralc" data-h="#FA842B" title="RAL 2003 Pastellorange" style="background:#FA842B"></button><button class="ralc" data-h="#E75B12" title="RAL 2004 Reinorange" style="background:#E75B12"></button><button class="ralc" data-h="#FF2300" title="RAL 2005 Leuchtorange" style="background:#FF2300"></button><button class="ralc" data-h="#FFA420" title="RAL 2007 Leuchthellorange" style="background:#FFA420"></button><button class="ralc" data-h="#F3752C" title="RAL 2008 Hellrotorange" style="background:#F3752C"></button><button class="ralc" data-h="#E15501" title="RAL 2009 Verkehrsorange" style="background:#E15501"></button><button class="ralc" data-h="#D4652F" title="RAL 2010 Signalorange" style="background:#D4652F"></button><button class="ralc" data-h="#EC7C25" title="RAL 2011 Tieforange" style="background:#EC7C25"></button><button class="ralc" data-h="#DB6A50" title="RAL 2012 Lachsorange" style="background:#DB6A50"></button><button class="ralc" data-h="#954527" title="RAL 2013 Perlorange" style="background:#954527"></button></div><div class="ralfam"><span class="ralfl">Rot</span><button class="ralc" data-h="#AF2B1E" title="RAL 3000 Feuerrot" style="background:#AF2B1E"></button><button class="ralc" data-h="#A52019" title="RAL 3001 Signalrot" style="background:#A52019"></button><button class="ralc" data-h="#A2231D" title="RAL 3002 Karminrot" style="background:#A2231D"></button><button class="ralc" data-h="#9B111E" title="RAL 3003 Rubinrot" style="background:#9B111E"></button><button class="ralc" data-h="#75151E" title="RAL 3004 Purpurrot" style="background:#75151E"></button><button class="ralc" data-h="#5E2028" title="RAL 3005 Weinrot" style="background:#5E2028"></button><button class="ralc" data-h="#412227" title="RAL 3007 Schwarzrot" style="background:#412227"></button><button class="ralc" data-h="#642424" title="RAL 3009 Oxidrot" style="background:#642424"></button><button class="ralc" data-h="#781F19" title="RAL 3011 Braunrot" style="background:#781F19"></button><button class="ralc" data-h="#C1876B" title="RAL 3012 Beigerot" style="background:#C1876B"></button><button class="ralc" data-h="#A12312" title="RAL 3013 Tomatenrot" style="background:#A12312"></button><button class="ralc" data-h="#D36E70" title="RAL 3014 Altrosa" style="background:#D36E70"></button><button class="ralc" data-h="#EA899A" title="RAL 3015 Hellrosa" style="background:#EA899A"></button><button class="ralc" data-h="#B32821" title="RAL 3016 Korallenrot" style="background:#B32821"></button><button class="ralc" data-h="#E63244" title="RAL 3017 Rose" style="background:#E63244"></button><button class="ralc" data-h="#D53032" title="RAL 3018 Erdbeerrot" style="background:#D53032"></button><button class="ralc" data-h="#CC0605" title="RAL 3020 Verkehrsrot" style="background:#CC0605"></button><button class="ralc" data-h="#D95030" title="RAL 3022 Lachsrot" style="background:#D95030"></button><button class="ralc" data-h="#F80000" title="RAL 3024 Leuchtrot" style="background:#F80000"></button><button class="ralc" data-h="#FE0000" title="RAL 3026 Leuchthellrot" style="background:#FE0000"></button><button class="ralc" data-h="#C51D34" title="RAL 3027 Himbeerrot" style="background:#C51D34"></button><button class="ralc" data-h="#CB3234" title="RAL 3028 Reinrot" style="background:#CB3234"></button><button class="ralc" data-h="#B32428" title="RAL 3031 Orientrot" style="background:#B32428"></button><button class="ralc" data-h="#721422" title="RAL 3032 Perlrubinrot" style="background:#721422"></button><button class="ralc" data-h="#B44C43" title="RAL 3033 Perlrosa" style="background:#B44C43"></button></div><div class="ralfam"><span class="ralfl">Violett</span><button class="ralc" data-h="#6D3F5B" title="RAL 4001 Rotlila" style="background:#6D3F5B"></button><button class="ralc" data-h="#922B3E" title="RAL 4002 Rotviolett" style="background:#922B3E"></button><button class="ralc" data-h="#DE4C8A" title="RAL 4003 Erikaviolett" style="background:#DE4C8A"></button><button class="ralc" data-h="#641C34" title="RAL 4004 Bordeauxviolett" style="background:#641C34"></button><button class="ralc" data-h="#6C4675" title="RAL 4005 Blaulila" style="background:#6C4675"></button><button class="ralc" data-h="#A03472" title="RAL 4006 Verkehrspurpur" style="background:#A03472"></button><button class="ralc" data-h="#4A192C" title="RAL 4007 Purpurviolett" style="background:#4A192C"></button><button class="ralc" data-h="#924E7D" title="RAL 4008 Signalviolett" style="background:#924E7D"></button><button class="ralc" data-h="#A18594" title="RAL 4009 Pastellviolett" style="background:#A18594"></button><button class="ralc" data-h="#CF3476" title="RAL 4010 Telemagenta" style="background:#CF3476"></button><button class="ralc" data-h="#8673A1" title="RAL 4011 Perlviolett" style="background:#8673A1"></button><button class="ralc" data-h="#6C6874" title="RAL 4012 Perlbrombeer" style="background:#6C6874"></button></div><div class="ralfam"><span class="ralfl">Blau</span><button class="ralc" data-h="#314F6F" title="RAL 5000 Violettblau" style="background:#314F6F"></button><button class="ralc" data-h="#0F3F4B" title="RAL 5001 Gruenblau" style="background:#0F3F4B"></button><button class="ralc" data-h="#20214F" title="RAL 5002 Ultramarinblau" style="background:#20214F"></button><button class="ralc" data-h="#1D1E33" title="RAL 5003 Saphirblau" style="background:#1D1E33"></button><button class="ralc" data-h="#18171C" title="RAL 5004 Schwarzblau" style="background:#18171C"></button><button class="ralc" data-h="#1E2460" title="RAL 5005 Signalblau" style="background:#1E2460"></button><button class="ralc" data-h="#3E5F8A" title="RAL 5007 Brillantblau" style="background:#3E5F8A"></button><button class="ralc" data-h="#26252D" title="RAL 5008 Graublau" style="background:#26252D"></button><button class="ralc" data-h="#025669" title="RAL 5009 Azurblau" style="background:#025669"></button><button class="ralc" data-h="#0E294B" title="RAL 5010 Enzianblau" style="background:#0E294B"></button><button class="ralc" data-h="#232C3F" title="RAL 5011 Stahlblau" style="background:#232C3F"></button><button class="ralc" data-h="#3B83BD" title="RAL 5012 Lichtblau" style="background:#3B83BD"></button><button class="ralc" data-h="#1E213D" title="RAL 5013 Kobaltblau" style="background:#1E213D"></button><button class="ralc" data-h="#606E8C" title="RAL 5014 Taubenblau" style="background:#606E8C"></button><button class="ralc" data-h="#2874B2" title="RAL 5015 Himmelblau" style="background:#2874B2"></button><button class="ralc" data-h="#063971" title="RAL 5017 Verkehrsblau" style="background:#063971"></button><button class="ralc" data-h="#3F888F" title="RAL 5018 Tuerkisblau" style="background:#3F888F"></button><button class="ralc" data-h="#1B5583" title="RAL 5019 Capriblau" style="background:#1B5583"></button><button class="ralc" data-h="#1D4E5B" title="RAL 5020 Ozeanblau" style="background:#1D4E5B"></button><button class="ralc" data-h="#0B5563" title="RAL 5021 Wasserblau" style="background:#0B5563"></button><button class="ralc" data-h="#20214C" title="RAL 5022 Nachtblau" style="background:#20214C"></button><button class="ralc" data-h="#41678D" title="RAL 5023 Fernblau" style="background:#41678D"></button><button class="ralc" data-h="#6A93B0" title="RAL 5024 Pastellblau" style="background:#6A93B0"></button></div><div class="ralfam"><span class="ralfl">Gruen</span><button class="ralc" data-h="#327662" title="RAL 6000 Patinagruen" style="background:#327662"></button><button class="ralc" data-h="#28713E" title="RAL 6001 Smaragdgruen" style="background:#28713E"></button><button class="ralc" data-h="#276235" title="RAL 6002 Laubgruen" style="background:#276235"></button><button class="ralc" data-h="#4B573E" title="RAL 6003 Olivgruen" style="background:#4B573E"></button><button class="ralc" data-h="#0E4243" title="RAL 6004 Blaugruen" style="background:#0E4243"></button><button class="ralc" data-h="#0F4336" title="RAL 6005 Moosgruen" style="background:#0F4336"></button><button class="ralc" data-h="#40433B" title="RAL 6006 Grauoliv" style="background:#40433B"></button><button class="ralc" data-h="#2C3222" title="RAL 6007 Flaschengruen" style="background:#2C3222"></button><button class="ralc" data-h="#3B3327" title="RAL 6008 Braungruen" style="background:#3B3327"></button><button class="ralc" data-h="#27352A" title="RAL 6009 Tannengruen" style="background:#27352A"></button><button class="ralc" data-h="#4D6F39" title="RAL 6010 Grasgruen" style="background:#4D6F39"></button><button class="ralc" data-h="#6C7C59" title="RAL 6011 Resedagruen" style="background:#6C7C59"></button><button class="ralc" data-h="#303D3A" title="RAL 6012 Schwarzgruen" style="background:#303D3A"></button><button class="ralc" data-h="#7D765A" title="RAL 6013 Schilfgruen" style="background:#7D765A"></button><button class="ralc" data-h="#474135" title="RAL 6014 Gelboliv" style="background:#474135"></button><button class="ralc" data-h="#3D3D36" title="RAL 6015 Schwarzoliv" style="background:#3D3D36"></button><button class="ralc" data-h="#026A52" title="RAL 6016 Tuerkisgruen" style="background:#026A52"></button><button class="ralc" data-h="#468641" title="RAL 6017 Maigruen" style="background:#468641"></button><button class="ralc" data-h="#48A43F" title="RAL 6018 Gelbgruen" style="background:#48A43F"></button><button class="ralc" data-h="#B7D9B1" title="RAL 6019 Weissgruen" style="background:#B7D9B1"></button><button class="ralc" data-h="#354733" title="RAL 6020 Chromoxidgruen" style="background:#354733"></button><button class="ralc" data-h="#86A47C" title="RAL 6021 Blassgruen" style="background:#86A47C"></button><button class="ralc" data-h="#3E3C32" title="RAL 6022 Braunoliv" style="background:#3E3C32"></button><button class="ralc" data-h="#008351" title="RAL 6024 Verkehrsgruen" style="background:#008351"></button><button class="ralc" data-h="#5E6E3B" title="RAL 6025 Farngruen" style="background:#5E6E3B"></button><button class="ralc" data-h="#005D52" title="RAL 6026 Opalgruen" style="background:#005D52"></button><button class="ralc" data-h="#7EBAB5" title="RAL 6027 Lichtgruen" style="background:#7EBAB5"></button><button class="ralc" data-h="#2C5545" title="RAL 6028 Kieferngruen" style="background:#2C5545"></button><button class="ralc" data-h="#007243" title="RAL 6029 Minzgruen" style="background:#007243"></button><button class="ralc" data-h="#0F8558" title="RAL 6032 Signalgruen" style="background:#0F8558"></button><button class="ralc" data-h="#478A84" title="RAL 6033 Minttuerkis" style="background:#478A84"></button><button class="ralc" data-h="#7FB0B2" title="RAL 6034 Pastelltuerkis" style="background:#7FB0B2"></button><button class="ralc" data-h="#1B542C" title="RAL 6035 Perlgruen" style="background:#1B542C"></button><button class="ralc" data-h="#005D4C" title="RAL 6036 Perlopalgruen" style="background:#005D4C"></button><button class="ralc" data-h="#008B29" title="RAL 6037 Reingruen" style="background:#008B29"></button><button class="ralc" data-h="#00BB2D" title="RAL 6038 Leuchtgruen" style="background:#00BB2D"></button></div><div class="ralfam"><span class="ralfl">Grau</span><button class="ralc" data-h="#7E8B92" title="RAL 7000 Fehgrau" style="background:#7E8B92"></button><button class="ralc" data-h="#8F999F" title="RAL 7001 Silbergrau" style="background:#8F999F"></button><button class="ralc" data-h="#817F68" title="RAL 7002 Olivgrau" style="background:#817F68"></button><button class="ralc" data-h="#7A7B6D" title="RAL 7003 Moosgrau" style="background:#7A7B6D"></button><button class="ralc" data-h="#9EA0A1" title="RAL 7004 Signalgrau" style="background:#9EA0A1"></button><button class="ralc" data-h="#6B716F" title="RAL 7005 Mausgrau" style="background:#6B716F"></button><button class="ralc" data-h="#756F61" title="RAL 7006 Beigegrau" style="background:#756F61"></button><button class="ralc" data-h="#6D5F3C" title="RAL 7008 Khakigrau" style="background:#6D5F3C"></button><button class="ralc" data-h="#60605A" title="RAL 7009 Gruengrau" style="background:#60605A"></button><button class="ralc" data-h="#575D57" title="RAL 7010 Zeltgrau" style="background:#575D57"></button><button class="ralc" data-h="#52595D" title="RAL 7011 Eisengrau" style="background:#52595D"></button><button class="ralc" data-h="#575B5A" title="RAL 7012 Basaltgrau" style="background:#575B5A"></button><button class="ralc" data-h="#55554A" title="RAL 7013 Braungrau" style="background:#55554A"></button><button class="ralc" data-h="#51565C" title="RAL 7015 Schiefergrau" style="background:#51565C"></button><button class="ralc" data-h="#383E42" title="RAL 7016 Anthrazitgrau" style="background:#383E42"></button><button class="ralc" data-h="#2F3234" title="RAL 7021 Schwarzgrau" style="background:#2F3234"></button><button class="ralc" data-h="#4C4A44" title="RAL 7022 Umbragrau" style="background:#4C4A44"></button><button class="ralc" data-h="#808179" title="RAL 7023 Betongrau" style="background:#808179"></button><button class="ralc" data-h="#45494E" title="RAL 7024 Graphitgrau" style="background:#45494E"></button><button class="ralc" data-h="#374547" title="RAL 7026 Granitgrau" style="background:#374547"></button><button class="ralc" data-h="#939183" title="RAL 7030 Steingrau" style="background:#939183"></button><button class="ralc" data-h="#5B6771" title="RAL 7031 Blaugrau" style="background:#5B6771"></button><button class="ralc" data-h="#B9B9A8" title="RAL 7032 Kieselgrau" style="background:#B9B9A8"></button><button class="ralc" data-h="#818979" title="RAL 7033 Zementgrau" style="background:#818979"></button><button class="ralc" data-h="#939176" title="RAL 7034 Gelbgrau" style="background:#939176"></button><button class="ralc" data-h="#D7D7D7" title="RAL 7035 Lichtgrau" style="background:#D7D7D7"></button><button class="ralc" data-h="#9C9C9C" title="RAL 7036 Platingrau" style="background:#9C9C9C"></button><button class="ralc" data-h="#7C7F7E" title="RAL 7037 Staubgrau" style="background:#7C7F7E"></button><button class="ralc" data-h="#B4B8B0" title="RAL 7038 Achatgrau" style="background:#B4B8B0"></button><button class="ralc" data-h="#6B695F" title="RAL 7039 Quarzgrau" style="background:#6B695F"></button><button class="ralc" data-h="#9DA1AA" title="RAL 7040 Fenstergrau" style="background:#9DA1AA"></button><button class="ralc" data-h="#8F9695" title="RAL 7042 Verkehrsgrau A" style="background:#8F9695"></button><button class="ralc" data-h="#4E5452" title="RAL 7043 Verkehrsgrau B" style="background:#4E5452"></button><button class="ralc" data-h="#BDBDB2" title="RAL 7044 Seidengrau" style="background:#BDBDB2"></button><button class="ralc" data-h="#8D9295" title="RAL 7045 Telegrau 1" style="background:#8D9295"></button><button class="ralc" data-h="#82898F" title="RAL 7046 Telegrau 2" style="background:#82898F"></button><button class="ralc" data-h="#CFD0CF" title="RAL 7047 Telegrau 4" style="background:#CFD0CF"></button><button class="ralc" data-h="#888175" title="RAL 7048 Perlmausgrau" style="background:#888175"></button></div><div class="ralfam"><span class="ralfl">Braun</span><button class="ralc" data-h="#89693F" title="RAL 8000 Gruenbraun" style="background:#89693F"></button><button class="ralc" data-h="#9D622B" title="RAL 8001 Ockerbraun" style="background:#9D622B"></button><button class="ralc" data-h="#794D3E" title="RAL 8002 Signalbraun" style="background:#794D3E"></button><button class="ralc" data-h="#7E4B26" title="RAL 8003 Lehmbraun" style="background:#7E4B26"></button><button class="ralc" data-h="#8E402A" title="RAL 8004 Kupferbraun" style="background:#8E402A"></button><button class="ralc" data-h="#6F4F28" title="RAL 8007 Rehbraun" style="background:#6F4F28"></button><button class="ralc" data-h="#6F4F28" title="RAL 8008 Olivbraun" style="background:#6F4F28"></button><button class="ralc" data-h="#5A3A29" title="RAL 8011 Nussbraun" style="background:#5A3A29"></button><button class="ralc" data-h="#6C3B2A" title="RAL 8012 Rotbraun" style="background:#6C3B2A"></button><button class="ralc" data-h="#49392D" title="RAL 8014 Sepiabraun" style="background:#49392D"></button><button class="ralc" data-h="#633A34" title="RAL 8015 Kastanienbraun" style="background:#633A34"></button><button class="ralc" data-h="#4C2F26" title="RAL 8016 Mahagonibraun" style="background:#4C2F26"></button><button class="ralc" data-h="#44322D" title="RAL 8017 Schokobraun" style="background:#44322D"></button><button class="ralc" data-h="#3F3A3A" title="RAL 8019 Graubraun" style="background:#3F3A3A"></button><button class="ralc" data-h="#211F20" title="RAL 8022 Schwarzbraun" style="background:#211F20"></button><button class="ralc" data-h="#A65E2E" title="RAL 8023 Orangebraun" style="background:#A65E2E"></button><button class="ralc" data-h="#79553D" title="RAL 8024 Beigebraun" style="background:#79553D"></button><button class="ralc" data-h="#755C48" title="RAL 8025 Blassbraun" style="background:#755C48"></button><button class="ralc" data-h="#4E3B31" title="RAL 8028 Terrabraun" style="background:#4E3B31"></button><button class="ralc" data-h="#763C28" title="RAL 8029 Perlkupfer" style="background:#763C28"></button></div><div class="ralfam"><span class="ralfl">Weiss / Schwarz</span><button class="ralc" data-h="#E9E0D2" title="RAL 9001 Cremeweiss" style="background:#E9E0D2"></button><button class="ralc" data-h="#D7D5CB" title="RAL 9002 Grauweiss" style="background:#D7D5CB"></button><button class="ralc" data-h="#ECECE7" title="RAL 9003 Signalweiss" style="background:#ECECE7"></button><button class="ralc" data-h="#2B2B2C" title="RAL 9004 Signalschwarz" style="background:#2B2B2C"></button><button class="ralc" data-h="#0A0A0A" title="RAL 9005 Tiefschwarz" style="background:#0A0A0A"></button><button class="ralc" data-h="#A5A5A5" title="RAL 9006 Weissaluminium" style="background:#A5A5A5"></button><button class="ralc" data-h="#8F8F8C" title="RAL 9007 Graualuminium" style="background:#8F8F8C"></button><button class="ralc" data-h="#F1EFE7" title="RAL 9010 Reinweiss" style="background:#F1EFE7"></button><button class="ralc" data-h="#27292B" title="RAL 9011 Graphitschwarz" style="background:#27292B"></button><button class="ralc" data-h="#F1F1EA" title="RAL 9016 Verkehrsweiss" style="background:#F1F1EA"></button><button class="ralc" data-h="#2A2A2B" title="RAL 9017 Verkehrsschwarz" style="background:#2A2A2B"></button><button class="ralc" data-h="#C9CBC6" title="RAL 9018 Papyrusweiss" style="background:#C9CBC6"></button><button class="ralc" data-h="#9C9B9A" title="RAL 9022 Perlhellgrau" style="background:#9C9B9A"></button><button class="ralc" data-h="#7E8182" title="RAL 9023 Perldunkelgrau" style="background:#7E8182"></button></div></div><div class="ralnormal"><div class="ralnsw"><button class="ralnc" data-h="#FFFFFF" style="background:#FFFFFF"></button><button class="ralnc" data-h="#D9D9D9" style="background:#D9D9D9"></button><button class="ralnc" data-h="#B3B3B3" style="background:#B3B3B3"></button><button class="ralnc" data-h="#808080" style="background:#808080"></button><button class="ralnc" data-h="#4D4D4D" style="background:#4D4D4D"></button><button class="ralnc" data-h="#1A1A1A" style="background:#1A1A1A"></button><button class="ralnc" data-h="#8C1D18" style="background:#8C1D18"></button><button class="ralnc" data-h="#DC2626" style="background:#DC2626"></button><button class="ralnc" data-h="#EA580C" style="background:#EA580C"></button><button class="ralnc" data-h="#F59E0B" style="background:#F59E0B"></button><button class="ralnc" data-h="#FACC15" style="background:#FACC15"></button><button class="ralnc" data-h="#A3E635" style="background:#A3E635"></button><button class="ralnc" data-h="#22C55E" style="background:#22C55E"></button><button class="ralnc" data-h="#10B981" style="background:#10B981"></button><button class="ralnc" data-h="#14B8A6" style="background:#14B8A6"></button><button class="ralnc" data-h="#06B6D4" style="background:#06B6D4"></button><button class="ralnc" data-h="#0EA5E9" style="background:#0EA5E9"></button><button class="ralnc" data-h="#3B82F6" style="background:#3B82F6"></button><button class="ralnc" data-h="#6366F1" style="background:#6366F1"></button><button class="ralnc" data-h="#8B5CF6" style="background:#8B5CF6"></button><button class="ralnc" data-h="#A855F7" style="background:#A855F7"></button><button class="ralnc" data-h="#D946EF" style="background:#D946EF"></button><button class="ralnc" data-h="#EC4899" style="background:#EC4899"></button><button class="ralnc" data-h="#9F1239" style="background:#9F1239"></button><button class="ralnc" data-h="#7C4A28" style="background:#7C4A28"></button><button class="ralnc" data-h="#A16207" style="background:#A16207"></button><button class="ralnc" data-h="#3F6212" style="background:#3F6212"></button><button class="ralnc" data-h="#134E4A" style="background:#134E4A"></button><button class="ralnc" data-h="#1E3A8A" style="background:#1E3A8A"></button><button class="ralnc" data-h="#312E81" style="background:#312E81"></button><button class="ralnc" data-h="#3F3F46" style="background:#3F3F46"></button><button class="ralnc" data-h="#0F172A" style="background:#0F172A"></button></div><div class="ralnrow"><span class="rallbl">oder</span><input type="color" id="ralcolor" value="#3B4A57"><input type="text" id="ralhex" placeholder="#RRGGBB" maxlength="7" spellcheck="false"><span class="ralnhint">eigenen Farbcode eingeben</span></div></div><div class="raldisc">Hinweis: Die dargestellten Farben können je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.</div></div></div>
+  <div id="vpanel"><canvas id="cv"></canvas><div class="loading" id="loading">Modell wird geladen ...</div><div class="ralpanel" id="ralpanel"><div class="ralhead"><span class="rallbl">Farbe für</span><button class="ralmode active" data-grp="stahlbau">Stahlbau</button><button class="ralmode" data-grp="gelaender">Geländer</button><span class="ralfinsep"></span><button class="raltyp active" data-typ="ral">RAL</button><button class="raltyp" data-typ="normal">Normal</button><span class="ralfinsep"></span><button class="ralfin" data-fin="verzinkt">Verzinkt</button><button class="ralfin" data-fin="edelstahl">Edelstahl</button><button class="ralfin" id="raldefault" style="margin-left:auto" title="Auf meine Ausgangsfarben zuruecksetzen">Standard</button><button class="ralclose" id="ralclose" style="margin-left:6px" aria-label="einklappen">&#9652;</button></div><div class="ralgrid"><div class="ralfam"><span class="ralfl">Gelb</span><button class="ralc" data-h="#CDBA88" title="RAL 1000 Gruenbeige" style="background:#CDBA88"></button><button class="ralc" data-h="#D0B084" title="RAL 1001 Beige" style="background:#D0B084"></button><button class="ralc" data-h="#D2AA6D" title="RAL 1002 Sandgelb" style="background:#D2AA6D"></button><button class="ralc" data-h="#F9A800" title="RAL 1003 Signalgelb" style="background:#F9A800"></button><button class="ralc" data-h="#E49E00" title="RAL 1004 Goldgelb" style="background:#E49E00"></button><button class="ralc" data-h="#CB8E00" title="RAL 1005 Honiggelb" style="background:#CB8E00"></button><button class="ralc" data-h="#E29000" title="RAL 1006 Maisgelb" style="background:#E29000"></button><button class="ralc" data-h="#E88C00" title="RAL 1007 Narzissengelb" style="background:#E88C00"></button><button class="ralc" data-h="#AF804F" title="RAL 1011 Braunbeige" style="background:#AF804F"></button><button class="ralc" data-h="#DDAF27" title="RAL 1012 Zitronengelb" style="background:#DDAF27"></button><button class="ralc" data-h="#E3D9C6" title="RAL 1013 Perlweiss" style="background:#E3D9C6"></button><button class="ralc" data-h="#DDC49A" title="RAL 1014 Elfenbein" style="background:#DDC49A"></button><button class="ralc" data-h="#E6D2B5" title="RAL 1015 Hellelfenbein" style="background:#E6D2B5"></button><button class="ralc" data-h="#F1DD38" title="RAL 1016 Schwefelgelb" style="background:#F1DD38"></button><button class="ralc" data-h="#F6A950" title="RAL 1017 Safrangelb" style="background:#F6A950"></button><button class="ralc" data-h="#FACA30" title="RAL 1018 Zinkgelb" style="background:#FACA30"></button><button class="ralc" data-h="#A48F7A" title="RAL 1019 Graubeige" style="background:#A48F7A"></button><button class="ralc" data-h="#A08F65" title="RAL 1020 Olivgelb" style="background:#A08F65"></button><button class="ralc" data-h="#F6B600" title="RAL 1021 Rapsgelb" style="background:#F6B600"></button><button class="ralc" data-h="#F7B500" title="RAL 1023 Verkehrsgelb" style="background:#F7B500"></button><button class="ralc" data-h="#BA8F4C" title="RAL 1024 Ockergelb" style="background:#BA8F4C"></button><button class="ralc" data-h="#FFFF00" title="RAL 1026 Leuchtgelb" style="background:#FFFF00"></button><button class="ralc" data-h="#A77F0E" title="RAL 1027 Curry" style="background:#A77F0E"></button><button class="ralc" data-h="#FF9B00" title="RAL 1028 Melonengelb" style="background:#FF9B00"></button><button class="ralc" data-h="#E2A300" title="RAL 1032 Ginstergelb" style="background:#E2A300"></button><button class="ralc" data-h="#F99A1C" title="RAL 1033 Dahliengelb" style="background:#F99A1C"></button><button class="ralc" data-h="#EB9C52" title="RAL 1034 Pastellgelb" style="background:#EB9C52"></button><button class="ralc" data-h="#908370" title="RAL 1035 Perlbeige" style="background:#908370"></button><button class="ralc" data-h="#806440" title="RAL 1036 Perlgold" style="background:#806440"></button><button class="ralc" data-h="#F09200" title="RAL 1037 Sonnengelb" style="background:#F09200"></button></div><div class="ralfam"><span class="ralfl">Orange</span><button class="ralc" data-h="#ED760E" title="RAL 2000 Gelborange" style="background:#ED760E"></button><button class="ralc" data-h="#BE4E20" title="RAL 2001 Rotorange" style="background:#BE4E20"></button><button class="ralc" data-h="#C63927" title="RAL 2002 Blutorange" style="background:#C63927"></button><button class="ralc" data-h="#FA842B" title="RAL 2003 Pastellorange" style="background:#FA842B"></button><button class="ralc" data-h="#E75B12" title="RAL 2004 Reinorange" style="background:#E75B12"></button><button class="ralc" data-h="#FF2300" title="RAL 2005 Leuchtorange" style="background:#FF2300"></button><button class="ralc" data-h="#FFA420" title="RAL 2007 Leuchthellorange" style="background:#FFA420"></button><button class="ralc" data-h="#F3752C" title="RAL 2008 Hellrotorange" style="background:#F3752C"></button><button class="ralc" data-h="#E15501" title="RAL 2009 Verkehrsorange" style="background:#E15501"></button><button class="ralc" data-h="#D4652F" title="RAL 2010 Signalorange" style="background:#D4652F"></button><button class="ralc" data-h="#EC7C25" title="RAL 2011 Tieforange" style="background:#EC7C25"></button><button class="ralc" data-h="#DB6A50" title="RAL 2012 Lachsorange" style="background:#DB6A50"></button><button class="ralc" data-h="#954527" title="RAL 2013 Perlorange" style="background:#954527"></button></div><div class="ralfam"><span class="ralfl">Rot</span><button class="ralc" data-h="#AF2B1E" title="RAL 3000 Feuerrot" style="background:#AF2B1E"></button><button class="ralc" data-h="#A52019" title="RAL 3001 Signalrot" style="background:#A52019"></button><button class="ralc" data-h="#A2231D" title="RAL 3002 Karminrot" style="background:#A2231D"></button><button class="ralc" data-h="#9B111E" title="RAL 3003 Rubinrot" style="background:#9B111E"></button><button class="ralc" data-h="#75151E" title="RAL 3004 Purpurrot" style="background:#75151E"></button><button class="ralc" data-h="#5E2028" title="RAL 3005 Weinrot" style="background:#5E2028"></button><button class="ralc" data-h="#412227" title="RAL 3007 Schwarzrot" style="background:#412227"></button><button class="ralc" data-h="#642424" title="RAL 3009 Oxidrot" style="background:#642424"></button><button class="ralc" data-h="#781F19" title="RAL 3011 Braunrot" style="background:#781F19"></button><button class="ralc" data-h="#C1876B" title="RAL 3012 Beigerot" style="background:#C1876B"></button><button class="ralc" data-h="#A12312" title="RAL 3013 Tomatenrot" style="background:#A12312"></button><button class="ralc" data-h="#D36E70" title="RAL 3014 Altrosa" style="background:#D36E70"></button><button class="ralc" data-h="#EA899A" title="RAL 3015 Hellrosa" style="background:#EA899A"></button><button class="ralc" data-h="#B32821" title="RAL 3016 Korallenrot" style="background:#B32821"></button><button class="ralc" data-h="#E63244" title="RAL 3017 Rose" style="background:#E63244"></button><button class="ralc" data-h="#D53032" title="RAL 3018 Erdbeerrot" style="background:#D53032"></button><button class="ralc" data-h="#CC0605" title="RAL 3020 Verkehrsrot" style="background:#CC0605"></button><button class="ralc" data-h="#D95030" title="RAL 3022 Lachsrot" style="background:#D95030"></button><button class="ralc" data-h="#F80000" title="RAL 3024 Leuchtrot" style="background:#F80000"></button><button class="ralc" data-h="#FE0000" title="RAL 3026 Leuchthellrot" style="background:#FE0000"></button><button class="ralc" data-h="#C51D34" title="RAL 3027 Himbeerrot" style="background:#C51D34"></button><button class="ralc" data-h="#CB3234" title="RAL 3028 Reinrot" style="background:#CB3234"></button><button class="ralc" data-h="#B32428" title="RAL 3031 Orientrot" style="background:#B32428"></button><button class="ralc" data-h="#721422" title="RAL 3032 Perlrubinrot" style="background:#721422"></button><button class="ralc" data-h="#B44C43" title="RAL 3033 Perlrosa" style="background:#B44C43"></button></div><div class="ralfam"><span class="ralfl">Violett</span><button class="ralc" data-h="#6D3F5B" title="RAL 4001 Rotlila" style="background:#6D3F5B"></button><button class="ralc" data-h="#922B3E" title="RAL 4002 Rotviolett" style="background:#922B3E"></button><button class="ralc" data-h="#DE4C8A" title="RAL 4003 Erikaviolett" style="background:#DE4C8A"></button><button class="ralc" data-h="#641C34" title="RAL 4004 Bordeauxviolett" style="background:#641C34"></button><button class="ralc" data-h="#6C4675" title="RAL 4005 Blaulila" style="background:#6C4675"></button><button class="ralc" data-h="#A03472" title="RAL 4006 Verkehrspurpur" style="background:#A03472"></button><button class="ralc" data-h="#4A192C" title="RAL 4007 Purpurviolett" style="background:#4A192C"></button><button class="ralc" data-h="#924E7D" title="RAL 4008 Signalviolett" style="background:#924E7D"></button><button class="ralc" data-h="#A18594" title="RAL 4009 Pastellviolett" style="background:#A18594"></button><button class="ralc" data-h="#CF3476" title="RAL 4010 Telemagenta" style="background:#CF3476"></button><button class="ralc" data-h="#8673A1" title="RAL 4011 Perlviolett" style="background:#8673A1"></button><button class="ralc" data-h="#6C6874" title="RAL 4012 Perlbrombeer" style="background:#6C6874"></button></div><div class="ralfam"><span class="ralfl">Blau</span><button class="ralc" data-h="#314F6F" title="RAL 5000 Violettblau" style="background:#314F6F"></button><button class="ralc" data-h="#0F3F4B" title="RAL 5001 Gruenblau" style="background:#0F3F4B"></button><button class="ralc" data-h="#20214F" title="RAL 5002 Ultramarinblau" style="background:#20214F"></button><button class="ralc" data-h="#1D1E33" title="RAL 5003 Saphirblau" style="background:#1D1E33"></button><button class="ralc" data-h="#18171C" title="RAL 5004 Schwarzblau" style="background:#18171C"></button><button class="ralc" data-h="#1E2460" title="RAL 5005 Signalblau" style="background:#1E2460"></button><button class="ralc" data-h="#3E5F8A" title="RAL 5007 Brillantblau" style="background:#3E5F8A"></button><button class="ralc" data-h="#26252D" title="RAL 5008 Graublau" style="background:#26252D"></button><button class="ralc" data-h="#025669" title="RAL 5009 Azurblau" style="background:#025669"></button><button class="ralc" data-h="#0E294B" title="RAL 5010 Enzianblau" style="background:#0E294B"></button><button class="ralc" data-h="#232C3F" title="RAL 5011 Stahlblau" style="background:#232C3F"></button><button class="ralc" data-h="#3B83BD" title="RAL 5012 Lichtblau" style="background:#3B83BD"></button><button class="ralc" data-h="#1E213D" title="RAL 5013 Kobaltblau" style="background:#1E213D"></button><button class="ralc" data-h="#606E8C" title="RAL 5014 Taubenblau" style="background:#606E8C"></button><button class="ralc" data-h="#2874B2" title="RAL 5015 Himmelblau" style="background:#2874B2"></button><button class="ralc" data-h="#063971" title="RAL 5017 Verkehrsblau" style="background:#063971"></button><button class="ralc" data-h="#3F888F" title="RAL 5018 Tuerkisblau" style="background:#3F888F"></button><button class="ralc" data-h="#1B5583" title="RAL 5019 Capriblau" style="background:#1B5583"></button><button class="ralc" data-h="#1D4E5B" title="RAL 5020 Ozeanblau" style="background:#1D4E5B"></button><button class="ralc" data-h="#0B5563" title="RAL 5021 Wasserblau" style="background:#0B5563"></button><button class="ralc" data-h="#20214C" title="RAL 5022 Nachtblau" style="background:#20214C"></button><button class="ralc" data-h="#41678D" title="RAL 5023 Fernblau" style="background:#41678D"></button><button class="ralc" data-h="#6A93B0" title="RAL 5024 Pastellblau" style="background:#6A93B0"></button></div><div class="ralfam"><span class="ralfl">Gruen</span><button class="ralc" data-h="#327662" title="RAL 6000 Patinagruen" style="background:#327662"></button><button class="ralc" data-h="#28713E" title="RAL 6001 Smaragdgruen" style="background:#28713E"></button><button class="ralc" data-h="#276235" title="RAL 6002 Laubgruen" style="background:#276235"></button><button class="ralc" data-h="#4B573E" title="RAL 6003 Olivgruen" style="background:#4B573E"></button><button class="ralc" data-h="#0E4243" title="RAL 6004 Blaugruen" style="background:#0E4243"></button><button class="ralc" data-h="#0F4336" title="RAL 6005 Moosgruen" style="background:#0F4336"></button><button class="ralc" data-h="#40433B" title="RAL 6006 Grauoliv" style="background:#40433B"></button><button class="ralc" data-h="#2C3222" title="RAL 6007 Flaschengruen" style="background:#2C3222"></button><button class="ralc" data-h="#3B3327" title="RAL 6008 Braungruen" style="background:#3B3327"></button><button class="ralc" data-h="#27352A" title="RAL 6009 Tannengruen" style="background:#27352A"></button><button class="ralc" data-h="#4D6F39" title="RAL 6010 Grasgruen" style="background:#4D6F39"></button><button class="ralc" data-h="#6C7C59" title="RAL 6011 Resedagruen" style="background:#6C7C59"></button><button class="ralc" data-h="#303D3A" title="RAL 6012 Schwarzgruen" style="background:#303D3A"></button><button class="ralc" data-h="#7D765A" title="RAL 6013 Schilfgruen" style="background:#7D765A"></button><button class="ralc" data-h="#474135" title="RAL 6014 Gelboliv" style="background:#474135"></button><button class="ralc" data-h="#3D3D36" title="RAL 6015 Schwarzoliv" style="background:#3D3D36"></button><button class="ralc" data-h="#026A52" title="RAL 6016 Tuerkisgruen" style="background:#026A52"></button><button class="ralc" data-h="#468641" title="RAL 6017 Maigruen" style="background:#468641"></button><button class="ralc" data-h="#48A43F" title="RAL 6018 Gelbgruen" style="background:#48A43F"></button><button class="ralc" data-h="#B7D9B1" title="RAL 6019 Weissgruen" style="background:#B7D9B1"></button><button class="ralc" data-h="#354733" title="RAL 6020 Chromoxidgruen" style="background:#354733"></button><button class="ralc" data-h="#86A47C" title="RAL 6021 Blassgruen" style="background:#86A47C"></button><button class="ralc" data-h="#3E3C32" title="RAL 6022 Braunoliv" style="background:#3E3C32"></button><button class="ralc" data-h="#008351" title="RAL 6024 Verkehrsgruen" style="background:#008351"></button><button class="ralc" data-h="#5E6E3B" title="RAL 6025 Farngruen" style="background:#5E6E3B"></button><button class="ralc" data-h="#005D52" title="RAL 6026 Opalgruen" style="background:#005D52"></button><button class="ralc" data-h="#7EBAB5" title="RAL 6027 Lichtgruen" style="background:#7EBAB5"></button><button class="ralc" data-h="#2C5545" title="RAL 6028 Kieferngruen" style="background:#2C5545"></button><button class="ralc" data-h="#007243" title="RAL 6029 Minzgruen" style="background:#007243"></button><button class="ralc" data-h="#0F8558" title="RAL 6032 Signalgruen" style="background:#0F8558"></button><button class="ralc" data-h="#478A84" title="RAL 6033 Minttuerkis" style="background:#478A84"></button><button class="ralc" data-h="#7FB0B2" title="RAL 6034 Pastelltuerkis" style="background:#7FB0B2"></button><button class="ralc" data-h="#1B542C" title="RAL 6035 Perlgruen" style="background:#1B542C"></button><button class="ralc" data-h="#005D4C" title="RAL 6036 Perlopalgruen" style="background:#005D4C"></button><button class="ralc" data-h="#008B29" title="RAL 6037 Reingruen" style="background:#008B29"></button><button class="ralc" data-h="#00BB2D" title="RAL 6038 Leuchtgruen" style="background:#00BB2D"></button></div><div class="ralfam"><span class="ralfl">Grau</span><button class="ralc" data-h="#7E8B92" title="RAL 7000 Fehgrau" style="background:#7E8B92"></button><button class="ralc" data-h="#8F999F" title="RAL 7001 Silbergrau" style="background:#8F999F"></button><button class="ralc" data-h="#817F68" title="RAL 7002 Olivgrau" style="background:#817F68"></button><button class="ralc" data-h="#7A7B6D" title="RAL 7003 Moosgrau" style="background:#7A7B6D"></button><button class="ralc" data-h="#9EA0A1" title="RAL 7004 Signalgrau" style="background:#9EA0A1"></button><button class="ralc" data-h="#6B716F" title="RAL 7005 Mausgrau" style="background:#6B716F"></button><button class="ralc" data-h="#756F61" title="RAL 7006 Beigegrau" style="background:#756F61"></button><button class="ralc" data-h="#6D5F3C" title="RAL 7008 Khakigrau" style="background:#6D5F3C"></button><button class="ralc" data-h="#60605A" title="RAL 7009 Gruengrau" style="background:#60605A"></button><button class="ralc" data-h="#575D57" title="RAL 7010 Zeltgrau" style="background:#575D57"></button><button class="ralc" data-h="#52595D" title="RAL 7011 Eisengrau" style="background:#52595D"></button><button class="ralc" data-h="#575B5A" title="RAL 7012 Basaltgrau" style="background:#575B5A"></button><button class="ralc" data-h="#55554A" title="RAL 7013 Braungrau" style="background:#55554A"></button><button class="ralc" data-h="#51565C" title="RAL 7015 Schiefergrau" style="background:#51565C"></button><button class="ralc" data-h="#383E42" title="RAL 7016 Anthrazitgrau" style="background:#383E42"></button><button class="ralc" data-h="#2F3234" title="RAL 7021 Schwarzgrau" style="background:#2F3234"></button><button class="ralc" data-h="#4C4A44" title="RAL 7022 Umbragrau" style="background:#4C4A44"></button><button class="ralc" data-h="#808179" title="RAL 7023 Betongrau" style="background:#808179"></button><button class="ralc" data-h="#45494E" title="RAL 7024 Graphitgrau" style="background:#45494E"></button><button class="ralc" data-h="#374547" title="RAL 7026 Granitgrau" style="background:#374547"></button><button class="ralc" data-h="#939183" title="RAL 7030 Steingrau" style="background:#939183"></button><button class="ralc" data-h="#5B6771" title="RAL 7031 Blaugrau" style="background:#5B6771"></button><button class="ralc" data-h="#B9B9A8" title="RAL 7032 Kieselgrau" style="background:#B9B9A8"></button><button class="ralc" data-h="#818979" title="RAL 7033 Zementgrau" style="background:#818979"></button><button class="ralc" data-h="#939176" title="RAL 7034 Gelbgrau" style="background:#939176"></button><button class="ralc" data-h="#D7D7D7" title="RAL 7035 Lichtgrau" style="background:#D7D7D7"></button><button class="ralc" data-h="#9C9C9C" title="RAL 7036 Platingrau" style="background:#9C9C9C"></button><button class="ralc" data-h="#7C7F7E" title="RAL 7037 Staubgrau" style="background:#7C7F7E"></button><button class="ralc" data-h="#B4B8B0" title="RAL 7038 Achatgrau" style="background:#B4B8B0"></button><button class="ralc" data-h="#6B695F" title="RAL 7039 Quarzgrau" style="background:#6B695F"></button><button class="ralc" data-h="#9DA1AA" title="RAL 7040 Fenstergrau" style="background:#9DA1AA"></button><button class="ralc" data-h="#8F9695" title="RAL 7042 Verkehrsgrau A" style="background:#8F9695"></button><button class="ralc" data-h="#4E5452" title="RAL 7043 Verkehrsgrau B" style="background:#4E5452"></button><button class="ralc" data-h="#BDBDB2" title="RAL 7044 Seidengrau" style="background:#BDBDB2"></button><button class="ralc" data-h="#8D9295" title="RAL 7045 Telegrau 1" style="background:#8D9295"></button><button class="ralc" data-h="#82898F" title="RAL 7046 Telegrau 2" style="background:#82898F"></button><button class="ralc" data-h="#CFD0CF" title="RAL 7047 Telegrau 4" style="background:#CFD0CF"></button><button class="ralc" data-h="#888175" title="RAL 7048 Perlmausgrau" style="background:#888175"></button></div><div class="ralfam"><span class="ralfl">Braun</span><button class="ralc" data-h="#89693F" title="RAL 8000 Gruenbraun" style="background:#89693F"></button><button class="ralc" data-h="#9D622B" title="RAL 8001 Ockerbraun" style="background:#9D622B"></button><button class="ralc" data-h="#794D3E" title="RAL 8002 Signalbraun" style="background:#794D3E"></button><button class="ralc" data-h="#7E4B26" title="RAL 8003 Lehmbraun" style="background:#7E4B26"></button><button class="ralc" data-h="#8E402A" title="RAL 8004 Kupferbraun" style="background:#8E402A"></button><button class="ralc" data-h="#6F4F28" title="RAL 8007 Rehbraun" style="background:#6F4F28"></button><button class="ralc" data-h="#6F4F28" title="RAL 8008 Olivbraun" style="background:#6F4F28"></button><button class="ralc" data-h="#5A3A29" title="RAL 8011 Nussbraun" style="background:#5A3A29"></button><button class="ralc" data-h="#6C3B2A" title="RAL 8012 Rotbraun" style="background:#6C3B2A"></button><button class="ralc" data-h="#49392D" title="RAL 8014 Sepiabraun" style="background:#49392D"></button><button class="ralc" data-h="#633A34" title="RAL 8015 Kastanienbraun" style="background:#633A34"></button><button class="ralc" data-h="#4C2F26" title="RAL 8016 Mahagonibraun" style="background:#4C2F26"></button><button class="ralc" data-h="#44322D" title="RAL 8017 Schokobraun" style="background:#44322D"></button><button class="ralc" data-h="#3F3A3A" title="RAL 8019 Graubraun" style="background:#3F3A3A"></button><button class="ralc" data-h="#211F20" title="RAL 8022 Schwarzbraun" style="background:#211F20"></button><button class="ralc" data-h="#A65E2E" title="RAL 8023 Orangebraun" style="background:#A65E2E"></button><button class="ralc" data-h="#79553D" title="RAL 8024 Beigebraun" style="background:#79553D"></button><button class="ralc" data-h="#755C48" title="RAL 8025 Blassbraun" style="background:#755C48"></button><button class="ralc" data-h="#4E3B31" title="RAL 8028 Terrabraun" style="background:#4E3B31"></button><button class="ralc" data-h="#763C28" title="RAL 8029 Perlkupfer" style="background:#763C28"></button></div><div class="ralfam"><span class="ralfl">Weiss / Schwarz</span><button class="ralc" data-h="#E9E0D2" title="RAL 9001 Cremeweiss" style="background:#E9E0D2"></button><button class="ralc" data-h="#D7D5CB" title="RAL 9002 Grauweiss" style="background:#D7D5CB"></button><button class="ralc" data-h="#ECECE7" title="RAL 9003 Signalweiss" style="background:#ECECE7"></button><button class="ralc" data-h="#2B2B2C" title="RAL 9004 Signalschwarz" style="background:#2B2B2C"></button><button class="ralc" data-h="#0A0A0A" title="RAL 9005 Tiefschwarz" style="background:#0A0A0A"></button><button class="ralc" data-h="#A5A5A5" title="RAL 9006 Weissaluminium" style="background:#A5A5A5"></button><button class="ralc" data-h="#8F8F8C" title="RAL 9007 Graualuminium" style="background:#8F8F8C"></button><button class="ralc" data-h="#F1EFE7" title="RAL 9010 Reinweiss" style="background:#F1EFE7"></button><button class="ralc" data-h="#27292B" title="RAL 9011 Graphitschwarz" style="background:#27292B"></button><button class="ralc" data-h="#F1F1EA" title="RAL 9016 Verkehrsweiss" style="background:#F1F1EA"></button><button class="ralc" data-h="#2A2A2B" title="RAL 9017 Verkehrsschwarz" style="background:#2A2A2B"></button><button class="ralc" data-h="#C9CBC6" title="RAL 9018 Papyrusweiss" style="background:#C9CBC6"></button><button class="ralc" data-h="#9C9B9A" title="RAL 9022 Perlhellgrau" style="background:#9C9B9A"></button><button class="ralc" data-h="#7E8182" title="RAL 9023 Perldunkelgrau" style="background:#7E8182"></button></div></div><div class="ralnormal"><div class="ralnsw"><button class="ralnc" data-h="#FFFFFF" style="background:#FFFFFF"></button><button class="ralnc" data-h="#D9D9D9" style="background:#D9D9D9"></button><button class="ralnc" data-h="#B3B3B3" style="background:#B3B3B3"></button><button class="ralnc" data-h="#808080" style="background:#808080"></button><button class="ralnc" data-h="#4D4D4D" style="background:#4D4D4D"></button><button class="ralnc" data-h="#1A1A1A" style="background:#1A1A1A"></button><button class="ralnc" data-h="#8C1D18" style="background:#8C1D18"></button><button class="ralnc" data-h="#DC2626" style="background:#DC2626"></button><button class="ralnc" data-h="#EA580C" style="background:#EA580C"></button><button class="ralnc" data-h="#F59E0B" style="background:#F59E0B"></button><button class="ralnc" data-h="#FACC15" style="background:#FACC15"></button><button class="ralnc" data-h="#A3E635" style="background:#A3E635"></button><button class="ralnc" data-h="#22C55E" style="background:#22C55E"></button><button class="ralnc" data-h="#10B981" style="background:#10B981"></button><button class="ralnc" data-h="#14B8A6" style="background:#14B8A6"></button><button class="ralnc" data-h="#06B6D4" style="background:#06B6D4"></button><button class="ralnc" data-h="#0EA5E9" style="background:#0EA5E9"></button><button class="ralnc" data-h="#3B82F6" style="background:#3B82F6"></button><button class="ralnc" data-h="#6366F1" style="background:#6366F1"></button><button class="ralnc" data-h="#8B5CF6" style="background:#8B5CF6"></button><button class="ralnc" data-h="#A855F7" style="background:#A855F7"></button><button class="ralnc" data-h="#D946EF" style="background:#D946EF"></button><button class="ralnc" data-h="#EC4899" style="background:#EC4899"></button><button class="ralnc" data-h="#9F1239" style="background:#9F1239"></button><button class="ralnc" data-h="#7C4A28" style="background:#7C4A28"></button><button class="ralnc" data-h="#A16207" style="background:#A16207"></button><button class="ralnc" data-h="#3F6212" style="background:#3F6212"></button><button class="ralnc" data-h="#134E4A" style="background:#134E4A"></button><button class="ralnc" data-h="#1E3A8A" style="background:#1E3A8A"></button><button class="ralnc" data-h="#312E81" style="background:#312E81"></button><button class="ralnc" data-h="#3F3F46" style="background:#3F3F46"></button><button class="ralnc" data-h="#0F172A" style="background:#0F172A"></button></div><div class="ralnrow"><span class="rallbl">oder</span><input type="color" id="ralcolor" value="#3B4A57"><input type="text" id="ralhex" placeholder="#RRGGBB" maxlength="7" spellcheck="false"><span class="ralnhint">eigenen Farbcode eingeben</span></div></div><div class="raldisc">Hinweis: Die dargestellten Farben können je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.</div></div></div>
   <footer><div class="foot-inner">
     <div class="cpr">&copy; 2026 Gokoba <a href="mailto:info@gokoba.com">Paul Thomas</a> &nbsp;&middot;&nbsp; <a href="mailto:info@gokoba.com">info@gokoba.com</a> &nbsp;&middot;&nbsp; <a href="https://www.gokoba.com" target="_blank" rel="noopener">www.gokoba.com</a></div>
     <span class="ablauf" id="ablauf"></span><span class="hint">Ziehen zum Drehen &middot; Scrollen zum Zoomen &middot; Rechte Maustaste zum Verschieben</span>
@@ -5026,7 +5035,7 @@ var GOKOBA_LAYER_ACI = {
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   var scene=new THREE.Scene();
-  var GOKOBA_DEF_STAHL="__DEF_STAHL__",GOKOBA_DEF_GEL="__DEF_GEL__",GOKOBA_EXPIRY="__EXPIRY__";
+  var GOKOBA_DEF_STAHL="__DEF_STAHL__",GOKOBA_DEF_GEL="__DEF_GEL__",GOKOBA_EXPIRY="__EXPIRY__",GOKOBA_GITTER_TEX="__GITTER_TEX__",GOKOBA_DEKOR="__DEKOR__";
   if(GOKOBA_EXPIRY.indexOf('__')<0){var _ed=new Date(GOKOBA_EXPIRY);if(!isNaN(_ed.getTime())){if(new Date()>_ed){document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#444;text-align:center;padding:32px;font-size:15px;">Diese 3D-Ansicht ist abgelaufen.<br>Bitte fordern Sie einen aktuellen Link an.</div>';throw new Error('abgelaufen');}var _ab=document.getElementById('ablauf');if(_ab)_ab.textContent='Ansicht gueltig bis '+_ed.toLocaleDateString('de-DE')+' \u00b7 ';}}
   var camera=new THREE.PerspectiveCamera(42,1,0.01,200);
   camera.position.set(3,2,4);
@@ -5034,7 +5043,7 @@ var GOKOBA_LAYER_ACI = {
   controls.enableDamping=true;controls.dampingFactor=0.08;
   controls.zoomSpeed=1.5;controls.panSpeed=1.9;
   controls.autoRotate=false;
-  controls.maxPolarAngle=Math.PI*0.54;
+  controls.minPolarAngle=Math.PI*0.015;controls.maxPolarAngle=Math.PI*0.985;
   scene.add(new THREE.HemisphereLight(0xffffff,0x35414a,0.62));
   var key=new THREE.DirectionalLight(0xffffff,0.92);key.position.set(3,6,2.5);key.castShadow=false;
   key.shadow.mapSize.width=2048;key.shadow.mapSize.height=2048;key.shadow.bias=-0.0004;
@@ -5104,10 +5113,10 @@ var GOKOBA_LAYER_ACI = {
   var GOKOBA_STAHL=0x2E414E,      /* ★ Standard fuer alle nicht gelisteten Nummern */
       GOKOBA_GELAENDER=0x7A9AAA,  /* ★ 145, 31, 23 -> Kupfer/Bronze, glaenzend (Komplement zum Blau, passt zum Logo-Kupfer) */
       GOKOBA_GITTER=0xE7E5DF,     /* ★ 75 Gitterroste, weiss */
-      GOKOBA_BESTAND=0xBAB4A6,    /* ★ 15, 8, 9, 253, 254, 252, 251 */
-      GOKOBA_MAUERWERK=0x999789,  /* ★ 107, gleiche Farbe wie Estrich */
-      GOKOBA_ESTRICH=0x999789,    /* ★ 215, dunkler */
-      GOKOBA_DAEMMUNG=0xBAB4A6,   /* ★ 165 = Mauerwerk-Ton (dunkler), 28% transparent */
+      GOKOBA_BESTAND=0xDBD8D0,    /* ★ 15, 8, 9, 253, 254, 252, 251 */
+      GOKOBA_MAUERWERK=0xD9D6CB,  /* ★ 107, gleiche Farbe wie Estrich */
+      GOKOBA_ESTRICH=0xE3E4DE,    /* ★ 215, dunkler */
+      GOKOBA_DAEMMUNG=0xE7E5DF,   /* ★ 165 = Mauerwerk-Ton (dunkler), 28% transparent */
       GOKOBA_GLAS=0xDDE1E3,       /* ★ 51 Glas, weiss, 50% transparent */
       GOKOBA_CHROM=0x888E92;      /* ★ 30 heller Edelstahl poliert, Weiss ueberwiegt mit leichtem Grau (eigenes, spiegelndes Material) */
   /* ★ Verbindliche Nummer -> Farbe (fuer die echte Pipeline; farbe, matt, alpha, chrom) */
@@ -5118,7 +5127,7 @@ var GOKOBA_LAYER_ACI = {
     253:{farbe:GOKOBA_BESTAND,matt:1}, 254:{farbe:GOKOBA_BESTAND,matt:1}, 252:{farbe:GOKOBA_BESTAND,matt:1}, 251:{farbe:GOKOBA_BESTAND,matt:1},
     107:{farbe:GOKOBA_MAUERWERK,matt:1},
     215:{farbe:GOKOBA_ESTRICH,matt:1},
-    165:{farbe:GOKOBA_DAEMMUNG,matt:1,alpha:0.72},
+    165:{farbe:GOKOBA_DAEMMUNG,matt:1,alpha:0.80},
     51:{farbe:GOKOBA_GLAS,alpha:0.50},
     30:{farbe:GOKOBA_CHROM,chrom:1}
   };
@@ -5127,15 +5136,22 @@ var GOKOBA_LAYER_ACI = {
     {von:0x1C3642, zu:GOKOBA_GELAENDER, met:0.25, rau:0.24, env:1, envI:0.55},  /* ★ Slate       -> Gelaender (145), Kupfer glaenzend */
     {von:0xD28D56, zu:GOKOBA_GELAENDER, met:0.25, rau:0.24, env:1, envI:0.55},  /* ★ Orange      -> Gelaender (31), Kupfer glaenzend */
     {von:0x763E30, zu:GOKOBA_GELAENDER, met:0.25, rau:0.24, env:1, envI:0.55},  /* ★ Braun       -> Sonderteile (23), Kupfer glaenzend */
-    {von:0x314820, zu:GOKOBA_GITTER,    met:0.10, rau:0.40},                    /* ★ Olivgruen   -> Gitterroste (75), weiss */
+    {von:0x314820, zu:GOKOBA_GITTER,    gitter:1, met:0.10, rau:0.40},                    /* ★ Olivgruen   -> Gitterroste (75), weiss */
     {von:0x74DA5B, zu:GOKOBA_STAHL,     met:0.28, rau:0.19, env:1, envI:0.55},  /* ★ Hellgruen   -> Bleche (81), dunkles Blau glaenzend */
     {von:0x142D19, zu:GOKOBA_MAUERWERK, met:0.00, rau:0.90},              /* ★ Dunkelgruen -> Mauerwerk (107), matt */
     {von:0x3E193E, zu:GOKOBA_ESTRICH,   met:0.00, rau:0.90},              /* ★ Lila        -> Estrich (215), matt */
-    {von:0x171D39, zu:GOKOBA_DAEMMUNG,  met:0.00, rau:0.90, alpha:0.72},  /* ★ Dunkelblau  -> Daemmung (165), matt, ~28% transparent */
+    {von:0x171D39, zu:GOKOBA_DAEMMUNG,  met:0.00, rau:0.90, alpha:0.80},  /* ★ Dunkelblau  -> Daemmung (165), matt, ~28% transparent */
     {von:0xF2F269, zu:GOKOBA_GLAS,      met:0.00, rau:0.20, alpha:0.50},  /* ★ Gelb        -> Glas (51), 50% transparent */
-    {von:0xAA400C, zu:GOKOBA_CHROM,     chrom:1},                         /* ★ Orange2     -> Chrom/Edelstahl (30) */
+    {von:0xAA400C, zu:GOKOBA_CHROM,     chrom:1},
+    {von:0x0E0608, zu:GOKOBA_CHROM,     riffel:1},
+    {von:0x1E021E, zu:GOKOBA_STAHL,     dekor:'bws'},                       /* ★ BWS Betonwerkstein (216) */
+    {von:0x290206, zu:GOKOBA_STAHL,     dekor:'min'},                       /* ★ Mineralit (244) */
+    {von:0x030118, zu:GOKOBA_STAHL,     dekor:'t1'},                        /* ★ Trespa 1 (186) */
+    {von:0x342868, zu:GOKOBA_STAHL,     dekor:'t2'},                        /* ★ Trespa 2 (183) */
+    {von:0x250F03, zu:GOKOBA_STAHL,     dekor:'t3'},                        /* ★ Trespa 3 (36) */
+    {von:0x0D0602, zu:GOKOBA_STAHL,     dekor:'t4'},                        /* ★ Trespa 4 (38) */                             /* ★ dunkles Rot -> Riffelblech (249), Edelstahl + Traenen */                         /* ★ Orange2     -> Chrom/Edelstahl (30) */
     {von:0x373737, zu:GOKOBA_BESTAND,   met:0.00, rau:0.85},              /* ★ Dunkelgrau  -> Bestand (15) */
-    {von:0x6B6B6B, zu:GOKOBA_BESTAND,   met:0.00, rau:0.85}               /* ★ Grau        -> Bestand-Gruppe (253) */
+    {von:0x6B6B6B, zu:GOKOBA_CHROM,     chrom:1}                             /* ★ Grau (253/254) -> Edelstahl wie Handlauf */
   ];
   function gokobaSchema(col){
     var r=Math.round(col.r*255),g=Math.round(col.g*255),b=Math.round(col.b*255),best=null,bd=1e9;
@@ -5144,7 +5160,7 @@ var GOKOBA_LAYER_ACI = {
       var d=Math.abs(r-vr)+Math.abs(g-vg)+Math.abs(b-vb);
       if(d<bd){bd=d;best=e;}
     }
-    return bd<12?best:null; /* ★ enge Schwelle, da viele Modellfarben nah beieinander liegen */
+    return bd<4?best:null; /* ★ sehr enge Schwelle: #0E0608 (249) vs #0D0602 (38) nur 7 auseinander */
   }
   /* ★ Einfache Wuerfel-Umgebung fuer Chrom/Edelstahl-Spiegelung (hell oben, dunkel unten) */
   function gokobaChromEnv(){
@@ -5166,6 +5182,124 @@ var GOKOBA_LAYER_ACI = {
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var verzinktTex=verzinktTextur();
+  /* ★ Gitterrost-Textur (Draufsicht), Maschenweite aus dem Dialog */
+  function gitterTextur(mw){
+    var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
+    g.fillStyle='#86898b';g.fillRect(0,0,n,n);
+    g.fillStyle='#a7aaad';var bw=6,sx=(mw==='3010')?18:44,sy=44,i;
+    for(i=0;i<=n;i+=sx)g.fillRect(i,0,bw,n);
+    for(i=0;i<=n;i+=sy)g.fillRect(0,i,n,bw);
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
+  }
+  var gitterTex=gitterTextur(GOKOBA_GITTER_TEX.indexOf('3010')>=0?'3010':'3030');
+  /* ★ Dekor-Auswahl aus dem Dialog (bws=..;min=..;t1=#..;t2=..;t3=..;t4=..) */
+  function dekorWert(k){var m=GOKOBA_DEKOR.match(new RegExp('(?:^|;)'+k+'=([^;]*)'));return (m&&m[1]&&m[1].indexOf('__')<0)?m[1]:'';}
+  /* ★ BWS Betonwerkstein: eine Kachel = 40x40 cm Platte, geschliffen (Werte aus den Musterfotos, aufgehellt) */
+  var GOKOBA_BWS_DEKORE={
+    'G11013':{art:'marmor',   grund:'#DACFC1', ader:'#C39B95', hell:'#EADFD2'},
+    'G11213':{art:'marmor',   grund:'#D9D3C6', ader:'#8E98A6', hell:'#EAE4D8'},
+    'G25013':{art:'sprenkel', grund:'#ABABA7', p1:'#62625D', p2:'#D6D6D2', p3:'#8C95A0'},
+    'G51013':{art:'sprenkel', grund:'#E7E1D4', p1:'#3B3934', p2:'#F3EEE2', p3:'#6C685F'},
+    'G82313':{art:'sprenkel', grund:'#8494A8', p1:'#CBD2DA', p2:'#5E7086', p3:'#A2AEBD'}
+  };
+  var GOKOBA_TRESPA_UNI=[["A05.0.0 Pure White","#F5F5EF"],["A04.0.0 Cream White","#EBE0C0"],["A05.1.0 Papyrus White","#ECE2C7"],["A05.1.1 Stone Beige","#DDD1B0"],["A08.2.1 Mid Beige","#CEC0A6"],["A08.3.1 Stone Grey","#AFA08F"],["A06.7.1 Natural Greige","#6B5D57"],["A08.8.1 Dark Brown","#473527"],["A03.0.0 White","#F6F5DD"],["A04.0.1 Pearl Yellow","#F6ECBC"],["A07.1.1 Sand","#E8CB9E"],["A08.2.3 Salmon","#E1936A"],["A10.3.4 Terra Cotta","#B86C5A"],["A11.4.4 English Red","#964C46"],["A10.4.5 Sienna Brown","#93372A"],["A14.7.2 Deep Red Brown","#452020"],["A03.1.0 Pastel Grey","#CFD4C3"],["A04.0.2 Pale Yellow","#F6EB9F"],["A05.1.2 Champagne","#EDC984"],["A05.1.4 Sun Yellow","#F9BC63"],["A06.3.5 Ochre","#C88536"],["A08.4.5 Rusty Red","#A5592D"],["A09.6.4 Mahogany Red","#7A4028"],["A12.6.3 Wine Red","#672728"],["A35.4.0 Cactus Green","#869C85"],["A37.2.3 Spring Green","#9EC389"],["A41.0.6 Mojito Green","#EAE42D"],["A04.0.5 Zinc Yellow","#F4D329"],["A04.1.7 Gold Yellow","#F8AF2A"],["A10.1.8 Red Orange","#F15A32"],["A12.1.8 Passion Red","#EE273B"],["A12.3.7 Carmine Red","#AB2C30"],["A33.3.6 Brilliant Green","#228554"],["A36.3.5 Turf Green","#52964F"],["A37.0.8 Lime Green","#95D333"],["A32.2.1 Translucent Green","#B5D5C2"],["A21.1.0 Winter Grey","#D3D8D6"],["A24.4.1 Steel Blue","#7F9AA2"],["A20.5.2 Lavender Blue","#666E8C"],["A17.3.5 Cyclam","#9B2E7F"],["A34.8.1 Forest Green","#2C3929"],["A32.7.2 Dark Green","#2E5749"],["A30.3.2 Verdigris","#89B8AB"],["A22.2.1 Bluish Grey","#B6C5C9"],["A28.6.2 Mid Green","#477172"],["A26.5.4 Pacific","#296573"],["A22.4.4 Brilliant Blue","#3C6BA2"],["A20.2.3 Light Viola","#9FAADC"],["A25.8.1 Anthracite Grey","#3A4145"],["A21.7.0 Steel Grey","#575D63"],["A28.2.1 Aquamarine","#9EC5C1"],["A22.3.1 Ocean Grey","#9DB1BA"],["A22.2.4 Powder Blue","#789CBB"],["A22.1.6 Royal Blue","#3790D4"],["A21.5.4 Cobalt Blue","#304F83"],["A22.6.2 Dark Denim","#475C77"],["A11.8.0 Ceramic Greige","#483E42"],["A05.5.0 Quartz Grey","#706E69"],["A21.5.1 Mid Grey","#7C7F82"],["A03.4.0 Silver Grey","#AFB5AD"],["A24.0.3 Polar Blue","#A6E1DD"],["A23.0.4 Mineral Blue","#8CD4EA"],["A20.7.2 Dark Blue","#242B3F"],["A90.0.0 Black","#191716"],["A06.5.1 Toscana Greige","#74675F"],["A10.6.1 Taupe","#7D6B69"],["A16.5.1 Mauve","#7E727D"]]; /* ★ Trespa Meteon UNI Colours (aus dem Farbblatt gesampelt) */
+  var _dekorTexCache={};
+  function bwsTextur(id){
+    if(!GOKOBA_BWS_DEKORE[id])id='G25013';
+    var key='bws_'+id;if(_dekorTexCache[key])return _dekorTexCache[key];
+    var d=GOKOBA_BWS_DEKORE[id],n=512,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d'),i;
+    g.fillStyle=d.grund;g.fillRect(0,0,n,n);
+    if(d.art==='sprenkel'){
+      var farben=[d.p1,d.p2,d.p3];
+      for(i=0;i<16000;i++){var x=Math.random()*n,y=Math.random()*n,r=0.35+Math.random()*0.75;
+        g.fillStyle=farben[(Math.random()*farben.length)|0];g.globalAlpha=0.5+Math.random()*0.5;
+        g.beginPath();g.arc(x,y,r,0,6.283);g.fill();}
+      g.globalAlpha=1;
+    }else{
+      for(i=0;i<320;i++){var x1=Math.random()*n,y1=Math.random()*n,r1=5+Math.random()*17;
+        var gr=g.createRadialGradient(x1,y1,0,x1,y1,r1);gr.addColorStop(0,d.hell);gr.addColorStop(1,'rgba(255,255,255,0)');
+        g.globalAlpha=0.10;g.fillStyle=gr;g.beginPath();g.arc(x1,y1,r1,0,6.283);g.fill();}
+      g.globalAlpha=1;g.strokeStyle=d.ader;g.lineCap='round';
+      for(i=0;i<70;i++){
+        var x=Math.random()*n,y=Math.random()*n,a=Math.random()*6.283,seg=30+(Math.random()*50|0),j;
+        for(j=0;j<seg;j++){
+          var l=1+Math.random()*2.6;a+=(Math.random()-0.5)*1.1;
+          var nx=x+Math.cos(a)*l,ny=y+Math.sin(a)*l;
+          g.globalAlpha=0.08+Math.random()*0.16;g.lineWidth=0.4+Math.random()*0.9;
+          g.beginPath();g.moveTo(x,y);g.lineTo(nx,ny);g.stroke();
+          if(Math.random()<0.12){var b=a+(Math.random()<0.5?1:-1)*(0.7+Math.random()*0.8);
+            g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(b)*l*2,y+Math.sin(b)*l*2);g.stroke();}
+          x=nx;y=ny;if(x<0)x+=n;if(x>=n)x-=n;if(y<0)y+=n;if(y>=n)y-=n;
+        }
+      }
+      g.globalAlpha=1;
+      for(i=0;i<7000;i++){g.fillStyle=(Math.random()<0.5)?d.ader:d.hell;g.globalAlpha=0.15;g.fillRect(Math.random()*n,Math.random()*n,1,1);}
+      g.globalAlpha=1;
+    }
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
+    t.repeat.set(1/(30.0*0.2),1/(30.0*0.2)); /* ★ eine Kachel = 0,2 m Welt (Muster fein) */
+    _dekorTexCache[key]=t;return t;
+  }
+  /* ★ Mineralit-Standarddekore: Splitterbild, Werte aus dem Dekor-Blatt, aufgehellt */
+  var GOKOBA_MIN_DEKORE={
+    'granit dunkel':   ['#6E7672','#2C3B3E','#A8ADAB','#54605E'],
+    'granit hell':     ['#A6AAA7','#485557','#D4D7D5','#7D8583'],
+    'gran canaria':    ['#DFE1E2','#33424E','#FBFAF9','#7C8892'],
+    'hellgruen':       ['#9AA69F','#3E5654','#C7CDC6','#6D7F7B'],
+    'dunkelgruen':     ['#77918F','#12292B','#B0BDBA','#43605E'],
+    'monzonit':        ['#8A5A57','#2A191B','#B9A290','#6A3A38'],
+    'salz und pfeffer':['#BDBBAF','#6E675C','#DEDDD5','#948F82'],
+    'dunkelblau':      ['#7BA2B3','#2E4B58','#B7D3DE','#54798A'],
+    'hellblau':        ['#8BA6B0','#3A5560','#CBD4D6','#67858F'],
+    'syenit':          ['#B4B2A9','#575349','#D6D4CC','#8A877D'],
+    'hellbraun':       ['#B39F79','#8A6F45','#CFC5AE','#A5895F'],
+    'dunkelbraun':     ['#A98D6E','#6E543F','#C9B9A0','#8A6D50']
+  };
+  function mineralitTextur(id){
+    if(!GOKOBA_MIN_DEKORE[id])id='granit hell';
+    var key='min_'+id;if(_dekorTexCache[key])return _dekorTexCache[key];
+    var d=GOKOBA_MIN_DEKORE[id],n=512,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d'),i,j;
+    g.fillStyle=d[0];g.fillRect(0,0,n,n);
+    var farben=[d[1],d[2],d[3]];
+    for(i=0;i<15000;i++){
+      var x=Math.random()*n,y=Math.random()*n,r=0.5+Math.random()*1.3,ecken=3+(Math.random()*3|0),a=Math.random()*6.283;
+      g.fillStyle=farben[(Math.random()*farben.length)|0];g.globalAlpha=0.75+Math.random()*0.25;
+      g.beginPath();
+      for(j=0;j<ecken;j++){var rr=r*(0.6+Math.random()*0.7);var px=x+Math.cos(a+j/ecken*6.283)*rr,py=y+Math.sin(a+j/ecken*6.283)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
+      g.closePath();g.fill();
+    }
+    g.globalAlpha=1;
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
+    t.repeat.set(1/(30.0*0.125),1/(30.0*0.125)); /* ★ Splitterbild alle 12,5 cm (fein) */
+    _dekorTexCache[key]=t;return t;
+  }
+  /* ★ Gitter-Textur nur auf waagerechten Flaechen zeigen; senkrechte Flaechen (Wand/Kante) glatt grau */
+  function gitterFlach(m){
+    m.onBeforeCompile=function(sh){
+      sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWNg;').replace('#include <beginnormal_vertex>','#include <beginnormal_vertex>\n  vWNg = mat3(modelMatrix) * objectNormal;');
+      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWNg;').replace('#include <map_fragment>','#ifdef USE_MAP\n vec4 texelColor = texture2D( map, vUv );\n texelColor = mapTexelToLinear( texelColor );\n float upG = abs(normalize(vWNg).y);\n float gm = smoothstep(0.45,0.75,upG);\n texelColor.rgb = mix(vec3(0.305,0.323,0.342), texelColor.rgb, gm);\n diffuseColor *= texelColor;\n#endif');
+    };
+    m.needsUpdate=true;
+  }
+  /* ★ Riffelblech-Textur (Traenen), von allen Seiten (Box-Projektion) */
+  function traenTextur(){
+    var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
+    g.fillStyle='#a8aeb2';g.fillRect(0,0,n,n);
+    function traene(cx,cy,ang){
+      g.save();g.translate(cx,cy);g.rotate(ang);
+      var gr=g.createLinearGradient(-16,0,16,0);gr.addColorStop(0,'#8f9599');gr.addColorStop(0.5,'#e0e4e7');gr.addColorStop(1,'#8f9599');
+      g.fillStyle=gr;g.beginPath();g.ellipse(0,0,17,3.0,0,0,6.283);g.fill();
+      g.restore();
+    }
+    var sc=46,gx,gy;
+    for(gy=0;gy<n/sc+1;gy++)for(gx=0;gx<n/sc+1;gx++){
+      var cx=gx*sc,cy=gy*sc,ang=((gx+gy)%2)?0.7:-0.7;
+      var px=Math.cos(ang+1.5708)*5.5,py=Math.sin(ang+1.5708)*5.5;
+      traene(cx-px,cy-py,ang);traene(cx+px,cy+py,ang);
+    }
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.05,1.05);t.encoding=THREE.sRGBEncoding;return t;
+  }
+  var traenTex=traenTextur();
   /* ★ Ablaufpruefung (nur wenn Pipeline ein Datum gesetzt hat) */
   if(GOKOBA_EXPIRY.indexOf("__")<0){var _ed=new Date(GOKOBA_EXPIRY);if(!isNaN(_ed.getTime())){
     if(new Date()>_ed){document.body.innerHTML='<div style="display:flex;height:100vh;align-items:center;justify-content:center;font-family:sans-serif;color:#556;text-align:center;padding:24px;font-size:15px;">Diese 3D-Ansicht ist abgelaufen.<br>Bitte fordern Sie eine aktuelle Ansicht an.</div>';throw new Error("expired");}
@@ -5177,7 +5311,8 @@ var GOKOBA_LAYER_ACI = {
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
   /* ★ Modell laden */
-  var mats=[],meshes=[],gelaenderMats=[],stahlbauMats=[];
+  var mats=[],meshes=[],gelaenderMats=[],stahlbauMats=[],gitterMats=[];
+  var dekorMats={bws:[],min:[],t1:[],t2:[],t3:[],t4:[]}; /* ★ Bauteilgruppen der Dekore */
   var bin=atob(GLB_B64),bytes=new Uint8Array(bin.length);
   for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   var loader=new THREE.GLTFLoader();
@@ -5200,9 +5335,24 @@ var GOKOBA_LAYER_ACI = {
             var reg=gokobaSchema(m.color);
             if(reg){
               m.userData._display=reg.zu;
-              if(reg.zu===GOKOBA_GELAENDER)m.userData._gelaender=true;
-              if(reg.zu===GOKOBA_STAHL)m.userData._stahlbau=true;
-              if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
+              m.userData._dekor=reg.dekor||'';
+              if(!reg.dekor){ /* ★ Dekor-Bauteile (BWS/Mineralit/Trespa) sind KEIN Stahlbau: Finish/RAL greift dort nicht */
+                if(reg.zu===GOKOBA_GELAENDER)m.userData._gelaender=true;
+                if(reg.zu===GOKOBA_STAHL)m.userData._stahlbau=true;
+              }
+              if(reg.dekor==='bws'||reg.dekor==='min'){
+                m.map=(reg.dekor==='bws')?bwsTextur(dekorWert('bws')):mineralitTextur(dekorWert('min'));
+                m.userData._display=0xFFFFFF; /* ★ Farbe traegt die Textur */
+                m.metalness=0.05;m.roughness=0.55;m.envMap=gokobaEnv;m.envMapIntensity=0.22;m.needsUpdate=true;
+              }
+              else if(reg.dekor){ /* ★ Trespa 1-4: reine Farbe, seidenmatt */
+                var _th=dekorWert(reg.dekor);
+                if(_th){m.userData._display=new THREE.Color(_th).convertSRGBToLinear().getHex();}
+                m.metalness=0.10;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.40;m.needsUpdate=true;
+              }
+              else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
+              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;} /* ★ Riffelblech */
+              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xffffff);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;gitterFlach(m);m.needsUpdate=true;} /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
@@ -5211,10 +5361,13 @@ var GOKOBA_LAYER_ACI = {
             }
             else{m.userData._display=GOKOBA_STAHL;m.userData._stahlbau=true;m.metalness=0.28;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=0.55;m.needsUpdate=true;} /* ★ Standard: dunkles Blau, glaenzend */
             m.color.setHex(m.userData._display);
+            if(m.userData._display===GOKOBA_BESTAND&&!m.userData._gitter&&!m.transparent){m.emissive=m.color.clone().multiplyScalar(0.06);m.needsUpdate=true;} /* ★ 15/Grau matt -> leicht aufhellen, damit weiss statt grau */
           }
           if(mats.indexOf(m)<0)mats.push(m);
           if(m.userData._gelaender&&gelaenderMats.indexOf(m)<0)gelaenderMats.push(m);
           if(m.userData._stahlbau&&stahlbauMats.indexOf(m)<0)stahlbauMats.push(m);
+          if(m.userData._gitter&&gitterMats.indexOf(m)<0)gitterMats.push(m);
+          if(m.userData._dekor&&dekorMats[m.userData._dekor]&&dekorMats[m.userData._dekor].indexOf(m)<0)dekorMats[m.userData._dekor].push(m);
         });
         meshes.push(o);
       }
@@ -5229,7 +5382,7 @@ var GOKOBA_LAYER_ACI = {
     if(GOKOBA_DEF_STAHL.charAt(0)==='#'){var _cs=new THREE.Color(GOKOBA_DEF_STAHL).convertSRGBToLinear();stahlbauMats.forEach(function(m){m.color.copy(_cs);m.userData._display=m.color.getHex();});}
     if(GOKOBA_DEF_GEL.charAt(0)==='#'){var _cg=new THREE.Color(GOKOBA_DEF_GEL).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(_cg);m.userData._display=m.color.getHex();});}
     model.updateWorldMatrix(true,true);
-    (function(){var wp=new THREE.Vector3(),wn=new THREE.Vector3(),nm=new THREE.Matrix3(),S=60.0;meshes.forEach(function(o){var g=o.geometry,p=g.attributes.position,nr=g.attributes.normal;if(!p)return;nm.getNormalMatrix(o.matrixWorld);var nn=p.count,uv=new Float32Array(nn*2);for(var k=0;k<nn;k++){wp.set(p.getX(k),p.getY(k),p.getZ(k));o.localToWorld(wp);var u,v;if(nr){wn.set(nr.getX(k),nr.getY(k),nr.getZ(k)).applyMatrix3(nm);var ax=Math.abs(wn.x),ay=Math.abs(wn.y),az=Math.abs(wn.z);if(ax>=ay&&ax>=az){u=wp.z;v=wp.y;}else if(ay>=ax&&ay>=az){u=wp.x;v=wp.z;}else{u=wp.x;v=wp.y;}}else{u=wp.x;v=wp.z;}uv[k*2]=u*S;uv[k*2+1]=v*S;}g.setAttribute('uv',new THREE.BufferAttribute(uv,2));});})();
+    (function(){var wp=new THREE.Vector3(),wn=new THREE.Vector3(),nm=new THREE.Matrix3(),S=30.0,GS=40.0;meshes.forEach(function(o){var g=o.geometry,p=g.attributes.position,nr=g.attributes.normal;if(!p)return;var mm=Array.isArray(o.material)?o.material:[o.material];var isG=mm.some(function(x){return x&&x.userData&&x.userData._gitter;});nm.getNormalMatrix(o.matrixWorld);var nn=p.count,uv=new Float32Array(nn*2);for(var k=0;k<nn;k++){wp.set(p.getX(k),p.getY(k),p.getZ(k));o.localToWorld(wp);var u,v;if(isG){u=wp.x*GS;v=wp.z*GS;}else{if(nr){wn.set(nr.getX(k),nr.getY(k),nr.getZ(k)).applyMatrix3(nm);var ax=Math.abs(wn.x),ay=Math.abs(wn.y),az=Math.abs(wn.z);if(ax>=ay&&ax>=az){u=wp.z;v=wp.y;}else if(ay>=ax&&ay>=az){u=wp.x;v=wp.z;}else{u=wp.x;v=wp.y;}}else{u=wp.x;v=wp.z;}u*=S;v*=S;}uv[k*2]=u;uv[k*2+1]=v;}g.setAttribute('uv',new THREE.BufferAttribute(uv,2));});})();
     box.setFromObject(model);fitBox=box.clone();
     camera.aspect=(panel.clientWidth||1)/(panel.clientHeight||1);
     var dist=fitBoxToView(fitBox,fitDir,1.05);
@@ -5237,32 +5390,128 @@ var GOKOBA_LAYER_ACI = {
     box.getSize(size);
     var sr=Math.max(size.x,size.z)*0.72+0.8;scam.left=-sr;scam.right=sr;scam.top=sr;scam.bottom=-sr;scam.far=dist*6;key.shadow.camera.updateProjectionMatrix();
     gokobaSetDefault(stahlbauMats,GOKOBA_DEF_STAHL);gokobaSetDefault(gelaenderMats,GOKOBA_DEF_GEL); /* ★ Startfarben aus dem Dialog (leer = Schema-Standard) */
+    ralGruppenAufbauen(); /* ★ zusaetzliche Bauteilgruppen (Gitterroste/BWS/Mineralit/Trespa) nur wenn im Modell vorhanden */
+    mats.forEach(function(m){m.userData._def={c:m.color.getHex(),met:m.metalness,rau:m.roughness,env:(m.envMap?m.envMapIntensity:-1),map:(m.map||null),rmap:(m.roughnessMap||null)};}); /* ★ Standard-Zustand fuer den Standard-Knopf */
     if(loadingEl){loadingEl.style.opacity='0';setTimeout(function(){loadingEl.style.display='none';},450);}
   },function(err){if(loadingEl)loadingEl.textContent='Modell konnte nicht geladen werden.';});
   });
   /* ★ RAL-Farbwaehler: Stahlbau oder Geländer auf RAL-Ton oder Finish (Verzinkt/Edelstahl) setzen */
   var raltab=document.getElementById('raltab'),ralpanel=document.getElementById('ralpanel'),ralcv=document.getElementById('ralcv'),ralclose=document.getElementById('ralclose');
   var ralMode='stahlbau',ralTimer=null,ralType='ral';
-  function ralArm(){if(ralTimer)clearTimeout(ralTimer);ralTimer=setTimeout(ralZu,10000);}
+  function ralArm(){if(ralTimer){clearTimeout(ralTimer);ralTimer=null;}} /* ★ kein Auto-Einklappen: Panel bleibt offen, solange man arbeitet */
   function ralAuf(){if(ralpanel){ralpanel.classList.add('open');if(ralcv)ralcv.innerHTML='&#9652;';ralArm();}}
   function ralZu(){if(ralpanel)ralpanel.classList.remove('open');if(ralcv)ralcv.innerHTML='&#9662;';if(ralTimer)clearTimeout(ralTimer);}
   function ralToggle(){if(ralpanel&&ralpanel.classList.contains('open'))ralZu();else ralAuf();}
-  function ralZielMats(){return ralMode==='gelaender'?gelaenderMats:stahlbauMats;}
-  function applyRal(hex){var lin=new THREE.Color(hex).convertSRGBToLinear();ralZielMats().forEach(function(m){m.color.copy(lin);m.metalness=0.22;m.roughness=0.24;m.envMap=gokobaEnv;m.envMapIntensity=0.45;m.map=null;m.roughnessMap=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
-  function applyFinish(t){ralZielMats().forEach(function(m){
+  function ralZielMats(){
+    if(ralMode==='gelaender')return gelaenderMats;
+    if(ralMode==='gitter')return gitterMats;
+    if(dekorMats[ralMode])return dekorMats[ralMode];
+    return stahlbauMats;
+  }
+  function ralTexturFest(){return ralMode==='gitter'||!!dekorMats[ralMode];} /* ★ Dekor-Gruppen: RAL/Finish greift nicht, Auswahl ueber Dekor-Leiste */
+  var GOKOBA_GRP_NAMEN={gitter:'Gitterroste',bws:'Betonwerkstein',min:'Mineralit',t1:'Trespa 1',t2:'Trespa 2',t3:'Trespa 3',t4:'Trespa 4'};
+  function ralGruppenAufbauen(){
+    if(!ralpanel)return;
+    var head=ralpanel.querySelector('.ralhead');if(!head)return;
+    var anker=head.querySelector('.ralmode[data-grp="gelaender"]');
+    var reihen=[['gitter',gitterMats],['bws',dekorMats.bws],['min',dekorMats.min],['t1',dekorMats.t1],['t2',dekorMats.t2],['t3',dekorMats.t3],['t4',dekorMats.t4]];
+    reihen.forEach(function(r){
+      if(!r[1].length)return; /* ★ nur wenn im Modell vorhanden */
+      var b=document.createElement('button');b.className='ralmode';b.setAttribute('data-grp',r[0]);b.textContent=GOKOBA_GRP_NAMEN[r[0]];
+      if(anker&&anker.nextSibling)head.insertBefore(b,anker.nextSibling);else head.appendChild(b);
+      anker=b;
+    });
+    var strip=document.createElement('div');strip.id='dekorstrip';strip.style.cssText='display:none;padding:6px 10px;gap:6px;flex-wrap:wrap;';
+    if(head.parentNode)head.parentNode.insertBefore(strip,head.nextSibling);
+  }
+  var GOKOBA_BWS_NAMEN={'G11013':'rot-marmoriert','G11213':'blau-marmoriert','G25013':'granitgrau','G51013':'weiss-schwarz','G82313':'anthrazit'};
+  function dekorKarte(strip,bildCanvas,zeilen,klick){
+    var b=document.createElement('button');b.className='dkcard';
+    if(bildCanvas){var c=document.createElement('canvas');c.width=168;c.height=168;
+      var g=c.getContext('2d');g.drawImage(bildCanvas,0,0,168,168);b.appendChild(c);}
+    var l=document.createElement('div');l.className='dkl';l.innerHTML=zeilen.join('<br>');b.appendChild(l);
+    b.addEventListener('click',function(){klick();
+      Array.prototype.forEach.call(strip.querySelectorAll('.dkcard,.dktr'),function(x){x.classList.toggle('active',x===b);});});
+    strip.appendChild(b);
+  }
+  function dekorStripZeigen(){
+    var strip=document.getElementById('dekorstrip');if(!strip)return;
+    strip.innerHTML='';
+    var dekorAktiv=ralTexturFest();
+    ralpanel.classList.toggle('dekorwahl',dekorAktiv); /* ★ RAL-Teile ausblenden, wenn Dekor-Gruppe gewaehlt */
+    if(!dekorAktiv){strip.style.display='none';return;}
+    strip.style.display='flex';
+    if(ralMode==='bws'){
+      Object.keys(GOKOBA_BWS_DEKORE).forEach(function(id){
+        dekorKarte(strip,bwsTextur(id).image,['MBN '+id,GOKOBA_BWS_NAMEN[id]],function(){
+          var t=bwsTextur(id);dekorMats.bws.forEach(function(m){m.map=t;m.userData._savedMap=undefined;m.needsUpdate=true;});
+        });
+      });
+    }else if(ralMode==='min'){
+      Object.keys(GOKOBA_MIN_DEKORE).forEach(function(id){
+        dekorKarte(strip,mineralitTextur(id).image,[id],function(){
+          var t=mineralitTextur(id);dekorMats.min.forEach(function(m){m.map=t;m.userData._savedMap=undefined;m.needsUpdate=true;});
+        });
+      });
+    }else if(ralMode==='gitter'){
+      [['','Keine Textur'],['3030','MW 30x30'],['3010','MW 30x10']].forEach(function(e){
+        var b=document.createElement('button');b.className='dktr';
+        var sp=document.createElement('span');sp.textContent=e[1];b.appendChild(sp);
+        b.addEventListener('click',function(){
+          var t=e[0]?gitterTextur(e[0]):null;
+          gitterMats.forEach(function(m){m.map=t;m.userData._savedMap=undefined;m.needsUpdate=true;});
+          Array.prototype.forEach.call(strip.querySelectorAll('.dktr,.dkcard'),function(x){x.classList.toggle('active',x===b);});
+        });
+        strip.appendChild(b);
+      });
+    }else if(dekorMats[ralMode]){ /* ★ Trespa 1-4: Farbmuster + Nummer + Name */
+      GOKOBA_TRESPA_UNI.forEach(function(e){
+        var b=document.createElement('button');b.className='dktr';
+        var sw=document.createElement('span');sw.className='sw';sw.style.background=e[1];b.appendChild(sw);
+        var tx=document.createElement('span');tx.textContent=e[0];b.appendChild(tx);
+        b.addEventListener('click',function(){
+          var lin=new THREE.Color(e[1]).convertSRGBToLinear();
+          dekorMats[ralMode].forEach(function(m){m.color.copy(lin);m.userData._display=lin.getHex();
+            m.metalness=0.10;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.40;m.map=null;m.needsUpdate=true;});
+          Array.prototype.forEach.call(strip.querySelectorAll('.dktr,.dkcard'),function(x){x.classList.toggle('active',x===b);});
+        });
+        strip.appendChild(b);
+      });
+    }
+  }
+  function resetDefault(){
+    mats.forEach(function(m){var d=m.userData._def;if(!d)return;
+      m.color.setHex(d.c);m.userData._display=d.c;m.metalness=d.met;m.roughness=d.rau;
+      m.map=d.map;m.roughnessMap=d.rmap||null;m.userData._savedMap=undefined;
+      if(d.env>=0){m.envMap=gokobaEnv;m.envMapIntensity=d.env;}else{m.envMap=null;m.envMapIntensity=0;}
+      m.needsUpdate=true;});
+    var mb=document.querySelectorAll('[data-mode]');Array.prototype.forEach.call(mb,function(b){b.classList.toggle('active',b.getAttribute('data-mode')==='color');});
+    Array.prototype.forEach.call(document.querySelectorAll('.ralfin.active,.raltyp.active'),function(b){b.classList.remove('active');});
+  }
+  function applyRal(hex){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
+    var lin=new THREE.Color(hex).convertSRGBToLinear();ralZielMats().forEach(function(m){m.color.copy(lin);m.metalness=0.22;m.roughness=0.24;m.envMap=gokobaEnv;m.envMapIntensity=0.45;m.map=null;m.roughnessMap=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+  function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
+    ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
     else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.7;m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
+  document.addEventListener('pointerdown',function(e){ /* ★ Klick neben das Menue klappt es ein */
+    if(!ralpanel||!ralpanel.classList.contains('open'))return;
+    if(ralpanel.contains(e.target))return;
+    if(raltab&&raltab.contains(e.target))return;
+    ralZu();
+  });
   if(ralclose)ralclose.addEventListener('click',ralZu);
+  var raldefault=document.getElementById('raldefault');if(raldefault)raldefault.addEventListener('click',resetDefault);
   if(ralpanel){ralpanel.addEventListener('click',function(e){
     var mo=e.target.closest&&e.target.closest('.ralmode');
-    if(mo){ralMode=mo.getAttribute('data-grp');Array.prototype.forEach.call(ralpanel.querySelectorAll('.ralmode'),function(x){x.classList.toggle('active',x===mo);});ralArm();return;}
+    if(mo){ralMode=mo.getAttribute('data-grp');Array.prototype.forEach.call(ralpanel.querySelectorAll('.ralmode'),function(x){x.classList.toggle('active',x===mo);});dekorStripZeigen();ralArm();return;}
     var ty=e.target.closest&&e.target.closest('.raltyp');
     if(ty){ralType=ty.getAttribute('data-typ');Array.prototype.forEach.call(ralpanel.querySelectorAll('.raltyp'),function(x){x.classList.toggle('active',x===ty);});ralpanel.classList.toggle('normal',ralType==='normal');ralArm();return;}
     var fin=e.target.closest&&e.target.closest('.ralfin');
-    if(fin){applyFinish(fin.getAttribute('data-fin'));ralArm();return;}
+    if(fin&&fin.getAttribute('data-fin')){applyFinish(fin.getAttribute('data-fin'));ralArm();return;}
     var nc=e.target.closest&&e.target.closest('.ralnc');
     if(nc){applyRal(nc.getAttribute('data-h'));if(ralhex)ralhex.value=nc.getAttribute('data-h');ralArm();return;}
     var sw=e.target.closest&&e.target.closest('.ralc');
@@ -5285,12 +5534,26 @@ var GOKOBA_LAYER_ACI = {
     });
   }
   var C7016=new THREE.Color(0x383E42).convertSRGBToLinear(); /* ★ RAL 7016 Anthrazit fuer den Graumodus */
+  function grauVon(t){ /* ★ entfaerbte Kopie einer Canvas-Textur (fuer den Graumodus) */
+    if(t._gokobaGrau)return t._gokobaGrau;
+    var img=t.image,c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+    var g=c.getContext('2d');g.filter='saturate(0%)';g.drawImage(img,0,0);g.filter='none';
+    var nt=new THREE.CanvasTexture(c);nt.wrapS=nt.wrapT=THREE.RepeatWrapping;nt.encoding=THREE.sRGBEncoding;nt.repeat.copy(t.repeat);
+    t._gokobaGrau=nt;return nt;
+  }
   groupClick('[data-mode]',function(btn){
     var gray=btn.getAttribute('data-mode')==='gray';
     if(gray)ralZu(); /* ★ bei Grautoenen die Palette einfahren */
-    stahlbauMats.concat(gelaenderMats).forEach(function(m){ /* ★ nur Stahlbau + Geländer, Rest bleibt farbig */
+    stahlbauMats.concat(gelaenderMats).forEach(function(m){ /* ★ Stahlbau + Geländer: einfarbig grau */
       if(gray){if(m.userData._savedMap===undefined)m.userData._savedMap=m.map;m.map=null;m.color.copy(C7016);m.needsUpdate=true;}
       else{if(m.userData._savedMap!==undefined){m.map=m.userData._savedMap;m.userData._savedMap=undefined;m.needsUpdate=true;}m.color.setHex(m.userData._display);}
+    });
+    dekorMats.bws.concat(dekorMats.min).forEach(function(m){ /* ★ BWS/Mineralit: Textur bleibt sichtbar, aber entfaerbt */
+      if(gray){if(m.userData._savedMap===undefined)m.userData._savedMap=m.map;if(m.map)m.map=grauVon(m.map);m.needsUpdate=true;}
+      else{if(m.userData._savedMap!==undefined){m.map=m.userData._savedMap;m.userData._savedMap=undefined;m.needsUpdate=true;}}
+    });
+    dekorMats.t1.concat(dekorMats.t2,dekorMats.t3,dekorMats.t4).forEach(function(m){ /* ★ Trespa: einfarbig grau */
+      if(gray){m.color.copy(C7016);}else{m.color.setHex(m.userData._display);}m.needsUpdate=true;
     });
   });
   groupClick('[data-shade]',function(btn){
