@@ -1,6 +1,6 @@
 name: Alte Viewer aufräumen
 
-# Läuft täglich und löscht Viewer, die älter als 20 Tage sind
+# Läuft täglich und löscht Viewer, die älter als 40 Tage sind
 on:
   schedule:
     - cron: '0 3 * * *'   # täglich 03:00 UTC
@@ -21,7 +21,7 @@ jobs:
           set -e
           shopt -s nullglob
           NOW=$(date -u +%s)
-          MAXAGE=$((20*24*3600))   # 20 Tage in Sekunden
+          MAXAGE=$((40*24*3600))   # 40 Tage in Sekunden
           for marker in jobs/*/.done; do
             id=$(basename "$(dirname "$marker")")
             created=$(cat "$marker" 2>/dev/null || echo "")

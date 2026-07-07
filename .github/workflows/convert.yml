@@ -37,7 +37,7 @@ jobs:
       - name: Abhängigkeiten installieren
         run: |
           python -m pip install --upgrade pip
-          pip install cadquery-ocp==7.8.1.1.post1 trimesh numpy scipy
+          pip install cascadio trimesh
           # ★ gltfpack fest auf 1.1.0 (die getestete, funktionierende Version).
           #   Version 1.2.0 vom 30.06.2026 bleibt beim Komprimieren hängen.
           #   Diese Nummer NICHT entfernen, sonst zieht npm wieder die neueste.
@@ -89,7 +89,8 @@ jobs:
                  --output "docs/v/$id/index.html" \
                  --assets-dir assets \
                  --model-name "$name" \
-                 --expiry-days 20 \
+                 --expiry-days 40 \
+                 --no-dialog \
                  --gltfpack gltfpack; then
               # Erfolg: STEP entfernen (Speicher/Datenschutz), Erfolgs-Marker setzen
               rm -rf "$jobdir"
