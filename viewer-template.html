@@ -128,7 +128,7 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .dktr.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
 .dktr .sw{width:22px;height:22px;border-radius:4px;flex:0 0 auto;border:1px solid rgba(0,0,0,0.3);}
 </style></head>
-<body class="dunkel">
+<body class="hell">
 <div class="toplogo"></div>
 <div class="app">
   <header><div class="header-inner">
@@ -145,10 +145,10 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
         <div class="toggle"><button class="tbtn active" data-mode="color">Farbe</button><button class="tbtn" data-mode="gray"><span class="lbl-full">Grautöne</span><span class="lbl-short">Grau</span></button></div>
       </div>
       <div class="tglset"><span class="tgllbl">Schatten</span>
-        <div class="toggle"><button class="tbtn active" data-shade="off">Aus</button><button class="tbtn" data-shade="on">An</button></div>
+        <div class="toggle"><button class="tbtn" data-shade="off">Aus</button><button class="tbtn active" data-shade="on">An</button></div>
       </div>
       <div class="tglset"><span class="tgllbl">Hintergrund</span>
-        <div class="toggle"><button class="tbtn" data-bg="hell">Hell</button><button class="tbtn active" data-bg="dunkel">Dunkel</button></div>
+        <div class="toggle"><button class="tbtn active" data-bg="hell">Hell</button><button class="tbtn" data-bg="dunkel">Dunkel</button></div>
       </div>
     </div>
   </div></header>
@@ -5050,7 +5050,7 @@ var GOKOBA_LAYER_ACI = {
   controls.autoRotate=false;
   controls.minPolarAngle=Math.PI*0.015;controls.maxPolarAngle=Math.PI*0.985;
   scene.add(new THREE.HemisphereLight(0xffffff,0x35414a,0.62));
-  var key=new THREE.DirectionalLight(0xffffff,0.92);key.position.set(3,6,2.5);key.castShadow=false;
+  var key=new THREE.DirectionalLight(0xffffff,0.92);key.position.set(3,6,2.5);key.castShadow=true; /* ★ Schatten standardmaessig an */
   key.shadow.mapSize.width=2048;key.shadow.mapSize.height=2048;key.shadow.bias=-0.0004;
   var scam=key.shadow.camera;scam.near=0.3;scam.far=30;scam.left=-3;scam.right=3;scam.top=3;scam.bottom=-3;
   scene.add(key);
@@ -5063,10 +5063,10 @@ var GOKOBA_LAYER_ACI = {
     rg.addColorStop(0,'rgba(236,242,248,0.40)');rg.addColorStop(0.55,'rgba(236,242,248,0.12)');rg.addColorStop(1,'rgba(236,242,248,0)');
     g.fillStyle=rg;g.fillRect(0,0,256,256);
     glow=new THREE.Mesh(new THREE.PlaneGeometry(5,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));
-    glow.rotation.x=-Math.PI/2;glow.position.y=0.001;glow.renderOrder=0;glow.visible=false;scene.add(glow);
+    glow.rotation.x=-Math.PI/2;glow.position.y=0.001;glow.renderOrder=0;glow.visible=true;scene.add(glow);
   })();
   var ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.ShadowMaterial({opacity:0.10}));
-  ground.rotation.x=-Math.PI/2;ground.position.y=0.002;ground.receiveShadow=true;ground.renderOrder=1;ground.visible=false;scene.add(ground);
+  ground.rotation.x=-Math.PI/2;ground.position.y=0.002;ground.receiveShadow=true;ground.renderOrder=1;ground.visible=true;scene.add(ground);
   /* ★ Modell so gross wie moeglich einpassen (je nach Modell), nichts abschneiden */
   var fitDir=new THREE.Vector3(0.64,0.26,0.74),fitBox=null,userMoved=false;
   var gokobaZieht=false;
