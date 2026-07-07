@@ -113,7 +113,12 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .ralnc:hover{transform:scale(1.2);border-color:#fff;}
 .ralnrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 @media (min-width:900px){.ralpanel{width:min(1180px,96vw);}.ralhead{padding-left:104px;}.ralfam{flex-wrap:nowrap;}.ralfl{width:104px;flex:none;margin:0;white-space:nowrap;}}
-.ralpanel.dekorwahl .ralgrid,.ralpanel.dekorwahl .ralnormal,.ralpanel.dekorwahl .raltyp,.ralpanel.dekorwahl .ralfin[data-fin],.ralpanel.dekorwahl .ralfinsep{display:none}
+.ralhead .raltyp,.ralhead .ralfin[data-fin],.ralhead .ralfinsep{display:none} /* ★ Auswahl wandert in die Zeile darunter */
+.ralpanel .ralgrid{display:none;}
+.ralpanel.palette:not(.normal) .ralgrid{display:flex;}
+.ralpanel .ralnormal{display:none;}
+.ralpanel.palette.normal .ralnormal{display:flex;}
+.ralpanel.dekorwahl .ralgrid,.ralpanel.dekorwahl .ralnormal{display:none;}
 #dekorstrip{max-height:240px;overflow:auto;align-items:flex-start;}
 .dkcard{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px;cursor:pointer;color:#C9D3DA;font:inherit;}
 .dkcard.active{border-color:currentColor;box-shadow:0 0 0 1px currentColor;}
@@ -5429,6 +5434,7 @@ var GOKOBA_LAYER_ACI = {
     });
     var strip=document.createElement('div');strip.id='dekorstrip';strip.style.cssText='display:none;padding:6px 10px;gap:6px;flex-wrap:wrap;';
     if(head.parentNode)head.parentNode.insertBefore(strip,head.nextSibling);
+    dekorStripZeigen(); /* ★ Startzustand: Optionen fuer Stahlbau anzeigen */
   }
   var GOKOBA_BWS_NAMEN={'G11013':'rot-marmoriert','G11213':'blau-marmoriert','G25013':'granitgrau','G51013':'weiss-schwarz','G82313':'anthrazit'};
   function dekorKarte(strip,bildCanvas,zeilen,klick){
@@ -5445,8 +5451,27 @@ var GOKOBA_LAYER_ACI = {
     strip.innerHTML='';
     var dekorAktiv=ralTexturFest();
     ralpanel.classList.toggle('dekorwahl',dekorAktiv); /* ★ RAL-Teile ausblenden, wenn Dekor-Gruppe gewaehlt */
-    if(!dekorAktiv){strip.style.display='none';return;}
+    ralpanel.classList.remove('palette'); /* ★ Palette erst nach Klick auf RAL/Normal */
     strip.style.display='flex';
+    if(!dekorAktiv){ /* ★ Stahlbau/Gelaender: erst die Art waehlen, dann erscheint die Palette */
+      [['ral','RAL Farben'],['normal','Standardfarben'],['verzinkt','Verzinkt'],['edelstahl','Edelstahl']].forEach(function(e){
+        var b=document.createElement('button');b.className='dktr';
+        var sp=document.createElement('span');sp.textContent=e[1];b.appendChild(sp);
+        b.addEventListener('click',function(){
+          if(e[0]==='ral'||e[0]==='normal'){
+            ralType=e[0];
+            ralpanel.classList.toggle('normal',e[0]==='normal');
+            ralpanel.classList.add('palette'); /* ★ jetzt Palette zeigen */
+          }else{
+            ralpanel.classList.remove('palette');
+            applyFinish(e[0]);
+          }
+          Array.prototype.forEach.call(strip.querySelectorAll('.dktr,.dkcard'),function(x){x.classList.toggle('active',x===b);});
+        });
+        strip.appendChild(b);
+      });
+      return;
+    }
     if(ralMode==='bws'){
       Object.keys(GOKOBA_BWS_DEKORE).forEach(function(id){
         dekorKarte(strip,bwsTextur(id).image,['MBN '+id,GOKOBA_BWS_NAMEN[id]],function(){
@@ -5558,8 +5583,9 @@ var GOKOBA_LAYER_ACI = {
       if(gray){if(m.userData._savedMap===undefined)m.userData._savedMap=m.map;if(m.map)m.map=grauVon(m.map);m.needsUpdate=true;}
       else{if(m.userData._savedMap!==undefined){m.map=m.userData._savedMap;m.userData._savedMap=undefined;m.needsUpdate=true;}}
     });
-    dekorMats.t1.concat(dekorMats.t2,dekorMats.t3,dekorMats.t4).forEach(function(m){ /* ★ Trespa: einfarbig grau */
-      if(gray){m.color.copy(C7016);}else{m.color.setHex(m.userData._display);}m.needsUpdate=true;
+    dekorMats.t1.concat(dekorMats.t2,dekorMats.t3,dekorMats.t4).forEach(function(m){ /* ★ Trespa: eigene Farbe entfaerben (Helligkeit bleibt) */
+      if(gray){var _c=new THREE.Color(m.userData._display),_l=0.2126*_c.r+0.7152*_c.g+0.0722*_c.b;m.color.setRGB(_l,_l,_l);}
+      else{m.color.setHex(m.userData._display);}m.needsUpdate=true;
     });
   });
   groupClick('[data-shade]',function(btn){
