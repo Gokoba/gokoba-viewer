@@ -54,7 +54,7 @@ def gokoba_dialog():
         from tkinter import ttk
     except Exception:
         return None
-    res = {"stahlbau": None, "gelaender": None}
+    res = {"stahlbau": None, "gelaender": None, "gitter": ""}
     root = tk.Tk()
     root.title("Gokoba 3D-Viewer - Farben")
     root.resizable(False, False)
@@ -69,14 +69,19 @@ def gokoba_dialog():
         ttk.Entry(frm, textvariable=wvar, width=16).grid(column=2, row=r, sticky="w")
     zeile(1, "Stahlbau", m_sb, w_sb)
     zeile(2, "Gelaender", m_ge, w_ge)
+    _GITTER_MODI = ["Keine Textur", "Maschenweite 30x30", "Maschenweite 30x10"]
+    m_gi = tk.StringVar(value=_GITTER_MODI[0])
+    ttk.Label(frm, text="Gitterrost", width=10).grid(column=0, row=3, sticky="w", pady=4)
+    ttk.OptionMenu(frm, m_gi, m_gi.get(), *_GITTER_MODI).grid(column=1, row=3, sticky="w", padx=6)
     ttk.Label(frm, text="Bei RAL die Nummer (z. B. 7016), bei Eigene Farbe den Code (#RRGGBB).",
-              foreground="#666").grid(column=0, row=3, columnspan=3, sticky="w", pady=(10, 0))
+              foreground="#666").grid(column=0, row=4, columnspan=3, sticky="w", pady=(10, 0))
     def ok():
         res["stahlbau"] = _wahl_zu_srgb(m_sb.get(), w_sb.get())
         res["gelaender"] = _wahl_zu_srgb(m_ge.get(), w_ge.get())
+        res["gitter"] = ("3010" if "30x10" in m_gi.get() else ("3030" if "30x30" in m_gi.get() else ""))
         root.destroy()
     btns = ttk.Frame(frm)
-    btns.grid(column=0, row=4, columnspan=3, pady=(16, 0), sticky="e")
+    btns.grid(column=0, row=5, columnspan=3, pady=(16, 0), sticky="e")
     ttk.Button(btns, text="Abbrechen", command=root.destroy).grid(column=0, row=0, padx=6)
     ttk.Button(btns, text="Uebernehmen", command=ok).grid(column=1, row=0)
     root.update_idletasks()
@@ -89,14 +94,14 @@ VORLAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "viewer-templ
 def _hex(t):
     return "" if not t else "#%02X%02X%02X" % (t[0], t[1], t[2])
 
-def erzeuge_viewer(step, out_html, model_name, def_stahl, def_gel, expiry_iso, gltfpack):
+def erzeuge_viewer(step, out_html, model_name, def_stahl, def_gel, def_gitter, expiry_iso, gltfpack):
     if cascadio is None:
         raise SystemExit("Modul 'cascadio' fehlt. Bitte einmalig: pip install cascadio")
     with tempfile.TemporaryDirectory() as tmp:
         raw = os.path.join(tmp, "raw.glb")
         small = os.path.join(tmp, "small.glb")
         print("[1/3] STEP -> GLB (cascadio) ...")
-        cascadio.step_to_glb(step, raw, tol_linear=0.3, tol_angular=0.3)
+        cascadio.step_to_glb(step, raw, tol_linear=0.3, tol_angular=0.22)
         print("[2/3] Komprimierung (gltfpack) ...")
         subprocess.run([gltfpack, "-i", raw, "-o", small, "-cc"], check=True)
         b64 = base64.b64encode(open(small, "rb").read()).decode()
@@ -106,6 +111,7 @@ def erzeuge_viewer(step, out_html, model_name, def_stahl, def_gel, expiry_iso, g
     html = html.replace("__PROJ_NAME__", model_name)
     html = html.replace("__DEF_STAHL__", def_stahl)
     html = html.replace("__DEF_GEL__", def_gel)
+    html = html.replace("__GITTER_TEX__", def_gitter)
     html = html.replace("__EXPIRY__", expiry_iso)
     open(out_html, "w", encoding="utf-8").write(html)
 
@@ -118,19 +124,36 @@ def main():
     ap.add_argument("--gltfpack", default="gltfpack", help="Pfad zum gltfpack-Binary")
     ap.add_argument("--assets-dir", default="assets", help="(nicht mehr benoetigt, aus Kompatibilitaet akzeptiert)")
     ap.add_argument("--no-dialog", action="store_true", help="Ohne Abfrage-Dialog (Standardfarben)")
+    ap.add_argument("--def-stahl", default="", help="Stahlbau-Startfarbe (verzinkt/edelstahl/grau/#RRGGBB)")
+    ap.add_argument("--def-gel", default="", help="Gelaender-Startfarbe")
+    ap.add_argument("--gitter", default="", help="Gitterrost-Textur: leer, 3030 oder 3010")
     args = ap.parse_args()
-    def_stahl = def_gel = ""
+    def_stahl, def_gel, def_gitter = args.def_stahl, args.def_gel, args.gitter
+    # ★ Begleit-JSON neben der STEP (vom Advance-Steel-Knopf erzeugt): gleiche Basis + .json
+    import json as _json
+    _sc = os.path.splitext(args.input)[0] + ".json"
+    if not os.path.exists(_sc):
+        _sc = os.path.join(os.path.dirname(os.path.abspath(args.input)), "params.json")  # ★ vom AS-Knopf hochgeladen
+    if os.path.exists(_sc):
+        try:
+            _j = _json.load(open(_sc, encoding="utf-8"))
+            def_stahl  = _j.get("stahlbau", def_stahl) or def_stahl
+            def_gel    = _j.get("gelaender", def_gel) or def_gel
+            def_gitter = _j.get("gitter", def_gitter) or def_gitter
+        except Exception as _e:
+            print("Hinweis: Begleit-JSON unlesbar:", _e)
     if not args.no_dialog:
         wahl = gokoba_dialog()
         if wahl:
             def_stahl = _hex(wahl.get("stahlbau"))
             def_gel = _hex(wahl.get("gelaender"))
+            def_gitter = wahl.get("gitter") or ""
             if def_stahl: print(f"  Stahlbau-Startfarbe: {def_stahl}")
             if def_gel: print(f"  Gelaender-Startfarbe: {def_gel}")
     expiry = datetime.datetime.utcnow() + datetime.timedelta(days=args.expiry_days)
     expiry_iso = expiry.strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"Gokoba-Viewer: {os.path.basename(args.input)} | gueltig bis {expiry_iso}")
-    erzeuge_viewer(args.input, args.output, args.model_name, def_stahl, def_gel, expiry_iso, args.gltfpack)
+    erzeuge_viewer(args.input, args.output, args.model_name, def_stahl, def_gel, def_gitter, expiry_iso, args.gltfpack)
     print(f"FERTIG -> {args.output}")
 
 if __name__ == "__main__":
