@@ -52,9 +52,13 @@ jobs:
             if [ -f "docs/v/$id/index.html" ]; then continue; fi
             if [ -f "$jobdir/.done" ] || [ -f "$jobdir/.failed" ]; then continue; fi
             echo "::group::IFC-Job $id"
-            # Stueckweise hochgeladene ZIPs wieder zusammenfuegen (grosse Modelle)
-            if ls "$jobdir"modell.zip.part* >/dev/null 2>&1; then
-              cat "$jobdir"modell.zip.part* > "$jobdir/modell.zip"
+            # Stueckweise hochgeladene ZIPs wieder zusammenfuegen (grosse Modelle).
+            # ★ compgen statt ls: "ls pfad*" greift mit nullglob auch OHNE Teile
+            #   (Glob verschwindet, ls listet das Repo, Ergebnis 0) und der cat
+            #   ueberschreibt dann das gute modell.zip mit einer LEEREN Datei.
+            if compgen -G "${jobdir}modell.zip.part*" >/dev/null; then
+              cat "$jobdir"modell.zip.part* > "$jobdir/modell.zip.ganz"
+              mv "$jobdir/modell.zip.ganz" "$jobdir/modell.zip"
               rm -f "$jobdir"modell.zip.part*
             fi
             # ZIP-Uploads entpacken (Windows: rechte Maustaste, ZIP-komprimierter Ordner)
