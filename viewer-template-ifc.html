@@ -5439,7 +5439,14 @@ var GOKOBA_LAYER_ACI = {
         '.tbtn.active{background:'+'#5FA8C9'+'!important;color:#0d1216!important;}'+
         '.ralbtn{color:var(--gktx)!important;}'+
         '#ralpanel{background:var(--gkbg)!important;border:1px solid var(--gkln)!important;border-radius:14px!important;'+
-        'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--gktx)!important;}';
+        'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--gktx)!important;}'+
+        /* ★ Hellmodus: alle Beschriftungen im Farbpanel dunkel und kraeftig */
+        'body.hell #ralpanel{color:#22303B!important;}'+
+        'body.hell #ralpanel .rallbl{color:#42525E!important;}'+
+        'body.hell #ralpanel .ralmode,body.hell #ralpanel .ralfin,body.hell #ralpanel .raltyp{color:#2C3B47!important;border-color:rgba(16,34,50,.28)!important;}'+
+        'body.hell #ralpanel .ralmode.active{background:#3880A0!important;color:#fff!important;border-color:#3880A0!important;}'+
+        'body.hell #ralpanel button{color:#2C3B47;}'+
+        'body.hell .ralbtn,body.hell .ralbtn .ralcv{color:#22303B!important;}';
       document.head.appendChild(st);
       var ACHSEN=GOKOBA_TEILE['__achsen__']||null; delete GOKOBA_TEILE['__achsen__'];
       var GLAS='var(--gkbg)';
@@ -5524,14 +5531,14 @@ var GOKOBA_LAYER_ACI = {
         ACHSEN.forEach(function(a){
           var p=a.p;
           var g=new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(p[0],p[2],-p[1]),new THREE.Vector3(p[3],p[5],-p[4])]);
+            new THREE.Vector3(p[0],p[1],p[2]),new THREE.Vector3(p[3],p[4],p[5])]);
           achsGruppe.add(new THREE.Line(g,am));
           if(a.tag){
-            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[0],p[2],-p[1])));
-            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[3],p[5],-p[4])));
+            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[0],p[1],p[2])));
+            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[3],p[4],p[5])));
           }
         });
-        scene.add(achsGruppe);
+        model.add(achsGruppe); /* ★ erbt Z-oben-Drehung und Zentrierung des Modells */
       }
 
       /* ── Palette ── */
@@ -5745,23 +5752,54 @@ var GOKOBA_LAYER_ACI = {
       }
 
       /* ── Auswertung: Kennzahlen, Stufen nach Groesse, Profilsuche mit Stab-Bedarf ── */
-      var listePanel=null;
-      function kgFmt(x){return (x>=100?Math.round(x).toLocaleString('de-DE'):x.toFixed(1).replace('.',','))+' kg';}
-      function staebe(laengen,stab){ /* First-Fit-Decreasing: wie viele Stangen der Laenge stab */
-        var L=laengen.slice().sort(function(a,b){return b-a;}), reste=[], ueber=0;
-        L.forEach(function(l){
-          if(l>stab){ueber++;return;}
-          for(var i=0;i<reste.length;i++){if(reste[i]>=l){reste[i]-=l;return;}}
-          reste.push(stab-l);
+      var listePanel=null, sucheFarben={}, netzVon=null;
+      function netzKarte(){
+        if(netzVon)return netzVon;
+        netzVon={};
+        meshes.forEach(function(o){
+          var k=o,nm=null; while(k){if(k.name&&/^E\d+$/.test(k.name)){nm=k.name;break;}k=k.parent;}
+          if(nm)(netzVon[nm]=netzVon[nm]||[]).push(o);
         });
-        return {stangen:reste.length,ueberlang:ueber};
+        return netzVon;
+      }
+      function sucheMarkiere(kn){
+        if(sucheFarben[kn])return;
+        var os=netzKarte()[kn]||[];
+        if(!os.length)return;
+        sucheFarben[kn]=os.map(function(o){var m=o.material;o.material=heben(o,0x2E86AD,0.75);return {o:o,mat:m};});
+      }
+      function sucheLeeren(){
+        Object.keys(sucheFarben).forEach(function(kn){
+          sucheFarben[kn].forEach(function(e){e.o.material=e.mat;});
+        });
+        sucheFarben={};
+      }
+      function kgFmt(x){return (x>=100?Math.round(x).toLocaleString('de-DE'):x.toFixed(1).replace('.',','))+' kg';}
+      function staebe(laengen){
+        /* ★ 5 mm Saegespalt je Schnitt; Teile ueber 6 m eroeffnen 12m-Stangen, deren
+           Reste werden mit kleineren Teilen aufgefuellt, der Rest kommt auf 6m-Stangen. */
+        var SPALT=5, K6=6000+SPALT, K12=12000+SPALT;
+        var L=laengen.map(function(l){return l+SPALT;}).sort(function(a,b){return b-a;});
+        var r12=[], r6=[], ueber=0;
+        L.forEach(function(l){
+          var i;
+          if(l>K12){ueber++;return;}
+          if(l>K6){
+            for(i=0;i<r12.length;i++){if(r12[i]>=l){r12[i]-=l;return;}}
+            r12.push(K12-l); return;
+          }
+          for(i=0;i<r12.length;i++){if(r12[i]>=l){r12[i]-=l;return;}}
+          for(i=0;i<r6.length;i++){if(r6[i]>=l){r6[i]-=l;return;}}
+          r6.push(K6-l);
+        });
+        return {s6:r6.length,s12:r12.length,ueberlang:ueber};
       }
       function listeStart(){
         var T=Object.keys(GOKOBA_TEILE).map(function(k){return GOKOBA_TEILE[k];});
         function summe(f){var g=0;T.forEach(function(d){if(f(d)&&d.gewicht!=null)g+=d.gewicht;});return g;}
         var gProfil=summe(function(d){return d.art==='profil'||d.art==='kantprofil';});
         var gBlech=summe(function(d){return d.art==='blech'||d.art==='kantblech';});
-        var gAlles=summe(function(d){return true;});
+        var gAlles=gProfil+gBlech; /* ★ Gesamt = Profile + Bleche, exakt wie vereinbart */
         var qmRost=0;T.forEach(function(d){if(d.art==='gitterrost'&&d.masse)qmRost+=d.masse[0]*d.masse[1]/1e6;});
         var stufen={};T.forEach(function(d){if(d.art==='gitterroststufe'&&d.masse){var k=Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1]);stufen[k]=(stufen[k]||0)+1;}});
 
@@ -5772,7 +5810,7 @@ var GOKOBA_LAYER_ACI = {
         function kz(k,v){zeilen+='<div style="display:flex;justify-content:space-between;gap:14px;padding:2.5px 0;"><span style="color:var(--gktx2);">'+k+'</span><strong style="white-space:nowrap;">'+v+'</strong></div>';}
         kz('Gewicht Profile',kgFmt(gProfil));
         kz('Gewicht Bleche',kgFmt(gBlech));
-        kz('Gewicht gesamt',kgFmt(gAlles));
+        kz('Gewicht gesamt (Profile + Bleche)',kgFmt(gAlles));
         if(qmRost>0)kz('Gitterrost-Fl\u00e4che',qmRost.toFixed(1).replace('.',',')+' m\u00b2');
         var stKeys=Object.keys(stufen).sort(function(a,b){return stufen[b]-stufen[a];});
         if(stKeys.length){
@@ -5790,24 +5828,28 @@ var GOKOBA_LAYER_ACI = {
         function suche(){
           var q=(listePanel.querySelector('[data-such]').value||'').trim().toLowerCase().replace(/\s+/g,'');
           erg.innerHTML='';
+          sucheLeeren(); /* ★ alte Markierung im Modell aufheben, neue setzt sich gleich */
           if(!q)return;
           var gruppen={};
-          T.forEach(function(d){
+          Object.keys(GOKOBA_TEILE).forEach(function(kn){
+            var d=GOKOBA_TEILE[kn];
             if((d.art!=='profil'&&d.art!=='kantprofil')||!d.profil)return;
             if(d.profil.toLowerCase().replace(/\s+/g,'').indexOf(q)<0)return;
-            (gruppen[d.profil]=gruppen[d.profil]||[]).push(d);
+            (gruppen[d.profil]=gruppen[d.profil]||[]).push({d:d,kn:kn});
           });
           var namen=Object.keys(gruppen).sort();
           if(!namen.length){erg.innerHTML='<div style="color:var(--gktx2);">Kein Profil gefunden.</div>';return;}
           namen.forEach(function(nm){
             var teile=gruppen[nm], laengen=[], posGrp={};
-            teile.forEach(function(d){
+            teile.forEach(function(e){
+              var d=e.d;
+              sucheMarkiere(e.kn);
               if(d.laenge)laengen.push(d.laenge);
               var pk=(d.ref||'?')+'|'+(d.laenge?Math.round(d.laenge):'?');
               posGrp[pk]=posGrp[pk]||{ref:d.ref||'?',laenge:d.laenge,n:0,g:0};
               posGrp[pk].n++; if(d.gewicht)posGrp[pk].g+=d.gewicht;
             });
-            var s6=staebe(laengen,6000), s12=staebe(laengen,12000);
+            var st=staebe(laengen);
             var h='<div style="padding:7px 0 3px;font:700 13px var(--ui);color:var(--gktx);">'+nm+' \u00b7 '+teile.length+' St\u00fcck</div>';
             Object.keys(posGrp).sort(function(a,b){return (posGrp[a].ref+'').localeCompare(posGrp[b].ref+'',undefined,{numeric:true});}).forEach(function(pk){
               var e=posGrp[pk];
@@ -5816,16 +5858,20 @@ var GOKOBA_LAYER_ACI = {
                  '<span>'+(e.laenge?fmtLaenge(e.laenge):'\u2014')+'</span>'+
                  '<span style="color:var(--gktx2);">'+e.n+' St\u00fcck</span></div>';
             });
+            var bt=[];
+            if(st.s6)bt.push(st.s6+' \u00d7 6 m');
+            if(st.s12)bt.push(st.s12+' \u00d7 12 m');
             h+='<div style="padding:3px 0 4px;color:var(--gktx2);font-size:11.5px;">Stab-Bedarf: '+
-               s6.stangen+' \u00d7 6 m &nbsp;oder&nbsp; '+s12.stangen+' \u00d7 12 m'+
-               (s6.ueberlang?(' &nbsp;(+'+s6.ueberlang+' \u00dcberl\u00e4nge)'):'')+'</div>';
+               (bt.length?bt.join(' + '):'\u2014')+
+               (st.ueberlang?(' &nbsp;(+'+st.ueberlang+' \u00dcberl\u00e4nge \u00fcber 12 m)'):'')+
+               ' \u00b7 5 mm S\u00e4gespalt</div>';
             erg.innerHTML+=h;
           });
         }
         listePanel.querySelector('[data-such]').addEventListener('input',suche);
         panel.appendChild(listePanel); flyLegen(listePanel);
       }
-      function listeEnde(){ if(listePanel){listePanel.remove();listePanel=null;} }
+      function listeEnde(){ sucheLeeren(); if(listePanel){listePanel.remove();listePanel=null;} }
 
       /* ── Notizen: Pfeil vom Modellpunkt zur Textbox, kamerafest nachgefuehrt ── */
       var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -5968,7 +6014,7 @@ var GOKOBA_LAYER_ACI = {
           undo:'<path d="M8 6 4 10l4 4M4.5 10H15a5 5 0 0 1 0 10h-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
         };
         var WNAME={linie:'Gerade Linie',frei:'Freihand',kreis:'Kreis',ellipse:'Ellipse',rechteck:'Rechteck / Quadrat',text:'Text',undo:'Letzten Schritt zur\u00fcck'};
-        var leiste=el('div',glasBox('right:10px;top:50%;transform:translateY(-50%);z-index:41;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:14px;'));
+        var leiste=el('div',glasBox('right:10px;top:50%;transform:translateY(-50%);z-index:41;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:14px;')); /* haengt am Bild (innen), nicht am Panel */
         var wKnopf={};
         ['linie','frei','kreis','ellipse','rechteck','text'].forEach(function(w){
           var b=el('button','width:36px;height:36px;border-radius:10px;border:'+RAND+';cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);');
@@ -6033,8 +6079,8 @@ var GOKOBA_LAYER_ACI = {
         xk.addEventListener('click',function(ev){ev.stopPropagation();vielleichtZu();});
         gross.addEventListener('click',function(e){if(e.target===gross)vielleichtZu();});
         innen.appendChild(c);
+        innen.appendChild(leiste); /* ★ Leiste dockt rechts mittig AM FOTO an */
         gross.appendChild(innen);
-        gross.appendChild(leiste);
         gross.appendChild(xk);
         panel.appendChild(gross);
       }

@@ -416,7 +416,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                         # ★ Roste/Stufen: AS exportiert massive Kloetze - Volumengewicht waere um
                         #   den Faktor 10 zu hoch. Lieber weglassen, bis die Namensliste die
                         #   echten Rostdaten liefert.
-                        if vol > 0 and (L not in BETON_LAYER) and d['art'] not in ('schraube', 'anker', 'gitterrost', 'gitterroststufe'):
+                        if vol > 0 and (L not in BETON_LAYER) and d['art'] not in ('schraube', 'anker', 'gitterrost', 'gitterroststufe', 'beton'):
                             d['gewicht'] = round(vol * DICHTE_STAHL, 1)
                     except Exception:
                         pass
