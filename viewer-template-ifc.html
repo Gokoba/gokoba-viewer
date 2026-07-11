@@ -5426,12 +5426,17 @@ var GOKOBA_LAYER_ACI = {
      * ★ ================================================================== */
     if(GOKOBA_TEILE){(function(){
       var AKZENT='#5FA8C9';
-      var GLAS='color-mix(in srgb, var(--bar) 45%, transparent)';
-      var RAND='1px solid color-mix(in srgb, var(--barln) 55%, transparent)';
+      /* ★ Eigene Werkzeug-Farbvariablen: schalten mit dem Hell/Dunkel-Knopf automatisch um */
+      var st=document.createElement('style');
+      st.textContent=':root{--gkbg:rgba(11,14,18,.68);--gkln:rgba(255,255,255,.16);--gktx:#EDF3F6;--gktx2:#AAB8C2;}'+
+        'body.hell{--gkbg:rgba(246,249,251,.78);--gkln:rgba(16,34,50,.20);--gktx:#18232D;--gktx2:#495966;}';
+      document.head.appendChild(st);
+      var GLAS='var(--gkbg)';
+      var RAND='1px solid var(--gkln)';
       function mobil(){return panel.clientWidth<640;}
       function el(tag,css,html){var e=document.createElement(tag);if(css)e.style.cssText=css;if(html!==undefined)e.innerHTML=html;return e;}
       function glasBox(extra){return 'position:absolute;z-index:31;border-radius:14px;background:'+GLAS+';border:'+RAND+
-        ';backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--tx);font:500 12.5px/1.55 var(--ui);'+
+        ';backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--gktx);font:500 12.5px/1.55 var(--ui);'+
         'box-shadow:0 12px 34px rgba(0,0,0,.22);'+(extra||'');}
 
       /* ── Formatierer ── */
@@ -5445,7 +5450,7 @@ var GOKOBA_LAYER_ACI = {
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null;
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
-        else if((art==='blech'||art==='kantblech')&&d.masse)name='BL '+rund(d.masse[2])+'x'+Math.round(d.masse[0])+'x'+Math.round(d.masse[1]);
+        else if((art==='blech'||art==='kantblech')&&d.masse)name='BL '+rund(d.masse[2]);
         else if(art==='sonderteil'&&d.name)name=d.name;
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
         return t||'Bauteil';
@@ -5454,7 +5459,7 @@ var GOKOBA_LAYER_ACI = {
         var art=d.art||'sonstiges', z=[];
         function zeile(k,v){if(v)z.push([k,v]);}
         if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
-        else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',fmtMass(d.masse));zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Hersteller',d.hersteller);zeile('Masche',d.masche);zeile('Tragstab',d.tragstab);zeile('Gr\u00f6\u00dfe',fmtMass(d.masse));zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
@@ -5477,9 +5482,9 @@ var GOKOBA_LAYER_ACI = {
         gewaehlt=o;gewMat=o.material;o.material=heben(o);
         var z=zeilenVon(d);
         karte.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+
-          '<strong style="font:700 14px/1.35 var(--ui);color:var(--tx);">'+kopfVon(d)+'</strong>'+
-          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span></div>'+
-          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--tx3);">'+p[0]+'</span><span style="text-align:right;">'+p[1]+'</span></div>';}).join('');
+          '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);">'+kopfVon(d)+'</strong>'+
+          '<span data-zu style="cursor:pointer;color:var(--gktx2);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span></div>'+
+          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;">'+p[1]+'</span></div>';}).join('');
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
@@ -5532,13 +5537,13 @@ var GOKOBA_LAYER_ACI = {
       function flyKopf(w){
         return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 13px 2px;">'+
           '<strong style="font:700 13px var(--ui);">'+NAME[w]+'</strong>'+
-          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
-          '<div style="padding:0 13px 8px;color:var(--tx3);font-size:11.5px;">'+TIP[w]+'</div>';
+          '<span data-zu style="cursor:pointer;color:var(--gktx2);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
+          '<div style="padding:0 13px 8px;color:var(--gktx2);font-size:11.5px;">'+TIP[w]+'</div>';
       }
       var knoepfe={};
       ['summe','farbe','iso','notiz','foto'].forEach(function(w){
         var b=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
-          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--tx3);transition:all .18s;');
+          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
         b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
         b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24">'+IK[w]+'</svg>';
         b.addEventListener('click',function(ev){ev.stopPropagation();schalte(aktiv===w?null:w);});
@@ -5547,7 +5552,7 @@ var GOKOBA_LAYER_ACI = {
       function malKnopf(){
         Object.keys(knoepfe).forEach(function(w){
           var an=aktiv===w;
-          knoepfe[w].style.color=an?'#0d1216':'var(--tx3)';
+          knoepfe[w].style.color=an?'#0d1216':'var(--gktx2)';
           knoepfe[w].style.background=an?AKZENT:'transparent';
           knoepfe[w].style.borderColor=an?AKZENT:'';
         });
@@ -5571,7 +5576,7 @@ var GOKOBA_LAYER_ACI = {
         summePanel.innerHTML=flyKopf('summe')+
           '<div data-liste style="overflow:auto;padding:0 13px;"></div>'+
           '<div style="padding:9px 13px 11px;border-top:'+RAND+';display:flex;justify-content:space-between;">'+
-          '<span style="color:var(--tx3);">Gesamt</span><strong data-summe>0 kg</strong></div>';
+          '<span style="color:var(--gktx2);">Gesamt</span><strong data-summe>0 kg</strong></div>';
         summePanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
         panel.appendChild(summePanel); flyLegen(summePanel);
       }
@@ -5585,7 +5590,7 @@ var GOKOBA_LAYER_ACI = {
           n++;
           var z=el('div','display:flex;justify-content:space-between;gap:10px;padding:3px 0;cursor:pointer;');
           z.innerHTML='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+kopfVon(d)+'</span>'+
-                      '<span style="white-space:nowrap;color:var(--tx3);">'+(d.gewicht!=null?fmtKg(d.gewicht):'\u2014')+'</span>';
+                      '<span style="white-space:nowrap;color:var(--gktx2);">'+(d.gewicht!=null?fmtKg(d.gewicht):'\u2014')+'</span>';
           z.title='Antippen zum Entfernen';
           z.addEventListener('click',function(){e.o.material=e.mat;delete summeTeile[k];summeRechne();});
           li.appendChild(z);
@@ -5613,7 +5618,7 @@ var GOKOBA_LAYER_ACI = {
         farbPanel.id='gkfarben';
         farbPanel.innerHTML=flyKopf('farbe')+
           '<div data-chips style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;padding:2px 13px 4px;"></div>'+
-          '<div data-reset style="padding:8px 13px 11px;color:var(--tx3);cursor:pointer;font-size:12px;">\u21ba Alle Farben zur\u00fccksetzen</div>';
+          '<div data-reset style="padding:8px 13px 11px;color:var(--gktx2);cursor:pointer;font-size:12px;">\u21ba Alle Farben zur\u00fccksetzen</div>';
         var chips=farbPanel.querySelector('[data-chips]');
         RAL.forEach(function(r){
           var c=el('div','width:26px;height:26px;border-radius:8px;cursor:pointer;background:'+r[1]+';border:2px solid transparent;');
@@ -5651,7 +5656,7 @@ var GOKOBA_LAYER_ACI = {
           '<button data-aus style="all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;border:'+RAND+';text-align:center;">Auswahl ausblenden</button>'+
           '<button data-nur style="all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;border:'+RAND+';text-align:center;">Nur Auswahl zeigen</button>'+
           '<button data-alle style="all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;border:'+RAND+';text-align:center;color:'+AKZENT+';">Alles einblenden</button>'+
-          '<div data-stand style="color:var(--tx3);font-size:11.5px;text-align:center;">0 gew\u00e4hlt \u00b7 0 ausgeblendet</div></div>';
+          '<div data-stand style="color:var(--gktx2);font-size:11.5px;text-align:center;">0 gew\u00e4hlt \u00b7 0 ausgeblendet</div></div>';
         isoPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
         function wahlLeeren(){Object.keys(isoWahl).forEach(function(k){isoWahl[k].o.material=isoWahl[k].mat;});isoWahl={};}
         isoPanel.querySelector('[data-aus]').addEventListener('click',function(){
@@ -5692,7 +5697,7 @@ var GOKOBA_LAYER_ACI = {
         notizNr++;
         var box=el('div',glasBox('z-index:31;min-width:120px;max-width:230px;padding:8px 11px;cursor:grab;'));
         box.innerHTML='<div contenteditable="true" data-txt style="outline:none;min-width:90px;"></div>'+
-          '<span data-weg style="position:absolute;top:3px;right:7px;cursor:pointer;color:var(--tx3);font-size:14px;">\u00d7</span>';
+          '<span data-weg style="position:absolute;top:3px;right:7px;cursor:pointer;color:var(--gktx2);font-size:14px;">\u00d7</span>';
         panel.appendChild(box);
         var linie=document.createElementNS('http://www.w3.org/2000/svg','line');
         linie.setAttribute('stroke',AKZENT);linie.setAttribute('stroke-width','1.6');
@@ -5763,28 +5768,21 @@ var GOKOBA_LAYER_ACI = {
         var r=cv.getBoundingClientRect();
         var b=Math.abs(x1-x0), h=Math.abs(y1-y0);
         if(b<24||h<24){sagHinweis('Bereich war zu klein, bitte gr\u00f6\u00dfer aufziehen.');return;}
-        /* ★ Scharfe Aufnahme: kurzzeitig mit doppelter Aufloesung rendern */
-        var altPR=renderer.getPixelRatio(), gr=renderer.getSize(new THREE.Vector2());
-        try{
-          renderer.setPixelRatio(Math.min(3, altPR*2));
-          renderer.setSize(gr.x, gr.y, false);
-          renderer.render(scene,camera);
-          var sx=renderer.domElement.width/r.width, sy=renderer.domElement.height/r.height;
-          var ax=Math.min(x0,x1)-r.left, ay=Math.min(y0,y1)-r.top;
-          var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
-          c.getContext('2d').drawImage(renderer.domElement,ax*sx,ay*sy,b*sx,h*sy,0,0,c.width,c.height);
-        }finally{
-          renderer.setPixelRatio(altPR); renderer.setSize(gr.x, gr.y, false); renderer.render(scene,camera);
-        }
+        /* ★ Aufnahme direkt aus dem frischen Bild - robust auf jeder Grafikkarte */
+        renderer.render(scene,camera);
+        var sx=renderer.domElement.width/r.width, sy=renderer.domElement.height/r.height;
+        var ax=Math.min(x0,x1)-r.left, ay=Math.min(y0,y1)-r.top;
+        var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
+        c.getContext('2d').drawImage(renderer.domElement,ax*sx,ay*sy,b*sx,h*sy,0,0,c.width,c.height);
         fotoNr++;
         var nr=fotoNr, url=c.toDataURL('image/png');
         var chip=el('div','display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;cursor:zoom-in;'+
           'background:'+GLAS+';border:'+RAND+';backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
-          'color:var(--tx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.2);');
+          'color:var(--gktx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.2);');
         chip.innerHTML='<img src="'+url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
           '<span>Foto '+nr+'</span>'+
           '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
-          '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--tx3);font-size:15px;">\u00d7</span>';
+          '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--gktx2);font-size:15px;">\u00d7</span>';
         chip.addEventListener('click',function(){zeigGross(url);});
         chip.querySelector('[data-dl]').addEventListener('click',function(e){
           e.stopPropagation();

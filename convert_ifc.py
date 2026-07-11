@@ -185,6 +185,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
         return d
 
     em_zentren = None
+    em_bolzen = None
     if em11_pfad:
         print('* Lese EM.11 fuer Positionsnummern: ' + em11_pfad)
         f2 = ifcopenshell.open(em11_pfad)
@@ -214,6 +215,29 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
         if pkt:
             em_zentren = (np.array(pkt), mrk)
             print('  EM.11: %d gekennzeichnete Teile' % len(mrk))
+        # ★ Verbinder tragen in der EM.11 keine Geometrie - beide Exporte zaehlen die
+        #   Bolzen aber in identischer Reihenfolge auf (am Testmodell 496/496 mit
+        #   deckungsgleichen Massen). Abgleich daher ueber den Index, gesichert durch
+        #   Durchmesser- und Laengenvergleich je Bolzen.
+        try:
+            em_liste = []
+            for e2 in f2.by_type('IfcMechanicalFastener'):
+                din = None; guete = None
+                for pn, props in ue.get_psets(e2).items():
+                    if pn == 'AISC_EM11_Pset_Bolt':
+                        din = props.get('BoltType') or props.get('BoltStandard')
+                        g = props.get('BoltGrade')
+                        if isinstance(g, (list, tuple)): g = g[0] if g else None
+                        guete = g
+                em_liste.append((getattr(e2, 'NominalDiameter', None),
+                                 getattr(e2, 'NominalLength', None), din, guete))
+            if em_liste:
+                em_bolzen = em_liste
+                print('  EM.11: %d Verbinder mit DIN-Angaben' % sum(1 for x in em_liste if x[2]))
+        except Exception:
+            pass
+
+    bolzen_index = {e.id(): i for i, e in enumerate(f.by_type('IfcMechanicalFastener'))}
 
     s = ifcopenshell.geom.settings()
     s.set(s.USE_WORLD_COORDS, True)
@@ -278,10 +302,23 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                         mm = masse_aus_obb(m)
                         if mm:
                             d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+                    if d['art'] in ('gitterrost', 'gitterroststufe') and d.get('masse'):
+                        # ★ Stufe vs. Rost an der Breite unterscheiden (Stufen sind max ~420 mm tief);
+                        #   die Namensliste aus dem Plugin macht das spaeter exakt
+                        d['art'] = 'gitterroststufe' if d['masse'][1] <= 420 else 'gitterrost'
                     if d['art'] in ('profil', 'kantprofil') and not d.get('laenge'):
                         mm = masse_aus_obb(m)
                         if mm:
                             d['laenge'] = round(mm[0], 1)   # laengste Kante = Stablaenge
+                    if typ == 'IfcMechanicalFastener' and em_bolzen is not None:
+                        k = bolzen_index.get(shp.id, -1)
+                        if 0 <= k < len(em_bolzen):
+                            dm2, ln2, din2, g2 = em_bolzen[k]
+                            dm1 = getattr(prod, 'NominalDiameter', None)
+                            ln1 = getattr(prod, 'NominalLength', None)
+                            if dm1 == dm2 and ln1 == ln2:   # ★ Sicherung: Masse muessen passen
+                                if din2: d['din'] = din2
+                                if g2 and not d.get('material'): d['material'] = str(g2)
                     if d['ref'] is None and em_zentren is not None:
                         z = v.mean(axis=0)
                         dist = np.linalg.norm(em_zentren[0] - z, axis=1)
@@ -290,7 +327,10 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             d['ref'] = em_zentren[1][k]
                     try:
                         vol = float(m.volume)
-                        if vol > 0 and (L not in BETON_LAYER) and d['art'] not in ('schraube', 'anker'):
+                        # ★ Roste/Stufen: AS exportiert massive Kloetze - Volumengewicht waere um
+                        #   den Faktor 10 zu hoch. Lieber weglassen, bis die Namensliste die
+                        #   echten Rostdaten liefert.
+                        if vol > 0 and (L not in BETON_LAYER) and d['art'] not in ('schraube', 'anker', 'gitterrost', 'gitterroststufe'):
                             d['gewicht'] = round(vol * DICHTE_STAHL, 1)
                     except Exception:
                         pass
