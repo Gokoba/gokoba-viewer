@@ -61,6 +61,13 @@ jobs:
             for z in "$jobdir"*.zip; do
               unzip -o -j "$z" -d "$jobdir" >/dev/null && rm -f "$z"
             done
+            # ★ Noch keine Nutzdaten da (z.B. nur name.txt committet)? Still ueberspringen,
+            #   KEIN Fehler-Marker - das ZIP kommt oft erst im naechsten Commit.
+            if ! ls "$jobdir"*.zip "$jobdir"*.ifc >/dev/null 2>&1; then
+              echo "Job $id: noch keine ZIP/IFC-Datei, warte auf naechsten Commit."
+              echo "::endgroup::"
+              continue
+            fi
             # Projektname (optional)
             name="Modell"
             if [ -f "$jobdir/name.txt" ]; then
