@@ -5421,14 +5421,18 @@ var GOKOBA_LAYER_ACI = {
     var dist=fitBoxToView(fitBox,fitDir,1.05);
     controls.minDistance=dist*0.04;controls.maxDistance=dist*3;
     /* ★ ==================================================================
-     * ★ BAUTEIL-INFO + WERKZEUGPALETTE (nur IFC-Pipeline, GOKOBA_TEILE da)
-     * ★ Kaertchen je Bauteilart, Gewichtssummierer, Farbwerkzeug, Foto.
+     * ★ BAUTEIL-INFO + WERKZEUGE (IFC-Pipeline): Kaertchen je Bauteilart,
+     * ★ Gewichtssummierer, Farbe, Isolieren/Ausblenden, Notizen, Foto.
      * ★ ================================================================== */
     if(GOKOBA_TEILE){(function(){
       var AKZENT='#5FA8C9';
-      var GLAS='color-mix(in srgb, var(--bar) 62%, transparent)';
+      var GLAS='color-mix(in srgb, var(--bar) 45%, transparent)';
+      var RAND='1px solid color-mix(in srgb, var(--barln) 55%, transparent)';
       function mobil(){return panel.clientWidth<640;}
       function el(tag,css,html){var e=document.createElement(tag);if(css)e.style.cssText=css;if(html!==undefined)e.innerHTML=html;return e;}
+      function glasBox(extra){return 'position:absolute;z-index:31;border-radius:14px;background:'+GLAS+';border:'+RAND+
+        ';backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--tx);font:500 12.5px/1.55 var(--ui);'+
+        'box-shadow:0 12px 34px rgba(0,0,0,.22);'+(extra||'');}
 
       /* ── Formatierer ── */
       function fmtLaenge(mm){if(mm==null)return null;return mm>=1000?(mm/1000).toFixed(2).replace('.',',')+' m':Math.round(mm)+' mm';}
@@ -5439,35 +5443,27 @@ var GOKOBA_LAYER_ACI = {
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
       function kopfVon(d){
-        var art=d.art||'sonstiges';
-        var name=null;
+        var art=d.art||'sonstiges', name=null;
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
         else if((art==='blech'||art==='kantblech')&&d.masse)name='BL '+rund(d.masse[2])+'x'+Math.round(d.masse[0])+'x'+Math.round(d.masse[1]);
+        else if(art==='sonderteil'&&d.name)name=d.name;
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
         return t||'Bauteil';
       }
       function zeilenVon(d){
         var art=d.art||'sonstiges', z=[];
         function zeile(k,v){if(v)z.push([k,v]);}
-        if(art==='profil'||art==='kantprofil'){
-          zeile('Material',d.material); zeile('L\u00e4nge',fmtLaenge(d.laenge)); zeile('Gewicht',fmtKg(d.gewicht));
-        }else if(art==='blech'||art==='kantblech'){
-          zeile('Material',d.material); zeile('Ma\u00df',fmtMass(d.masse)); zeile('Gewicht',fmtKg(d.gewicht));
-        }else if(art==='gitterrost'||art==='gitterroststufe'){
-          zeile('Hersteller',d.hersteller); zeile('Masche',d.masche); zeile('Tragstab',d.tragstab);
-          zeile('Gr\u00f6\u00dfe',fmtMass(d.masse)); zeile('Gewicht',fmtKg(d.gewicht));
-        }else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){
-          zeile('Hersteller / DIN',d.din); zeile('Gr\u00f6\u00dfe',d.groesse); zeile('Material',d.material);
-        }else if(art==='sonderteil'){
-          zeile('Name',d.name); zeile('Hersteller',d.hersteller); zeile('Material',d.material);
-        }else{ zeile('Material',d.material); }
+        if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',fmtMass(d.masse));zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Hersteller',d.hersteller);zeile('Masche',d.masche);zeile('Tragstab',d.tragstab);zeile('Gr\u00f6\u00dfe',fmtMass(d.masse));zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
+        else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
+        else{zeile('Material',d.material);}
         return z;
       }
 
       /* ── Info-Kaertchen ── */
-      var karte=el('div','position:absolute;z-index:30;display:none;max-width:280px;padding:13px 15px;border-radius:14px;'+
-        'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
-        'color:var(--tx);font:500 13px/1.6 var(--ui);box-shadow:0 12px 34px rgba(0,0,0,.30);');
+      var karte=el('div',glasBox('display:none;max-width:280px;padding:13px 15px;z-index:30;'));
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
@@ -5493,79 +5489,91 @@ var GOKOBA_LAYER_ACI = {
           karte.style.top=Math.max(10,Math.min(y+14,ph-kh-10))+'px';}
       }
 
-      /* ── Werkzeugpalette ── */
+      /* ── Palette ── */
       var aktiv=null;
       var IK={
         summe:'<path d="M12 3v3M5.5 6.5h13M8 6.5 5 12.2a3.4 3.4 0 0 0 6 0L8 6.5ZM16 6.5l-3 5.7a3.4 3.4 0 0 0 6 0l-3-5.7ZM9 20h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
         farbe:'<path d="M12 3.5s5.6 6.6 5.6 10.3a5.6 5.6 0 0 1-11.2 0C6.4 10.1 12 3.5 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+        iso:'<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+        notiz:'<path d="M4 5.5h16v10.5H10.5L6.5 19.5v-3.5H4V5.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 9.5h8M8 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
         foto:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7 10 4.5h4L15.5 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>'
       };
-      var TIP={summe:'Gewichte sammeln: Bauteile antippen, die Liste rechnet mit.',
+      var TIP={summe:'Bauteile antippen, die Liste rechnet mit.',
                farbe:'Farbe w\u00e4hlen, dann Bauteile antippen.',
+               iso:'Bauteile antippen und unten w\u00e4hlen.',
+               notiz:'Punkt am Modell antippen, dann Text schreiben.',
                foto:'Bereich mit gedr\u00fcckter Maustaste bzw. Finger aufziehen.'};
-      var palette=el('div','position:absolute;z-index:31;display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'+
-        'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
-        'box-shadow:0 10px 28px rgba(0,0,0,.28);');
+      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto'};
+      var palette=el('div',glasBox('display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'));
       palette.id='gkpalette'; panel.appendChild(palette);
       function paletteLegen(){
         if(mobil()){palette.style.right='10px';palette.style.top='';palette.style.bottom='14px';palette.style.transform='';}
         else{palette.style.right='16px';palette.style.bottom='';palette.style.top='50%';palette.style.transform='translateY(-50%)';}
       }
       paletteLegen(); window.addEventListener('resize',paletteLegen);
-      var hinweis=el('div','position:absolute;z-index:31;display:none;padding:7px 12px;border-radius:999px;max-width:70%;'+
-        'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
-        'color:var(--tx);font:500 12px/1.4 var(--ui);');
+      var hinweis=el('div',glasBox('display:none;z-index:32;padding:7px 12px;border-radius:999px;max-width:46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'));
       hinweis.id='gkhinweis'; panel.appendChild(hinweis);
       var hinweisT=null;
-      function sagHinweis(t){
+      function sagHinweis(t){ /* ★ links neben der Palette, auf deren Mitte */
         hinweis.textContent=t; hinweis.style.display='block';
-        hinweis.style.left='50%';hinweis.style.transform='translateX(-50%)';hinweis.style.top='14px';
-        clearTimeout(hinweisT); hinweisT=setTimeout(function(){hinweis.style.display='none';},4500);
+        var pr=palette.getBoundingClientRect(), pp=panel.getBoundingClientRect();
+        hinweis.style.right=(pp.right-pr.left+12)+'px';
+        hinweis.style.left=''; hinweis.style.transform='';
+        hinweis.style.top=(pr.top-pp.top+pr.height/2-hinweis.offsetHeight/2)+'px';
+        clearTimeout(hinweisT); hinweisT=setTimeout(function(){hinweis.style.display='none';},4200);
+      }
+      /* Flyout-Panels oeffnen direkt links neben der Palette */
+      function flyLegen(p){
+        var pr=palette.getBoundingClientRect(), pp=panel.getBoundingClientRect();
+        p.style.right=(pp.right-pr.left+12)+'px';
+        if(mobil()){p.style.bottom=(pp.bottom-pr.top+12)+'px';p.style.top='';p.style.transform='';p.style.right='10px';}
+        else{p.style.top=(pr.top-pp.top+pr.height/2)+'px';p.style.transform='translateY(-50%)';p.style.bottom='';}
+      }
+      function flyKopf(w){
+        return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 13px 2px;">'+
+          '<strong style="font:700 13px var(--ui);">'+NAME[w]+'</strong>'+
+          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
+          '<div style="padding:0 13px 8px;color:var(--tx3);font-size:11.5px;">'+TIP[w]+'</div>';
       }
       var knoepfe={};
-      ['summe','farbe','foto'].forEach(function(w){
-        var b=el('button','width:42px;height:42px;border-radius:12px;border:1px solid var(--barln);cursor:pointer;'+
+      ['summe','farbe','iso','notiz','foto'].forEach(function(w){
+        var b=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
           'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--tx3);transition:all .18s;');
-        b.id='gk_'+w; b.title=TIP[w];
+        b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
         b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24">'+IK[w]+'</svg>';
         b.addEventListener('click',function(ev){ev.stopPropagation();schalte(aktiv===w?null:w);});
         palette.appendChild(b); knoepfe[w]=b;
       });
       function malKnopf(){
-        ['summe','farbe','foto'].forEach(function(w){
+        Object.keys(knoepfe).forEach(function(w){
           var an=aktiv===w;
           knoepfe[w].style.color=an?'#0d1216':'var(--tx3)';
           knoepfe[w].style.background=an?AKZENT:'transparent';
-          knoepfe[w].style.borderColor=an?AKZENT:'var(--barln)';
+          knoepfe[w].style.borderColor=an?AKZENT:'';
         });
       }
       function schalte(neu){
-        if(aktiv==='summe'&&neu!=='summe')summeEnde();
-        if(aktiv==='farbe'&&neu!=='farbe')farbeEnde();
-        if(aktiv==='foto'&&neu!=='foto')fotoEnde();
+        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde})[aktiv]();}
         aktiv=neu; malKnopf(); abwaehlen();
         if(neu==='summe')summeStart();
         if(neu==='farbe')farbeStart();
+        if(neu==='iso')isoStart();
         if(neu==='foto')fotoStart();
-        if(neu)sagHinweis(TIP[neu]);
+        if(neu==='notiz'||neu==='foto')sagHinweis(TIP[neu]);
       }
 
-      /* ── Werkzeug 1: Gewichtssummierer ── */
+      /* ── Gewichtssummierer ── */
       var summePanel=null, summeTeile={};
       function summeStart(){
         summeTeile={};
-        summePanel=el('div','position:absolute;z-index:31;left:12px;top:12px;width:min(262px,72vw);max-height:56%;display:flex;flex-direction:column;'+
-          'border-radius:14px;background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
-          'color:var(--tx);font:500 12.5px/1.5 var(--ui);box-shadow:0 12px 34px rgba(0,0,0,.28);overflow:hidden;');
+        summePanel=el('div',glasBox('width:min(262px,72vw);max-height:56%;display:flex;flex-direction:column;overflow:hidden;'));
         summePanel.id='gksumme';
-        summePanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 13px 8px;">'+
-          '<strong style="font:700 13px var(--ui);">Gewicht sammeln</strong>'+
-          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
+        summePanel.innerHTML=flyKopf('summe')+
           '<div data-liste style="overflow:auto;padding:0 13px;"></div>'+
-          '<div data-fuss style="padding:9px 13px 11px;border-top:1px solid var(--barln);display:flex;justify-content:space-between;">'+
+          '<div style="padding:9px 13px 11px;border-top:'+RAND+';display:flex;justify-content:space-between;">'+
           '<span style="color:var(--tx3);">Gesamt</span><strong data-summe>0 kg</strong></div>';
         summePanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
-        panel.appendChild(summePanel);
+        panel.appendChild(summePanel); flyLegen(summePanel);
       }
       function summeRechne(){
         if(!summePanel)return;
@@ -5573,9 +5581,9 @@ var GOKOBA_LAYER_ACI = {
         li.innerHTML='';
         Object.keys(summeTeile).forEach(function(k){
           var e=summeTeile[k],d=e.d;
-          if(d.gewicht!=null){ges+=d.gewicht;}
+          if(d.gewicht!=null)ges+=d.gewicht;
           n++;
-          var z=el('div','display:flex;justify-content:space-between;gap:10px;padding:3px 0;cursor:pointer;border-bottom:1px dashed color-mix(in srgb,var(--barln) 60%,transparent);');
+          var z=el('div','display:flex;justify-content:space-between;gap:10px;padding:3px 0;cursor:pointer;');
           z.innerHTML='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+kopfVon(d)+'</span>'+
                       '<span style="white-space:nowrap;color:var(--tx3);">'+(d.gewicht!=null?fmtKg(d.gewicht):'\u2014')+'</span>';
           z.title='Antippen zum Entfernen';
@@ -5594,23 +5602,18 @@ var GOKOBA_LAYER_ACI = {
         summeTeile={}; if(summePanel){summePanel.remove();summePanel=null;}
       }
 
-      /* ── Werkzeug 2: Farbwerkzeug (RAL, nur optisch) ── */
+      /* ── Farbe ── */
       var RAL=[['RAL 7016 Anthrazit','#383E42'],['RAL 9005 Tiefschwarz','#0A0A0D'],['RAL 9010 Reinwei\u00df','#F1ECE1'],
         ['RAL 7035 Lichtgrau','#C5C7C4'],['RAL 9006 Wei\u00dfaluminium','#A1A1A0'],['RAL 3000 Feuerrot','#A72920'],
         ['RAL 5010 Enzianblau','#0E294B'],['RAL 6005 Moosgr\u00fcn','#114232'],['RAL 1021 Rapsgelb','#F3B927'],
         ['RAL 2004 Reinorange','#E75B12'],['RAL 8017 Schokobraun','#45322E'],['RAL 7042 Verkehrsgrau','#8D948D']];
       var farbPanel=null, farbWahl='#383E42', bemalt={};
       function farbeStart(){
-        farbPanel=el('div','position:absolute;z-index:31;left:12px;top:12px;width:min(228px,66vw);padding:11px 13px;border-radius:14px;'+
-          'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
-          'color:var(--tx);font:500 12.5px var(--ui);box-shadow:0 12px 34px rgba(0,0,0,.28);');
+        farbPanel=el('div',glasBox('width:min(232px,66vw);'));
         farbPanel.id='gkfarben';
-        var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">'+
-          '<strong style="font:700 13px var(--ui);">Farbe</strong>'+
-          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
-          '<div data-chips style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;"></div>'+
-          '<div data-reset style="margin-top:10px;color:var(--tx3);cursor:pointer;font-size:12px;">\u21ba Alle Farben zur\u00fccksetzen</div>';
-        farbPanel.innerHTML=h;
+        farbPanel.innerHTML=flyKopf('farbe')+
+          '<div data-chips style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;padding:2px 13px 4px;"></div>'+
+          '<div data-reset style="padding:8px 13px 11px;color:var(--tx3);cursor:pointer;font-size:12px;">\u21ba Alle Farben zur\u00fccksetzen</div>';
         var chips=farbPanel.querySelector('[data-chips]');
         RAL.forEach(function(r){
           var c=el('div','width:26px;height:26px;border-radius:8px;cursor:pointer;background:'+r[1]+';border:2px solid transparent;');
@@ -5623,53 +5626,172 @@ var GOKOBA_LAYER_ACI = {
         farbPanel.querySelector('[data-reset]').addEventListener('click',function(){
           Object.keys(bemalt).forEach(function(k){bemalt[k].o.material=bemalt[k].mat;});bemalt={};
         });
-        malChips(); panel.appendChild(farbPanel);
+        malChips(); panel.appendChild(farbPanel); flyLegen(farbPanel);
       }
       function farbeKlick(o,name){
         if(!bemalt[name])bemalt[name]={o:o,mat:o.material};
         var nm=(Array.isArray(bemalt[name].mat)?bemalt[name].mat[0]:bemalt[name].mat).clone();
-        nm.color=new THREE.Color(farbWahl);
-        if(nm.map)nm.map=null;
+        nm.color=new THREE.Color(farbWahl); if(nm.map)nm.map=null;
         o.material=nm;
       }
-      function farbeEnde(){ if(farbPanel){farbPanel.remove();farbPanel=null;} } /* Anstriche bleiben, Reset per Knopf */
+      function farbeEnde(){ if(farbPanel){farbPanel.remove();farbPanel=null;} }
 
-      /* ── Werkzeug 3: Foto mit Bereichswahl ── */
-      var band=null,bandX=0,bandY=0,fotoLeiste=null,fotoNr=0;
+      /* ── Isolieren / Ausblenden ── */
+      var isoPanel=null, isoWahl={}, versteckt={};
+      function isoZaehl(){
+        if(!isoPanel)return;
+        isoPanel.querySelector('[data-stand]').textContent=
+          Object.keys(isoWahl).length+' gew\u00e4hlt \u00b7 '+Object.keys(versteckt).length+' ausgeblendet';
+      }
+      function isoStart(){
+        isoPanel=el('div',glasBox('width:min(238px,70vw);'));
+        isoPanel.id='gkiso';
+        isoPanel.innerHTML=flyKopf('iso')+
+          '<div style="display:flex;flex-direction:column;gap:7px;padding:2px 13px 11px;">'+
+          '<button data-aus style="all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;border:'+RAND+';text-align:center;">Auswahl ausblenden</button>'+
+          '<button data-nur style="all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;border:'+RAND+';text-align:center;">Nur Auswahl zeigen</button>'+
+          '<button data-alle style="all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;border:'+RAND+';text-align:center;color:'+AKZENT+';">Alles einblenden</button>'+
+          '<div data-stand style="color:var(--tx3);font-size:11.5px;text-align:center;">0 gew\u00e4hlt \u00b7 0 ausgeblendet</div></div>';
+        isoPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        function wahlLeeren(){Object.keys(isoWahl).forEach(function(k){isoWahl[k].o.material=isoWahl[k].mat;});isoWahl={};}
+        isoPanel.querySelector('[data-aus]').addEventListener('click',function(){
+          Object.keys(isoWahl).forEach(function(k){isoWahl[k].o.material=isoWahl[k].mat;isoWahl[k].o.visible=false;versteckt[k]=isoWahl[k].o;});
+          isoWahl={}; isoZaehl();
+        });
+        isoPanel.querySelector('[data-nur]').addEventListener('click',function(){
+          if(!Object.keys(isoWahl).length)return;
+          meshes.forEach(function(o){
+            var k=o,nm=null; while(k){if(k.name&&/^E\d+$/.test(k.name)){nm=k.name;break;}k=k.parent;}
+            if(nm&&!isoWahl[nm]){o.visible=false;versteckt[nm]=o;}
+          });
+          wahlLeeren(); isoZaehl();
+        });
+        isoPanel.querySelector('[data-alle]').addEventListener('click',function(){
+          Object.keys(versteckt).forEach(function(k){versteckt[k].visible=true;});versteckt={};
+          wahlLeeren(); isoZaehl();
+        });
+        panel.appendChild(isoPanel); flyLegen(isoPanel); isoZaehl();
+      }
+      function isoKlick(o,name){
+        if(isoWahl[name]){o.material=isoWahl[name].mat;delete isoWahl[name];}
+        else{isoWahl[name]={o:o,mat:o.material};o.material=heben(o,0x2E86AD,0.7);}
+        isoZaehl();
+      }
+      function isoEnde(){
+        Object.keys(isoWahl).forEach(function(k){isoWahl[k].o.material=isoWahl[k].mat;});
+        isoWahl={}; if(isoPanel){isoPanel.remove();isoPanel=null;}
+        /* Ausgeblendetes bleibt ausgeblendet, bis "Alles einblenden" gedrueckt wird */
+      }
+
+      /* ── Notizen: Pfeil vom Modellpunkt zur Textbox, kamerafest nachgefuehrt ── */
+      var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:29;width:100%;height:100%;';
+      panel.appendChild(svg);
+      var notizen=[], notizNr=0, notizLoop=false;
+      function notizSetze(p3){
+        notizNr++;
+        var box=el('div',glasBox('z-index:31;min-width:120px;max-width:230px;padding:8px 11px;cursor:grab;'));
+        box.innerHTML='<div contenteditable="true" data-txt style="outline:none;min-width:90px;"></div>'+
+          '<span data-weg style="position:absolute;top:3px;right:7px;cursor:pointer;color:var(--tx3);font-size:14px;">\u00d7</span>';
+        panel.appendChild(box);
+        var linie=document.createElementNS('http://www.w3.org/2000/svg','line');
+        linie.setAttribute('stroke',AKZENT);linie.setAttribute('stroke-width','1.6');
+        var spitze=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        spitze.setAttribute('r','3.6');spitze.setAttribute('fill',AKZENT);
+        svg.appendChild(linie); svg.appendChild(spitze);
+        var n={p3:p3.clone(),dx:70,dy:-64,box:box,linie:linie,spitze:spitze};
+        notizen.push(n);
+        box.querySelector('[data-weg]').addEventListener('click',function(){
+          box.remove();linie.remove();spitze.remove();
+          notizen.splice(notizen.indexOf(n),1);
+        });
+        /* Box verschiebbar */
+        var zieht=false,zx=0,zy=0;
+        box.addEventListener('pointerdown',function(e){
+          if(e.target.dataset.txt!==undefined||e.target.dataset.weg!==undefined)return;
+          zieht=true;zx=e.clientX;zy=e.clientY;box.setPointerCapture(e.pointerId);box.style.cursor='grabbing';
+        });
+        box.addEventListener('pointermove',function(e){
+          if(!zieht)return; n.dx+=e.clientX-zx; n.dy+=e.clientY-zy; zx=e.clientX; zy=e.clientY; notizMale();
+        });
+        box.addEventListener('pointerup',function(){zieht=false;box.style.cursor='grab';});
+        setTimeout(function(){box.querySelector('[data-txt]').focus();},60);
+        notizMale();
+        if(!notizLoop){notizLoop=true;(function tick(){if(notizen.length)requestAnimationFrame(tick);else notizLoop=false;notizMale();})();}
+      }
+      function notizMale(){
+        var r=cv.getBoundingClientRect(), pp=panel.getBoundingClientRect();
+        notizen.forEach(function(n){
+          var v=n.p3.clone().project(camera);
+          var sichtbar=v.z<1;
+          var x=(v.x*0.5+0.5)*r.width+(r.left-pp.left);
+          var y=(-v.y*0.5+0.5)*r.height+(r.top-pp.top);
+          n.box.style.display=sichtbar?'block':'none';
+          n.linie.style.display=n.spitze.style.display=sichtbar?'':'none';
+          if(!sichtbar)return;
+          n.box.style.left=(x+n.dx)+'px'; n.box.style.top=(y+n.dy)+'px';
+          n.spitze.setAttribute('cx',x);n.spitze.setAttribute('cy',y);
+          var bx=x+n.dx+(n.dx>=0?0:n.box.offsetWidth), by=y+n.dy+n.box.offsetHeight/2;
+          n.linie.setAttribute('x1',x);n.linie.setAttribute('y1',y);
+          n.linie.setAttribute('x2',bx);n.linie.setAttribute('y2',by);
+        });
+      }
+      controls.addEventListener('change',notizMale);
+
+      /* ── Foto: Bereich aufziehen, scharfe Aufnahme, Kacheln oben rechts in Spalten ── */
+      var band=null,bandX=0,bandY=0,fotoLeiste=null,fotoNr=0,gross=null;
       function fotoStart(){controls.enabled=false;cv.style.cursor='crosshair';}
       function fotoEnde(){controls.enabled=true;cv.style.cursor='';if(band){band.remove();band=null;}}
       function fotoLeisteHol(){
         if(!fotoLeiste){
-          fotoLeiste=el('div','position:absolute;z-index:32;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:9px;flex-wrap:wrap;justify-content:center;max-width:86%;');
+          fotoLeiste=el('div','position:absolute;z-index:32;top:12px;right:12px;display:flex;'+
+            'flex-flow:column wrap-reverse;align-content:flex-start;gap:8px;');
           fotoLeiste.id='gkfotos'; panel.appendChild(fotoLeiste);
         }
+        var pr=palette.getBoundingClientRect(), pp=panel.getBoundingClientRect();
+        fotoLeiste.style.height=Math.max(120,(pr.top-pp.top)-26)+'px';  /* ★ bis zur Oberkante der Palette */
         return fotoLeiste;
+      }
+      function zeigGross(url){
+        gross=el('div','position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;'+
+          'background:rgba(8,11,14,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:zoom-out;');
+        gross.innerHTML='<img src="'+url+'" style="max-width:88%;max-height:88%;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.5);">';
+        gross.addEventListener('click',function(){gross.remove();gross=null;});
+        panel.appendChild(gross);
       }
       function knips(x0,y0,x1,y1){
         var r=cv.getBoundingClientRect();
-        var sx=renderer.domElement.width/r.width, sy=renderer.domElement.height/r.height;
-        var ax=Math.min(x0,x1)-r.left, ay=Math.min(y0,y1)-r.top;
         var b=Math.abs(x1-x0), h=Math.abs(y1-y0);
         if(b<24||h<24){sagHinweis('Bereich war zu klein, bitte gr\u00f6\u00dfer aufziehen.');return;}
-        renderer.render(scene,camera);
-        var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
-        c.getContext('2d').drawImage(renderer.domElement,ax*sx,ay*sy,b*sx,h*sy,0,0,c.width,c.height);
+        /* ★ Scharfe Aufnahme: kurzzeitig mit doppelter Aufloesung rendern */
+        var altPR=renderer.getPixelRatio(), gr=renderer.getSize(new THREE.Vector2());
+        try{
+          renderer.setPixelRatio(Math.min(3, altPR*2));
+          renderer.setSize(gr.x, gr.y, false);
+          renderer.render(scene,camera);
+          var sx=renderer.domElement.width/r.width, sy=renderer.domElement.height/r.height;
+          var ax=Math.min(x0,x1)-r.left, ay=Math.min(y0,y1)-r.top;
+          var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
+          c.getContext('2d').drawImage(renderer.domElement,ax*sx,ay*sy,b*sx,h*sy,0,0,c.width,c.height);
+        }finally{
+          renderer.setPixelRatio(altPR); renderer.setSize(gr.x, gr.y, false); renderer.render(scene,camera);
+        }
         fotoNr++;
-        var nr=fotoNr;
-        var url=c.toDataURL('image/png');
-        var chip=el('div','display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;'+
-          'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
-          'color:var(--tx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.26);');
+        var nr=fotoNr, url=c.toDataURL('image/png');
+        var chip=el('div','display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;cursor:zoom-in;'+
+          'background:'+GLAS+';border:'+RAND+';backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
+          'color:var(--tx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.2);');
         chip.innerHTML='<img src="'+url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
           '<span>Foto '+nr+'</span>'+
           '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
           '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--tx3);font-size:15px;">\u00d7</span>';
-        chip.querySelector('[data-dl]').addEventListener('click',function(){
+        chip.addEventListener('click',function(){zeigGross(url);});
+        chip.querySelector('[data-dl]').addEventListener('click',function(e){
+          e.stopPropagation();
           var a=document.createElement('a');a.href=url;a.download='gokoba-foto-'+nr+'.png';
-          document.body.appendChild(a);a.click();a.remove();
-          chip.remove();
+          document.body.appendChild(a);a.click();a.remove();chip.remove();
         });
-        chip.querySelector('[data-weg]').addEventListener('click',function(){chip.remove();});
+        chip.querySelector('[data-weg]').addEventListener('click',function(e){e.stopPropagation();chip.remove();});
         fotoLeisteHol().appendChild(chip);
       }
       cv.addEventListener('pointerdown',function(e){
@@ -5702,9 +5824,10 @@ var GOKOBA_LAYER_ACI = {
         ray.setFromCamera(ptr,camera);
         var hits=ray.intersectObjects(meshes,false);
         for(var i=0;i<hits.length;i++){
+          if(hits[i].object.visible===false)continue;   /* ★ Ausgeblendetes nicht treffen */
           var k=hits[i].object,nm=null;
           while(k){if(k.name&&/^E\d+$/.test(k.name)){nm=k.name;break;}k=k.parent;}
-          if(nm&&GOKOBA_TEILE[nm])return {o:hits[i].object,d:GOKOBA_TEILE[nm],name:nm,x:e.clientX-r.left,y:e.clientY-r.top};
+          if(nm&&GOKOBA_TEILE[nm])return {o:hits[i].object,d:GOKOBA_TEILE[nm],name:nm,x:e.clientX-r.left,y:e.clientY-r.top,p3:hits[i].point};
         }
         return null;
       }
@@ -5718,6 +5841,8 @@ var GOKOBA_LAYER_ACI = {
         if(!t){if(!aktiv)abwaehlen();return;}
         if(aktiv==='summe')summeKlick(t.o,t.d,t.name);
         else if(aktiv==='farbe')farbeKlick(t.o,t.name);
+        else if(aktiv==='iso')isoKlick(t.o,t.name);
+        else if(aktiv==='notiz')notizSetze(t.p3);
         else zeigeKarte(t.o,t.d,t.x,t.y);
       });
     })();}

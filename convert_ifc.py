@@ -257,6 +257,20 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                     d['typ'] = typ
                     d['layer'] = L
                     d['art'] = art_von(L, typ)
+                    if typ == 'IfcMechanicalFastener':
+                        # ★ Groesse steckt in den Klassik-Attributen, nicht in Psets
+                        try:
+                            dm = getattr(prod, 'NominalDiameter', None)
+                            ln = getattr(prod, 'NominalLength', None)
+                            ot = (getattr(prod, 'ObjectType', '') or '')
+                            if 'Anchor' in ot or L == 'AS_Ankerk?fige':
+                                d['art'] = 'anker'
+                            if dm and ln:
+                                fmt = lambda x: ('%g' % round(float(x), 1))
+                                vor = '\u00f8' if d['art'] == 'anker' else 'M'
+                                d['groesse'] = vor + fmt(dm) + ' x ' + fmt(ln)
+                        except Exception:
+                            pass
                     # ★ Seitliche Laschen/Stäbe auf Rost-/Stufenlayern tragen ein Profil -> Profilkarte
                     if d['art'] in ('gitterrost', 'gitterroststufe') and d.get('profil'):
                         d['art'] = 'profil'
@@ -276,7 +290,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             d['ref'] = em_zentren[1][k]
                     try:
                         vol = float(m.volume)
-                        if vol > 0 and (L not in BETON_LAYER):
+                        if vol > 0 and (L not in BETON_LAYER) and d['art'] not in ('schraube', 'anker'):
                             d['gewicht'] = round(vol * DICHTE_STAHL, 1)
                     except Exception:
                         pass
