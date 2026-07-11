@@ -52,6 +52,11 @@ jobs:
             if [ -f "docs/v/$id/index.html" ]; then continue; fi
             if [ -f "$jobdir/.done" ] || [ -f "$jobdir/.failed" ]; then continue; fi
             echo "::group::IFC-Job $id"
+            # Stueckweise hochgeladene ZIPs wieder zusammenfuegen (grosse Modelle)
+            if ls "$jobdir"modell.zip.part* >/dev/null 2>&1; then
+              cat "$jobdir"modell.zip.part* > "$jobdir/modell.zip"
+              rm -f "$jobdir"modell.zip.part*
+            fi
             # ZIP-Uploads entpacken (Windows: rechte Maustaste, ZIP-komprimierter Ordner)
             for z in "$jobdir"*.zip; do
               unzip -o -j "$z" -d "$jobdir" >/dev/null && rm -f "$z"
