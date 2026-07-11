@@ -5430,7 +5430,16 @@ var GOKOBA_LAYER_ACI = {
       var st=document.createElement('style');
       st.textContent=':root{--gkbg:rgba(11,14,18,.68);--gkln:rgba(255,255,255,.16);--gktx:#EDF3F6;--gktx2:#AAB8C2;}'+
         'body.hell{--gkbg:rgba(246,249,251,.78);--gkln:rgba(16,34,50,.20);--gktx:#18232D;--gktx2:#495966;}';
+      st.textContent+=/* ★ Kopfleiste an die Werkzeug-Optik angleichen */
+        '.controls .toggle,.controls .ralbtn{background:var(--gkbg)!important;border:1px solid var(--gkln)!important;'+
+        'border-radius:12px!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}'+
+        '.tbtn{color:var(--gktx2)!important;border-radius:10px!important;}'+
+        '.tbtn.active{background:'+'#5FA8C9'+'!important;color:#0d1216!important;}'+
+        '.ralbtn{color:var(--gktx)!important;}'+
+        '#ralpanel{background:var(--gkbg)!important;border:1px solid var(--gkln)!important;border-radius:14px!important;'+
+        'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--gktx)!important;}';
       document.head.appendChild(st);
+      var ACHSEN=GOKOBA_TEILE['__achsen__']||null; delete GOKOBA_TEILE['__achsen__'];
       var GLAS='var(--gkbg)';
       var RAND='1px solid var(--gkln)';
       function mobil(){return panel.clientWidth<640;}
@@ -5494,6 +5503,35 @@ var GOKOBA_LAYER_ACI = {
           karte.style.top=Math.max(10,Math.min(y+14,ph-kh-10))+'px';}
       }
 
+      /* ── Achsraster: Linien + Beschriftung, per Palette schaltbar ── */
+      var achsGruppe=null;
+      if(ACHSEN&&ACHSEN.length){
+        achsGruppe=new THREE.Group();
+        var am=new THREE.LineBasicMaterial({color:0x8FA6B5,transparent:true,opacity:0.75});
+        function achsLabel(txt,pos){
+          var c=document.createElement('canvas');c.width=128;c.height=128;
+          var g=c.getContext('2d');
+          g.beginPath();g.arc(64,64,44,0,6.3);g.strokeStyle='#8FA6B5';g.lineWidth=6;g.stroke();
+          g.fillStyle='#8FA6B5';g.font='700 52px system-ui';g.textAlign='center';g.textBaseline='middle';
+          g.fillText(txt,64,68);
+          var t=new THREE.CanvasTexture(c);
+          var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
+          sp.position.copy(pos);sp.scale.set(dist*0.035,dist*0.035,1);
+          return sp;
+        }
+        ACHSEN.forEach(function(a){
+          var p=a.p;
+          var g=new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(p[0],p[2],-p[1]),new THREE.Vector3(p[3],p[5],-p[4])]);
+          achsGruppe.add(new THREE.Line(g,am));
+          if(a.tag){
+            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[0],p[2],-p[1])));
+            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[3],p[5],-p[4])));
+          }
+        });
+        scene.add(achsGruppe);
+      }
+
       /* ── Palette ── */
       var aktiv=null;
       var IK={
@@ -5501,14 +5539,17 @@ var GOKOBA_LAYER_ACI = {
         farbe:'<path d="M12 3.5s5.6 6.6 5.6 10.3a5.6 5.6 0 0 1-11.2 0C6.4 10.1 12 3.5 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
         iso:'<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>',
         notiz:'<path d="M4 5.5h16v10.5H10.5L6.5 19.5v-3.5H4V5.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 9.5h8M8 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
-        foto:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7 10 4.5h4L15.5 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+        foto:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7 10 4.5h4L15.5 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+        liste:'<path d="M8 6h12M8 12h12M8 18h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="4.2" cy="6" r="1.1" fill="currentColor"/><circle cx="4.2" cy="12" r="1.1" fill="currentColor"/><circle cx="4.2" cy="18" r="1.1" fill="currentColor"/>',
+        achsen:'<path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>'
       };
       var TIP={summe:'Bauteile antippen, die Liste rechnet mit.',
                farbe:'Farbe w\u00e4hlen, dann Bauteile antippen.',
                iso:'Bauteile antippen und unten w\u00e4hlen.',
                notiz:'Punkt am Modell antippen, dann Text schreiben.',
-               foto:'Bereich mit gedr\u00fcckter Maustaste bzw. Finger aufziehen.'};
-      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto'};
+               foto:'Bereich mit gedr\u00fcckter Maustaste bzw. Finger aufziehen.',
+               liste:'Kennzahlen und Profilsuche zum ganzen Modell.'};
+      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung'};
       var palette=el('div',glasBox('display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'));
       palette.id='gkpalette'; panel.appendChild(palette);
       function paletteLegen(){
@@ -5541,7 +5582,7 @@ var GOKOBA_LAYER_ACI = {
           '<div style="padding:0 13px 8px;color:var(--gktx2);font-size:11.5px;">'+TIP[w]+'</div>';
       }
       var knoepfe={};
-      ['summe','farbe','iso','notiz','foto'].forEach(function(w){
+      ['summe','farbe','iso','notiz','foto','liste'].forEach(function(w){
         var b=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
           'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
         b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
@@ -5549,6 +5590,18 @@ var GOKOBA_LAYER_ACI = {
         b.addEventListener('click',function(ev){ev.stopPropagation();schalte(aktiv===w?null:w);});
         palette.appendChild(b); knoepfe[w]=b;
       });
+      if(achsGruppe){
+        var ab=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
+          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
+        ab.id='gk_achsen'; ab.title='Achsen ein- / ausblenden';
+        ab.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24">'+IK.achsen+'</svg>';
+        function malAchsKnopf(){
+          ab.style.color=achsGruppe.visible?'#0d1216':'var(--gktx2)';
+          ab.style.background=achsGruppe.visible?AKZENT:'transparent';
+        }
+        ab.addEventListener('click',function(ev){ev.stopPropagation();achsGruppe.visible=!achsGruppe.visible;malAchsKnopf();});
+        palette.appendChild(ab); malAchsKnopf();
+      }
       function malKnopf(){
         Object.keys(knoepfe).forEach(function(w){
           var an=aktiv===w;
@@ -5558,12 +5611,13 @@ var GOKOBA_LAYER_ACI = {
         });
       }
       function schalte(neu){
-        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde})[aktiv]();}
+        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde,liste:listeEnde})[aktiv]();}
         aktiv=neu; malKnopf(); abwaehlen();
         if(neu==='summe')summeStart();
         if(neu==='farbe')farbeStart();
         if(neu==='iso')isoStart();
         if(neu==='foto')fotoStart();
+        if(neu==='liste')listeStart();
         if(neu==='notiz'||neu==='foto')sagHinweis(TIP[neu]);
       }
 
@@ -5688,6 +5742,89 @@ var GOKOBA_LAYER_ACI = {
         /* Ausgeblendetes bleibt ausgeblendet, bis "Alles einblenden" gedrueckt wird */
       }
 
+      /* ── Auswertung: Kennzahlen, Stufen nach Groesse, Profilsuche mit Stab-Bedarf ── */
+      var listePanel=null;
+      function kgFmt(x){return (x>=100?Math.round(x).toLocaleString('de-DE'):x.toFixed(1).replace('.',','))+' kg';}
+      function staebe(laengen,stab){ /* First-Fit-Decreasing: wie viele Stangen der Laenge stab */
+        var L=laengen.slice().sort(function(a,b){return b-a;}), reste=[], ueber=0;
+        L.forEach(function(l){
+          if(l>stab){ueber++;return;}
+          for(var i=0;i<reste.length;i++){if(reste[i]>=l){reste[i]-=l;return;}}
+          reste.push(stab-l);
+        });
+        return {stangen:reste.length,ueberlang:ueber};
+      }
+      function listeStart(){
+        var T=Object.keys(GOKOBA_TEILE).map(function(k){return GOKOBA_TEILE[k];});
+        function summe(f){var g=0;T.forEach(function(d){if(f(d)&&d.gewicht!=null)g+=d.gewicht;});return g;}
+        var gProfil=summe(function(d){return d.art==='profil'||d.art==='kantprofil';});
+        var gBlech=summe(function(d){return d.art==='blech'||d.art==='kantblech';});
+        var gAlles=summe(function(d){return true;});
+        var qmRost=0;T.forEach(function(d){if(d.art==='gitterrost'&&d.masse)qmRost+=d.masse[0]*d.masse[1]/1e6;});
+        var stufen={};T.forEach(function(d){if(d.art==='gitterroststufe'&&d.masse){var k=Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1]);stufen[k]=(stufen[k]||0)+1;}});
+
+        listePanel=el('div',glasBox('width:min(316px,84vw);max-height:72%;display:flex;flex-direction:column;overflow:hidden;'));
+        listePanel.id='gkliste';
+        var kopf=flyKopf('liste');
+        var zeilen='';
+        function kz(k,v){zeilen+='<div style="display:flex;justify-content:space-between;gap:14px;padding:2.5px 0;"><span style="color:var(--gktx2);">'+k+'</span><strong style="white-space:nowrap;">'+v+'</strong></div>';}
+        kz('Gewicht Profile',kgFmt(gProfil));
+        kz('Gewicht Bleche',kgFmt(gBlech));
+        kz('Gewicht gesamt',kgFmt(gAlles));
+        if(qmRost>0)kz('Gitterrost-Fl\u00e4che',qmRost.toFixed(1).replace('.',',')+' m\u00b2');
+        var stKeys=Object.keys(stufen).sort(function(a,b){return stufen[b]-stufen[a];});
+        if(stKeys.length){
+          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;">Gitterroststufen</div>';
+          stKeys.forEach(function(k){kz('&nbsp;&nbsp;'+k+' mm',stufen[k]+' St\u00fcck');});
+        }
+        listePanel.innerHTML=kopf+
+          '<div style="overflow:auto;padding:0 13px 6px;">'+zeilen+
+          '<div style="padding:9px 0 5px;color:var(--gktx2);">Profilsuche</div>'+
+          '<input data-such placeholder="z.B. HEA160 oder U220" style="all:unset;box-sizing:border-box;width:100%;padding:7px 10px;'+
+          'border:'+RAND+';border-radius:10px;color:var(--gktx);font:500 12.5px var(--ui);" />'+
+          '<div data-erg style="padding:8px 0 10px;"></div></div>';
+        listePanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        var erg=listePanel.querySelector('[data-erg]');
+        function suche(){
+          var q=(listePanel.querySelector('[data-such]').value||'').trim().toLowerCase().replace(/\s+/g,'');
+          erg.innerHTML='';
+          if(!q)return;
+          var gruppen={};
+          T.forEach(function(d){
+            if((d.art!=='profil'&&d.art!=='kantprofil')||!d.profil)return;
+            if(d.profil.toLowerCase().replace(/\s+/g,'').indexOf(q)<0)return;
+            (gruppen[d.profil]=gruppen[d.profil]||[]).push(d);
+          });
+          var namen=Object.keys(gruppen).sort();
+          if(!namen.length){erg.innerHTML='<div style="color:var(--gktx2);">Kein Profil gefunden.</div>';return;}
+          namen.forEach(function(nm){
+            var teile=gruppen[nm], laengen=[], posGrp={};
+            teile.forEach(function(d){
+              if(d.laenge)laengen.push(d.laenge);
+              var pk=(d.ref||'?')+'|'+(d.laenge?Math.round(d.laenge):'?');
+              posGrp[pk]=posGrp[pk]||{ref:d.ref||'?',laenge:d.laenge,n:0,g:0};
+              posGrp[pk].n++; if(d.gewicht)posGrp[pk].g+=d.gewicht;
+            });
+            var s6=staebe(laengen,6000), s12=staebe(laengen,12000);
+            var h='<div style="padding:7px 0 3px;font:700 13px var(--ui);color:var(--gktx);">'+nm+' \u00b7 '+teile.length+' St\u00fcck</div>';
+            Object.keys(posGrp).sort(function(a,b){return (posGrp[a].ref+'').localeCompare(posGrp[b].ref+'',undefined,{numeric:true});}).forEach(function(pk){
+              var e=posGrp[pk];
+              h+='<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;">'+
+                 '<span style="color:var(--gktx2);">Pos '+e.ref+'</span>'+
+                 '<span>'+(e.laenge?fmtLaenge(e.laenge):'\u2014')+'</span>'+
+                 '<span style="color:var(--gktx2);">'+e.n+' St\u00fcck</span></div>';
+            });
+            h+='<div style="padding:3px 0 4px;color:var(--gktx2);font-size:11.5px;">Stab-Bedarf: '+
+               s6.stangen+' \u00d7 6 m &nbsp;oder&nbsp; '+s12.stangen+' \u00d7 12 m'+
+               (s6.ueberlang?(' &nbsp;(+'+s6.ueberlang+' \u00dcberl\u00e4nge)'):'')+'</div>';
+            erg.innerHTML+=h;
+          });
+        }
+        listePanel.querySelector('[data-such]').addEventListener('input',suche);
+        panel.appendChild(listePanel); flyLegen(listePanel);
+      }
+      function listeEnde(){ if(listePanel){listePanel.remove();listePanel=null;} }
+
       /* ── Notizen: Pfeil vom Modellpunkt zur Textbox, kamerafest nachgefuehrt ── */
       var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       svg.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:29;width:100%;height:100%;';
@@ -5757,11 +5894,146 @@ var GOKOBA_LAYER_ACI = {
         fotoLeiste.style.height=Math.max(120,(pr.top-pp.top)-26)+'px';  /* ★ bis zur Oberkante der Palette */
         return fotoLeiste;
       }
-      function zeigGross(url){
+      /* ★ Grossansicht = kleiner Bild-Editor: Linien, Freihand, Formen, Text - direkt am Foto */
+      function zeigGross(halter,thumb){
+        var basis=new Image();
+        basis.onload=function(){ editorAuf(halter,thumb,basis); };
+        basis.src=halter.url;
+      }
+      function editorAuf(halter,thumb,basis){
         gross=el('div','position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;'+
-          'background:rgba(8,11,14,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);cursor:zoom-out;');
-        gross.innerHTML='<img src="'+url+'" style="max-width:88%;max-height:88%;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.5);">';
-        gross.addEventListener('click',function(){gross.remove();gross=null;});
+          'background:rgba(8,11,14,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);');
+        var innen=el('div','position:relative;');
+        var c=document.createElement('canvas');
+        c.width=basis.width;c.height=basis.height;
+        c.style.cssText='display:block;max-width:min(86vw,'+(panel.clientWidth-140)+'px);max-height:82vh;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.5);touch-action:none;';
+        var g=c.getContext('2d');
+        var striche=[],werk='frei',farbe='#E5484D',dicke=4,laufend=null,gespeichert=true;
+        function skala(){var r=c.getBoundingClientRect();return c.width/r.width;}
+        function malAlles(){
+          g.clearRect(0,0,c.width,c.height);g.drawImage(basis,0,0);
+          striche.concat(laufend?[laufend]:[]).forEach(function(st){
+            g.strokeStyle=st.f;g.fillStyle=st.f;g.lineWidth=st.d;g.lineCap='round';g.lineJoin='round';
+            if(st.w==='frei'){g.beginPath();st.p.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});g.stroke();}
+            else if(st.w==='linie'){g.beginPath();g.moveTo(st.a[0],st.a[1]);g.lineTo(st.b[0],st.b[1]);g.stroke();}
+            else if(st.w==='rechteck'){g.strokeRect(Math.min(st.a[0],st.b[0]),Math.min(st.a[1],st.b[1]),Math.abs(st.b[0]-st.a[0]),Math.abs(st.b[1]-st.a[1]));}
+            else if(st.w==='kreis'){var r=Math.hypot(st.b[0]-st.a[0],st.b[1]-st.a[1]);g.beginPath();g.arc(st.a[0],st.a[1],r,0,6.2832);g.stroke();}
+            else if(st.w==='ellipse'){g.beginPath();g.ellipse((st.a[0]+st.b[0])/2,(st.a[1]+st.b[1])/2,Math.abs(st.b[0]-st.a[0])/2,Math.abs(st.b[1]-st.a[1])/2,0,0,6.2832);g.stroke();}
+            else if(st.w==='text'){g.font='700 '+Math.round(st.d*7)+'px '+"'Hanken Grotesk',system-ui";g.fillText(st.t,st.a[0],st.a[1]);}
+          });
+        }
+        malAlles();
+        function ort(e){var r=c.getBoundingClientRect(),k=skala();return [(e.clientX-r.left)*k,(e.clientY-r.top)*k];}
+        c.addEventListener('pointerdown',function(e){
+          e.preventDefault();var p=ort(e);
+          if(werk==='text'){
+            textEingabe(e.clientX,e.clientY,function(t){
+              if(t){striche.push({w:'text',t:t,a:p,f:farbe,d:dicke});gespeichert=false;malAlles();}
+            });
+            return;
+          }
+          laufend=(werk==='frei')?{w:'frei',p:[p],f:farbe,d:dicke}:{w:werk,a:p,b:p,f:farbe,d:dicke};
+          try{c.setPointerCapture(e.pointerId);}catch(x){}
+        });
+        c.addEventListener('pointermove',function(e){
+          if(!laufend)return;e.preventDefault();var p=ort(e);
+          if(laufend.w==='frei')laufend.p.push(p);else laufend.b=p;
+          malAlles();
+        });
+        c.addEventListener('pointerup',function(){
+          if(!laufend)return;
+          striche.push(laufend);laufend=null;gespeichert=false;malAlles();
+        });
+        function textEingabe(x,y,fertig){
+          var inp=el('input','position:fixed;z-index:60;left:'+x+'px;top:'+(y-16)+'px;min-width:120px;padding:6px 9px;'+
+            'border-radius:10px;border:1.5px solid '+AKZENT+';background:var(--gkbg);color:var(--gktx);font:600 13px var(--ui);outline:none;'+
+            'backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);');
+          inp.placeholder='Text...';
+          document.body.appendChild(inp);
+          setTimeout(function(){inp.focus();},30);
+          function ende(nimm){var t=nimm?inp.value.trim():null;inp.remove();fertig(t);}
+          inp.addEventListener('keydown',function(ev){if(ev.key==='Enter')ende(true);if(ev.key==='Escape')ende(false);});
+          inp.addEventListener('blur',function(){ende(true);});
+        }
+        /* Werkzeugleiste rechts mittig AUF dem Foto */
+        var WIK={
+          linie:'<path d="M5 19 19 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+          frei:'<path d="M4 17c3-6 5 4 8-3s5-2 8-8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+          kreis:'<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+          ellipse:'<ellipse cx="12" cy="12" rx="8.5" ry="5.5" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+          rechteck:'<rect x="4.5" y="6.5" width="15" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+          text:'<path d="M5 6h14M12 6v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+          undo:'<path d="M8 6 4 10l4 4M4.5 10H15a5 5 0 0 1 0 10h-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+        };
+        var WNAME={linie:'Gerade Linie',frei:'Freihand',kreis:'Kreis',ellipse:'Ellipse',rechteck:'Rechteck / Quadrat',text:'Text',undo:'Letzten Schritt zur\u00fcck'};
+        var leiste=el('div',glasBox('right:10px;top:50%;transform:translateY(-50%);z-index:41;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:14px;'));
+        var wKnopf={};
+        ['linie','frei','kreis','ellipse','rechteck','text'].forEach(function(w){
+          var b=el('button','width:36px;height:36px;border-radius:10px;border:'+RAND+';cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);');
+          b.title=WNAME[w];b.innerHTML='<svg width="19" height="19" viewBox="0 0 24 24">'+WIK[w]+'</svg>';
+          b.addEventListener('click',function(ev){ev.stopPropagation();werk=w;malWerk();});
+          leiste.appendChild(b);wKnopf[w]=b;
+        });
+        function malWerk(){Object.keys(wKnopf).forEach(function(w){var an=w===werk;
+          wKnopf[w].style.background=an?AKZENT:'transparent';wKnopf[w].style.color=an?'#0d1216':'var(--gktx2)';});}
+        malWerk();
+        /* Farben */
+        var farbZeile=el('div','display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:2px;');
+        ['#E5484D','#F3B927','#3DD68C','#5FA8C9','#FFFFFF','#111111'].forEach(function(f){
+          var ch=el('div','width:16px;height:16px;border-radius:6px;cursor:pointer;justify-self:center;background:'+f+';border:2px solid '+(f===farbe?AKZENT:'transparent')+';box-shadow:0 0 0 1px rgba(128,128,128,.35);');
+          ch.addEventListener('click',function(ev){ev.stopPropagation();farbe=f;
+            farbZeile.childNodes.forEach(function(x){x.style.borderColor='transparent';});ch.style.borderColor=AKZENT;});
+          farbZeile.appendChild(ch);
+        });
+        leiste.appendChild(farbZeile);
+        /* Strichstaerken */
+        var dickZeile=el('div','display:flex;gap:6px;justify-content:center;align-items:center;padding-top:4px;');
+        [[2.5,5],[4,8],[7,12]].forEach(function(dd){
+          var p=el('div','width:16px;height:16px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;');
+          var punkt=el('div','width:'+dd[1]+'px;height:'+dd[1]+'px;border-radius:50%;background:var(--gktx2);');
+          p.appendChild(punkt);p.title='Strichst\u00e4rke';
+          p.addEventListener('click',function(ev){ev.stopPropagation();dicke=dd[0];
+            dickZeile.childNodes.forEach(function(x){x.firstChild.style.background='var(--gktx2)';});punkt.style.background=AKZENT;});
+          if(dd[0]===dicke)punkt.style.background=AKZENT;
+          dickZeile.appendChild(p);
+        });
+        leiste.appendChild(dickZeile);
+        /* Zurueck + Speichern */
+        var ub=el('button','width:36px;height:36px;border-radius:10px;border:'+RAND+';cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);margin-top:2px;');
+        ub.title=WNAME.undo;ub.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24">'+WIK.undo+'</svg>';
+        ub.addEventListener('click',function(ev){ev.stopPropagation();striche.pop();gespeichert=striche.length===0;malAlles();});
+        leiste.appendChild(ub);
+        var sb=el('button','padding:8px 6px;border-radius:10px;border:none;cursor:pointer;background:'+AKZENT+';color:#0d1216;font:700 12px var(--ui);');
+        sb.textContent='Speichern';
+        function speichern(){
+          laufend=null;malAlles();
+          halter.url=c.toDataURL('image/png');
+          if(thumb)thumb.src=halter.url;
+          gespeichert=true;
+        }
+        sb.addEventListener('click',function(ev){ev.stopPropagation();speichern();zu();});
+        leiste.appendChild(sb);
+        function zu(){gross.remove();gross=null;}
+        function vielleichtZu(){
+          if(gespeichert){zu();return;}
+          var frage=el('div',glasBox('left:50%;top:50%;transform:translate(-50%,-50%);z-index:42;padding:15px 17px;text-align:center;'));
+          frage.innerHTML='<div style="font:700 13.5px var(--ui);color:var(--gktx);margin-bottom:11px;">\u00c4nderungen speichern?</div>'+
+            '<div style="display:flex;gap:9px;justify-content:center;">'+
+            '<button data-ja style="all:unset;cursor:pointer;padding:7px 14px;border-radius:10px;background:'+AKZENT+';color:#0d1216;font:700 12px var(--ui);">Speichern</button>'+
+            '<button data-nein style="all:unset;cursor:pointer;padding:7px 14px;border-radius:10px;border:'+RAND+';color:var(--gktx2);font:600 12px var(--ui);">Verwerfen</button></div>';
+          frage.querySelector('[data-ja]').addEventListener('click',function(ev){ev.stopPropagation();speichern();zu();});
+          frage.querySelector('[data-nein]').addEventListener('click',function(ev){ev.stopPropagation();zu();});
+          gross.appendChild(frage);
+        }
+        var xk=el('div','position:absolute;top:14px;right:16px;z-index:41;cursor:pointer;color:#DDE6EC;font-size:24px;line-height:1;'+
+          'text-shadow:0 1px 6px rgba(0,0,0,.6);');
+        xk.textContent='\u00d7'; xk.title='Schlie\u00dfen';
+        xk.addEventListener('click',function(ev){ev.stopPropagation();vielleichtZu();});
+        gross.addEventListener('click',function(e){if(e.target===gross)vielleichtZu();});
+        innen.appendChild(c);
+        gross.appendChild(innen);
+        gross.appendChild(leiste);
+        gross.appendChild(xk);
         panel.appendChild(gross);
       }
       function knips(x0,y0,x1,y1){
@@ -5775,18 +6047,18 @@ var GOKOBA_LAYER_ACI = {
         var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
         c.getContext('2d').drawImage(renderer.domElement,ax*sx,ay*sy,b*sx,h*sy,0,0,c.width,c.height);
         fotoNr++;
-        var nr=fotoNr, url=c.toDataURL('image/png');
+        var nr=fotoNr, halter={url:c.toDataURL('image/png')};
         var chip=el('div','display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;cursor:zoom-in;'+
           'background:'+GLAS+';border:'+RAND+';backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
           'color:var(--gktx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.2);');
-        chip.innerHTML='<img src="'+url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
+        chip.innerHTML='<img src="'+halter.url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
           '<span>Foto '+nr+'</span>'+
           '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
           '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--gktx2);font-size:15px;">\u00d7</span>';
-        chip.addEventListener('click',function(){zeigGross(url);});
+        chip.addEventListener('click',function(){zeigGross(halter,chip.querySelector('img'));});
         chip.querySelector('[data-dl]').addEventListener('click',function(e){
           e.stopPropagation();
-          var a=document.createElement('a');a.href=url;a.download='gokoba-foto-'+nr+'.png';
+          var a=document.createElement('a');a.href=halter.url;a.download='gokoba-foto-'+nr+'.png';
           document.body.appendChild(a);a.click();a.remove();chip.remove();
         });
         chip.querySelector('[data-weg]').addEventListener('click',function(e){e.stopPropagation();chip.remove();});

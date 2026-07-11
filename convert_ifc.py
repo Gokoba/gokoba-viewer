@@ -288,6 +288,39 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
 
     bolzen_index = {e.id(): i for i, e in enumerate(f.by_type('IfcMechanicalFastener'))}
 
+    # ── Achsraster (IfcGrid) einsammeln: Linien + Beschriftung fuer den Viewer ──
+    achsen = []
+    try:
+        import ifcopenshell.util.placement as up
+        for grid in f.by_type('IfcGrid'):
+            try:
+                M = up.get_local_placement(grid.ObjectPlacement)
+            except Exception:
+                M = np.eye(4)
+            for richtung in (grid.UAxes or []), (grid.VAxes or []), (getattr(grid, 'WAxes', None) or []):
+                for ax in richtung:
+                    try:
+                        kurve = ax.AxisCurve
+                        pts = None
+                        if kurve.is_a('IfcPolyline'):
+                            pts = [p.Coordinates for p in kurve.Points]
+                        elif kurve.is_a('IfcTrimmedCurve') and kurve.BasisCurve.is_a('IfcLine'):
+                            continue  # getrimmte Linien sind selten; erstmal auslassen
+                        if not pts or len(pts) < 2:
+                            continue
+                        p1 = np.array(list(pts[0]) + [0.0] * (3 - len(pts[0])), dtype=float)
+                        p2 = np.array(list(pts[-1]) + [0.0] * (3 - len(pts[-1])), dtype=float)
+                        w1 = (M @ np.append(p1, 1.0))[:3]
+                        w2 = (M @ np.append(p2, 1.0))[:3]
+                        achsen.append({'tag': str(ax.AxisTag or ''),
+                                       'p': [round(float(x), 4) for x in list(w1) + list(w2)]})
+                    except Exception:
+                        continue
+    except Exception:
+        pass
+    if achsen:
+        print('* Achsraster: %d Achsen uebernommen' % len(achsen))
+
     s = ifcopenshell.geom.settings()
     s.set(s.USE_WORLD_COORDS, True)
     it = ifcopenshell.geom.iterator(s, f, 4)
@@ -352,9 +385,13 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                         if mm:
                             d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
                     if d['art'] in ('gitterrost', 'gitterroststufe') and d.get('masse'):
-                        # ★ Stufe vs. Rost an der Breite unterscheiden (Stufen sind max ~420 mm tief);
-                        #   die Namensliste aus dem Plugin macht das spaeter exakt
-                        d['art'] = 'gitterroststufe' if d['masse'][1] <= 420 else 'gitterrost'
+                        # ★ Flache Begleitteile (Stufenlaschen, Auflagerbleche) sind Bleche;
+                        #   echte Roste/Stufen sind 20 mm und hoeher. Danach: Stufe vs. Rost
+                        #   an der Breite (Stufen max ~420 mm tief). Namensliste verfeinert spaeter.
+                        if d['masse'][2] < 18:
+                            d['art'] = 'blech'
+                        else:
+                            d['art'] = 'gitterroststufe' if d['masse'][1] <= 420 else 'gitterrost'
                     if d['art'] in ('profil', 'kantprofil') and not d.get('laenge'):
                         mm = masse_aus_obb(m)
                         if mm:
@@ -395,6 +432,8 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
         raise SystemExit('Keine Bauteile in der IFC.')
     glb = basisname + '.glb'
     szene.export(glb)
+    if achsen:
+        teile['__achsen__'] = achsen
     return glb, teile
 
 VORLAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'viewer-template-ifc.html')
