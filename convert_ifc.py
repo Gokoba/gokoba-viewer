@@ -470,6 +470,7 @@ def main():
         ort_pkt = np.array([o[0] for o in namen_ort]) if namen_ort else None
         getroffen = 0
         for kn, d in teile.items():
+            if not isinstance(d, dict): continue
             e = None
             if d.get('ref') and d['ref'] in namen_pos:
                 e = namen_pos[d['ref']]
@@ -481,7 +482,8 @@ def main():
             if e:
                 name_deute(d, e['name']); getroffen += 1
         print('* Namensliste zugeordnet: %d Bauteile' % getroffen)
-    for d in teile.values(): d.pop('zentrum', None)
+    for d in teile.values():
+        if isinstance(d, dict): d.pop('zentrum', None)
     small = glb.replace('.glb', '_pack.glb')
     print('* Komprimierung (gltfpack -cc -kn -km -noq) ...')
     subprocess.run([args.gltfpack, '-i', glb, '-o', small, '-cc', '-kn', '-km', '-noq'], check=True)
