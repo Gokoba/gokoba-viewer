@@ -292,6 +292,11 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
     achsen = []
     try:
         import ifcopenshell.util.placement as up
+        import ifcopenshell.util.unit as uu
+        try:
+            einheit = float(uu.calculate_unit_scale(f))  # Rohkoordinaten -> Meter (AS: 0.001)
+        except Exception:
+            einheit = 1.0
         for grid in f.by_type('IfcGrid'):
             try:
                 M = up.get_local_placement(grid.ObjectPlacement)
@@ -310,8 +315,8 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             continue
                         p1 = np.array(list(pts[0]) + [0.0] * (3 - len(pts[0])), dtype=float)
                         p2 = np.array(list(pts[-1]) + [0.0] * (3 - len(pts[-1])), dtype=float)
-                        w1 = (M @ np.append(p1, 1.0))[:3]
-                        w2 = (M @ np.append(p2, 1.0))[:3]
+                        w1 = (M @ np.append(p1, 1.0))[:3] * einheit
+                        w2 = (M @ np.append(p2, 1.0))[:3] * einheit
                         achsen.append({'tag': str(ax.AxisTag or ''),
                                        'p': [round(float(x), 4) for x in list(w1) + list(w2)]})
                     except Exception:
@@ -392,6 +397,10 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             d['art'] = 'blech'
                         else:
                             d['art'] = 'gitterroststufe' if d['masse'][1] <= 420 else 'gitterrost'
+                        if d['art'] == 'gitterroststufe':
+                            # ★ Stufen messen ueber die Box 6 mm zu kurz (Einfassung):
+                            #   1194 -> 1200, 1154 -> 1160 (von Paul am echten Modell bestaetigt)
+                            d['masse'][0] = round(d['masse'][0] + 6)
                     if d['art'] in ('profil', 'kantprofil') and not d.get('laenge'):
                         mm = masse_aus_obb(m)
                         if mm:
