@@ -128,6 +128,55 @@ def masse_aus_obb(m):
         except Exception:
             return None
 
+def lese_namen(input_dir):
+    """namen.txt aus dem Plugin: pos|klasse|x|y|z|name (Koordinaten in mm)."""
+    import glob as _g
+    p = _g.glob(os.path.join(input_dir, 'namen.txt'))
+    je_pos = {}; je_ort = []
+    if not p: return je_pos, je_ort
+    try:
+        for zeile in open(p[0], encoding='utf-8', errors='replace'):
+            t = zeile.rstrip('\n').split('|')
+            if len(t) < 6: continue
+            pos, klasse, x, y, z, name = t[0], t[1], t[2], t[3], t[4], '|'.join(t[5:])
+            eintrag = {'klasse': klasse, 'name': name.strip()}
+            if pos: je_pos.setdefault(pos, eintrag)
+            if x and y and z:
+                try:
+                    je_ort.append((np.array([float(x), float(y), float(z)]) / 1000.0, eintrag))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return je_pos, je_ort
+
+def name_deute(d, name):
+    """Objektname in Kaertchenfelder uebersetzen."""
+    import re as _re
+    d['name'] = name
+    unten = name.lower()
+    if 'roststufe' in unten or 'stufe' in unten: d['art'] = 'gitterroststufe'
+    elif 'rost' in unten or 'grating' in unten: d['art'] = 'gitterrost'
+    if 'anker' in unten or 'hilti' in unten: d['art'] = 'anker'; d.setdefault('din', name)
+    if d['art'] in ('gitterrost', 'gitterroststufe'):
+        d['hersteller'] = name.split()[0] if name.split() else None
+        m = _re.search(r'(\d+\s*x\s*\d+)', name)
+        if m: d['masche'] = m.group(1).replace(' ', '')
+        # Tragstab: letztes AxB nach '-' (z.B. "- 60x4" oder "-40x3")
+        m = _re.search(r'-\s*(\d+(?:[\.,]\d+)?x\d+(?:[\.,]\d+)?)\s*(?:,|$)', name)
+        if m: d['tragstab'] = m.group(1)
+        # Abm.AxB: A ist die Tragstabrichtung -> Masse entsprechend ordnen
+        m = _re.search(r'Abm\.?\s*(\d+)\s*x\s*(\d+)', name, _re.I)
+        if m and d.get('masse'):
+            a, b = float(m.group(1)), float(m.group(2))
+            dicke = d['masse'][2]
+            d['masse'] = [round(a), round(b), dicke]
+        # Beim Rost/Stufe den Klarnamen nicht doppelt im Kopf fuehren
+        d['name'] = None
+        d['hersteller'] = d['hersteller'] if d['hersteller'] and d['hersteller'][0].isupper() else None
+        if d['hersteller'] and d['hersteller'].lower() in ('gitterrost', 'gitterroststufe', 'rost'):
+            d['hersteller'] = None
+
 def ist_em11(pfad):
     try:
         with open(pfad, 'rb') as f:
@@ -334,6 +383,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             d['gewicht'] = round(vol * DICHTE_STAHL, 1)
                     except Exception:
                         pass
+                    d['zentrum'] = [round(float(x), 4) for x in v.mean(axis=0)]
                     teile[kn] = d
                     n += 1
         except Exception:
@@ -372,7 +422,27 @@ def main():
     if not em:
         print('Hinweis: keine EM.11-Datei dabei - Gelaenderteile bekommen keine Positionsnummern.')
 
+    namen_pos, namen_ort = lese_namen(args.input_dir)
+    if namen_pos or namen_ort:
+        print('* Namensliste: %d Positionen, %d mit Koordinate' % (len(namen_pos), len(namen_ort)))
     glb, teile = wandle(ifc, em, args.ohne_schrauben, args.ohne_beton)
+    # ── Namensliste verheiraten: erst Position, dann Schwerpunkt (Sonderteile) ──
+    if namen_pos or namen_ort:
+        ort_pkt = np.array([o[0] for o in namen_ort]) if namen_ort else None
+        getroffen = 0
+        for kn, d in teile.items():
+            e = None
+            if d.get('ref') and d['ref'] in namen_pos:
+                e = namen_pos[d['ref']]
+            elif ort_pkt is not None and d.get('zentrum') is not None:
+                dist = np.linalg.norm(ort_pkt - np.array(d['zentrum']), axis=1)
+                k = int(dist.argmin())
+                if dist[k] < 0.01:
+                    e = namen_ort[k][1]
+            if e:
+                name_deute(d, e['name']); getroffen += 1
+        print('* Namensliste zugeordnet: %d Bauteile' % getroffen)
+    for d in teile.values(): d.pop('zentrum', None)
     small = glb.replace('.glb', '_pack.glb')
     print('* Komprimierung (gltfpack -cc -kn -km -noq) ...')
     subprocess.run([args.gltfpack, '-i', glb, '-o', small, '-cc', '-kn', '-km', '-noq'], check=True)
