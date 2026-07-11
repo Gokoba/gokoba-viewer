@@ -5421,62 +5421,304 @@ var GOKOBA_LAYER_ACI = {
     var dist=fitBoxToView(fitBox,fitDir,1.05);
     controls.minDistance=dist*0.04;controls.maxDistance=dist*3;
     /* ★ ==================================================================
-     * ★ BAUTEIL-INFO BEIM KLICK (nur IFC-Pipeline, GOKOBA_TEILE vorhanden)
-     * ★ Tipp/Klick auf ein Bauteil: Kaertchen mit Position, Profil, Laenge,
-     * ★ Gewicht, Material. Ziehen bleibt Drehen - nur kurze Tipps waehlen aus.
+     * ★ BAUTEIL-INFO + WERKZEUGPALETTE (nur IFC-Pipeline, GOKOBA_TEILE da)
+     * ★ Kaertchen je Bauteilart, Gewichtssummierer, Farbwerkzeug, Foto.
      * ★ ================================================================== */
     if(GOKOBA_TEILE){(function(){
-      var karte=document.createElement('div');karte.id='teilinfo';
-      karte.style.cssText='position:absolute;z-index:30;display:none;max-width:270px;padding:13px 15px;border-radius:12px;'+
-        'background:var(--bar);border:1px solid var(--barln);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);'+
-        'color:var(--tx);font:500 13px/1.55 var(--ui);box-shadow:0 10px 30px rgba(0,0,0,.35);pointer-events:auto;';
-      panel.appendChild(karte);
-      var ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
+      var AKZENT='#5FA8C9';
+      var GLAS='color-mix(in srgb, var(--bar) 62%, transparent)';
+      function mobil(){return panel.clientWidth<640;}
+      function el(tag,css,html){var e=document.createElement(tag);if(css)e.style.cssText=css;if(html!==undefined)e.innerHTML=html;return e;}
+
+      /* ── Formatierer ── */
+      function fmtLaenge(mm){if(mm==null)return null;return mm>=1000?(mm/1000).toFixed(2).replace('.',',')+' m':Math.round(mm)+' mm';}
+      function fmtKg(kg){if(kg==null)return null;return (kg>=100?Math.round(kg).toLocaleString('de-DE'):kg.toFixed(1).replace('.',','))+' kg';}
+      function rund(x){return Math.abs(x-Math.round(x))<0.05?String(Math.round(x)):String(x).replace('.',',');}
+      function fmtMass(ma){if(!ma)return null;return Math.round(ma[0])+' \u00d7 '+Math.round(ma[1])+' \u00d7 '+rund(ma[2])+' mm';}
+      var ART_TITEL={profil:'Profil',kantprofil:'Kantprofil',blech:'Blech',kantblech:'Kantblech',
+        gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
+        kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
+      function kopfVon(d){
+        var art=d.art||'sonstiges';
+        var name=null;
+        if(art==='profil'||art==='kantprofil')name=d.profil||null;
+        else if((art==='blech'||art==='kantblech')&&d.masse)name='BL '+rund(d.masse[2])+'x'+Math.round(d.masse[0])+'x'+Math.round(d.masse[1]);
+        var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
+        return t||'Bauteil';
+      }
+      function zeilenVon(d){
+        var art=d.art||'sonstiges', z=[];
+        function zeile(k,v){if(v)z.push([k,v]);}
+        if(art==='profil'||art==='kantprofil'){
+          zeile('Material',d.material); zeile('L\u00e4nge',fmtLaenge(d.laenge)); zeile('Gewicht',fmtKg(d.gewicht));
+        }else if(art==='blech'||art==='kantblech'){
+          zeile('Material',d.material); zeile('Ma\u00df',fmtMass(d.masse)); zeile('Gewicht',fmtKg(d.gewicht));
+        }else if(art==='gitterrost'||art==='gitterroststufe'){
+          zeile('Hersteller',d.hersteller); zeile('Masche',d.masche); zeile('Tragstab',d.tragstab);
+          zeile('Gr\u00f6\u00dfe',fmtMass(d.masse)); zeile('Gewicht',fmtKg(d.gewicht));
+        }else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){
+          zeile('Hersteller / DIN',d.din); zeile('Gr\u00f6\u00dfe',d.groesse); zeile('Material',d.material);
+        }else if(art==='sonderteil'){
+          zeile('Name',d.name); zeile('Hersteller',d.hersteller); zeile('Material',d.material);
+        }else{ zeile('Material',d.material); }
+        return z;
+      }
+
+      /* ── Info-Kaertchen ── */
+      var karte=el('div','position:absolute;z-index:30;display:none;max-width:280px;padding:13px 15px;border-radius:14px;'+
+        'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
+        'color:var(--tx);font:500 13px/1.6 var(--ui);box-shadow:0 12px 34px rgba(0,0,0,.30);');
+      karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
-      function fmtLaenge(mm){if(!mm&&mm!==0)return null;return mm>=1000?(mm/1000).toFixed(2).replace('.',',')+' m':Math.round(mm)+' mm';}
-      function fmtKg(kg){if(!kg&&kg!==0)return null;return (kg>=100?Math.round(kg):kg.toFixed(1).replace('.',','))+' kg';}
-      function zeige(o,d,x,y){
-        if(gewaehlt)gewaehlt.material=gewMat;
-        gewaehlt=o;gewMat=o.material;
+      function heben(o,farbe,staerke){
         var hi=(Array.isArray(o.material)?o.material[0]:o.material).clone();
-        hi.emissive=new THREE.Color(0x2E86AD);hi.emissiveIntensity=0.55;o.material=hi;
-        var kopf=(d.ref?('Pos '+d.ref):'')+(d.ref&&d.profil?' \u00b7 ':'')+(d.profil||'');
-        if(!kopf)kopf=(d.layer||'Bauteil').replace(/\?/g,'\u00e4').replace(/^AS_/,'');
-        var z=[];
-        if(d.material)z.push(['Material',d.material]);
-        var L=fmtLaenge(d.laenge);if(L)z.push(['L\u00e4nge',L]);
-        var G=fmtKg(d.gewicht);if(G)z.push(['Gewicht',G]);
-        if(d.familie)z.push(['Reihe',d.familie.replace(/\s+/g,' ')]);
+        hi.emissive=new THREE.Color(farbe===undefined?0x2E86AD:farbe);hi.emissiveIntensity=(staerke===undefined?0.55:staerke);
+        return hi;
+      }
+      function zeigeKarte(o,d,x,y){
+        if(gewaehlt)gewaehlt.material=gewMat;
+        gewaehlt=o;gewMat=o.material;o.material=heben(o);
+        var z=zeilenVon(d);
         karte.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+
-          '<strong style="font:700 14px/1.35 var(--ui);color:var(--tx);">'+kopf+'</strong>'+
+          '<strong style="font:700 14px/1.35 var(--ui);color:var(--tx);">'+kopfVon(d)+'</strong>'+
           '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span></div>'+
-          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:14px;"><span style="color:var(--tx3);">'+p[0]+'</span><span>'+p[1]+'</span></div>';}).join('');
+          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--tx3);">'+p[0]+'</span><span style="text-align:right;">'+p[1]+'</span></div>';}).join('');
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
-        if(pw<640){karte.style.left='50%';karte.style.transform='translateX(-50%)';karte.style.top='';karte.style.bottom='14px';}
+        if(mobil()){karte.style.left='50%';karte.style.transform='translateX(-50%)';karte.style.top='';karte.style.bottom='14px';}
         else{karte.style.transform='';karte.style.bottom='';
           karte.style.left=Math.max(10,Math.min(x+14,pw-kw-10))+'px';
           karte.style.top=Math.max(10,Math.min(y+14,ph-kh-10))+'px';}
       }
-      var tX=0,tY=0,tZeit=0;
-      cv.addEventListener('pointerdown',function(e){tX=e.clientX;tY=e.clientY;tZeit=e.timeStamp;});
+
+      /* ── Werkzeugpalette ── */
+      var aktiv=null;
+      var IK={
+        summe:'<path d="M12 3v3M5.5 6.5h13M8 6.5 5 12.2a3.4 3.4 0 0 0 6 0L8 6.5ZM16 6.5l-3 5.7a3.4 3.4 0 0 0 6 0l-3-5.7ZM9 20h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+        farbe:'<path d="M12 3.5s5.6 6.6 5.6 10.3a5.6 5.6 0 0 1-11.2 0C6.4 10.1 12 3.5 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+        foto:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7 10 4.5h4L15.5 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+      };
+      var TIP={summe:'Gewichte sammeln: Bauteile antippen, die Liste rechnet mit.',
+               farbe:'Farbe w\u00e4hlen, dann Bauteile antippen.',
+               foto:'Bereich mit gedr\u00fcckter Maustaste bzw. Finger aufziehen.'};
+      var palette=el('div','position:absolute;z-index:31;display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'+
+        'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
+        'box-shadow:0 10px 28px rgba(0,0,0,.28);');
+      palette.id='gkpalette'; panel.appendChild(palette);
+      function paletteLegen(){
+        if(mobil()){palette.style.right='10px';palette.style.top='';palette.style.bottom='14px';palette.style.transform='';}
+        else{palette.style.right='16px';palette.style.bottom='';palette.style.top='50%';palette.style.transform='translateY(-50%)';}
+      }
+      paletteLegen(); window.addEventListener('resize',paletteLegen);
+      var hinweis=el('div','position:absolute;z-index:31;display:none;padding:7px 12px;border-radius:999px;max-width:70%;'+
+        'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
+        'color:var(--tx);font:500 12px/1.4 var(--ui);');
+      hinweis.id='gkhinweis'; panel.appendChild(hinweis);
+      var hinweisT=null;
+      function sagHinweis(t){
+        hinweis.textContent=t; hinweis.style.display='block';
+        hinweis.style.left='50%';hinweis.style.transform='translateX(-50%)';hinweis.style.top='14px';
+        clearTimeout(hinweisT); hinweisT=setTimeout(function(){hinweis.style.display='none';},4500);
+      }
+      var knoepfe={};
+      ['summe','farbe','foto'].forEach(function(w){
+        var b=el('button','width:42px;height:42px;border-radius:12px;border:1px solid var(--barln);cursor:pointer;'+
+          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--tx3);transition:all .18s;');
+        b.id='gk_'+w; b.title=TIP[w];
+        b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24">'+IK[w]+'</svg>';
+        b.addEventListener('click',function(ev){ev.stopPropagation();schalte(aktiv===w?null:w);});
+        palette.appendChild(b); knoepfe[w]=b;
+      });
+      function malKnopf(){
+        ['summe','farbe','foto'].forEach(function(w){
+          var an=aktiv===w;
+          knoepfe[w].style.color=an?'#0d1216':'var(--tx3)';
+          knoepfe[w].style.background=an?AKZENT:'transparent';
+          knoepfe[w].style.borderColor=an?AKZENT:'var(--barln)';
+        });
+      }
+      function schalte(neu){
+        if(aktiv==='summe'&&neu!=='summe')summeEnde();
+        if(aktiv==='farbe'&&neu!=='farbe')farbeEnde();
+        if(aktiv==='foto'&&neu!=='foto')fotoEnde();
+        aktiv=neu; malKnopf(); abwaehlen();
+        if(neu==='summe')summeStart();
+        if(neu==='farbe')farbeStart();
+        if(neu==='foto')fotoStart();
+        if(neu)sagHinweis(TIP[neu]);
+      }
+
+      /* ── Werkzeug 1: Gewichtssummierer ── */
+      var summePanel=null, summeTeile={};
+      function summeStart(){
+        summeTeile={};
+        summePanel=el('div','position:absolute;z-index:31;left:12px;top:12px;width:min(262px,72vw);max-height:56%;display:flex;flex-direction:column;'+
+          'border-radius:14px;background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
+          'color:var(--tx);font:500 12.5px/1.5 var(--ui);box-shadow:0 12px 34px rgba(0,0,0,.28);overflow:hidden;');
+        summePanel.id='gksumme';
+        summePanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 13px 8px;">'+
+          '<strong style="font:700 13px var(--ui);">Gewicht sammeln</strong>'+
+          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
+          '<div data-liste style="overflow:auto;padding:0 13px;"></div>'+
+          '<div data-fuss style="padding:9px 13px 11px;border-top:1px solid var(--barln);display:flex;justify-content:space-between;">'+
+          '<span style="color:var(--tx3);">Gesamt</span><strong data-summe>0 kg</strong></div>';
+        summePanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        panel.appendChild(summePanel);
+      }
+      function summeRechne(){
+        if(!summePanel)return;
+        var li=summePanel.querySelector('[data-liste]'),ges=0,n=0;
+        li.innerHTML='';
+        Object.keys(summeTeile).forEach(function(k){
+          var e=summeTeile[k],d=e.d;
+          if(d.gewicht!=null){ges+=d.gewicht;}
+          n++;
+          var z=el('div','display:flex;justify-content:space-between;gap:10px;padding:3px 0;cursor:pointer;border-bottom:1px dashed color-mix(in srgb,var(--barln) 60%,transparent);');
+          z.innerHTML='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+kopfVon(d)+'</span>'+
+                      '<span style="white-space:nowrap;color:var(--tx3);">'+(d.gewicht!=null?fmtKg(d.gewicht):'\u2014')+'</span>';
+          z.title='Antippen zum Entfernen';
+          z.addEventListener('click',function(){e.o.material=e.mat;delete summeTeile[k];summeRechne();});
+          li.appendChild(z);
+        });
+        summePanel.querySelector('[data-summe]').textContent=(ges>=100?Math.round(ges).toLocaleString('de-DE'):ges.toFixed(1).replace('.',','))+' kg'+(n?' \u00b7 '+n+' Teile':'');
+      }
+      function summeKlick(o,d,name){
+        if(summeTeile[name]){o.material=summeTeile[name].mat;delete summeTeile[name];}
+        else{summeTeile[name]={o:o,mat:o.material,d:d};o.material=heben(o,0x2E86AD,0.7);}
+        summeRechne();
+      }
+      function summeEnde(){
+        Object.keys(summeTeile).forEach(function(k){summeTeile[k].o.material=summeTeile[k].mat;});
+        summeTeile={}; if(summePanel){summePanel.remove();summePanel=null;}
+      }
+
+      /* ── Werkzeug 2: Farbwerkzeug (RAL, nur optisch) ── */
+      var RAL=[['RAL 7016 Anthrazit','#383E42'],['RAL 9005 Tiefschwarz','#0A0A0D'],['RAL 9010 Reinwei\u00df','#F1ECE1'],
+        ['RAL 7035 Lichtgrau','#C5C7C4'],['RAL 9006 Wei\u00dfaluminium','#A1A1A0'],['RAL 3000 Feuerrot','#A72920'],
+        ['RAL 5010 Enzianblau','#0E294B'],['RAL 6005 Moosgr\u00fcn','#114232'],['RAL 1021 Rapsgelb','#F3B927'],
+        ['RAL 2004 Reinorange','#E75B12'],['RAL 8017 Schokobraun','#45322E'],['RAL 7042 Verkehrsgrau','#8D948D']];
+      var farbPanel=null, farbWahl='#383E42', bemalt={};
+      function farbeStart(){
+        farbPanel=el('div','position:absolute;z-index:31;left:12px;top:12px;width:min(228px,66vw);padding:11px 13px;border-radius:14px;'+
+          'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'+
+          'color:var(--tx);font:500 12.5px var(--ui);box-shadow:0 12px 34px rgba(0,0,0,.28);');
+        farbPanel.id='gkfarben';
+        var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">'+
+          '<strong style="font:700 13px var(--ui);">Farbe</strong>'+
+          '<span data-zu style="cursor:pointer;color:var(--tx3);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
+          '<div data-chips style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;"></div>'+
+          '<div data-reset style="margin-top:10px;color:var(--tx3);cursor:pointer;font-size:12px;">\u21ba Alle Farben zur\u00fccksetzen</div>';
+        farbPanel.innerHTML=h;
+        var chips=farbPanel.querySelector('[data-chips]');
+        RAL.forEach(function(r){
+          var c=el('div','width:26px;height:26px;border-radius:8px;cursor:pointer;background:'+r[1]+';border:2px solid transparent;');
+          c.title=r[0]; c.dataset.f=r[1];
+          c.addEventListener('click',function(){farbWahl=r[1];malChips();});
+          chips.appendChild(c);
+        });
+        function malChips(){chips.childNodes.forEach(function(c){c.style.borderColor=(c.dataset.f===farbWahl)?AKZENT:'transparent';});}
+        farbPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        farbPanel.querySelector('[data-reset]').addEventListener('click',function(){
+          Object.keys(bemalt).forEach(function(k){bemalt[k].o.material=bemalt[k].mat;});bemalt={};
+        });
+        malChips(); panel.appendChild(farbPanel);
+      }
+      function farbeKlick(o,name){
+        if(!bemalt[name])bemalt[name]={o:o,mat:o.material};
+        var nm=(Array.isArray(bemalt[name].mat)?bemalt[name].mat[0]:bemalt[name].mat).clone();
+        nm.color=new THREE.Color(farbWahl);
+        if(nm.map)nm.map=null;
+        o.material=nm;
+      }
+      function farbeEnde(){ if(farbPanel){farbPanel.remove();farbPanel=null;} } /* Anstriche bleiben, Reset per Knopf */
+
+      /* ── Werkzeug 3: Foto mit Bereichswahl ── */
+      var band=null,bandX=0,bandY=0,fotoLeiste=null,fotoNr=0;
+      function fotoStart(){controls.enabled=false;cv.style.cursor='crosshair';}
+      function fotoEnde(){controls.enabled=true;cv.style.cursor='';if(band){band.remove();band=null;}}
+      function fotoLeisteHol(){
+        if(!fotoLeiste){
+          fotoLeiste=el('div','position:absolute;z-index:32;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:9px;flex-wrap:wrap;justify-content:center;max-width:86%;');
+          fotoLeiste.id='gkfotos'; panel.appendChild(fotoLeiste);
+        }
+        return fotoLeiste;
+      }
+      function knips(x0,y0,x1,y1){
+        var r=cv.getBoundingClientRect();
+        var sx=renderer.domElement.width/r.width, sy=renderer.domElement.height/r.height;
+        var ax=Math.min(x0,x1)-r.left, ay=Math.min(y0,y1)-r.top;
+        var b=Math.abs(x1-x0), h=Math.abs(y1-y0);
+        if(b<24||h<24){sagHinweis('Bereich war zu klein, bitte gr\u00f6\u00dfer aufziehen.');return;}
+        renderer.render(scene,camera);
+        var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
+        c.getContext('2d').drawImage(renderer.domElement,ax*sx,ay*sy,b*sx,h*sy,0,0,c.width,c.height);
+        fotoNr++;
+        var nr=fotoNr;
+        var url=c.toDataURL('image/png');
+        var chip=el('div','display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;'+
+          'background:'+GLAS+';border:1px solid var(--barln);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
+          'color:var(--tx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.26);');
+        chip.innerHTML='<img src="'+url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
+          '<span>Foto '+nr+'</span>'+
+          '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
+          '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--tx3);font-size:15px;">\u00d7</span>';
+        chip.querySelector('[data-dl]').addEventListener('click',function(){
+          var a=document.createElement('a');a.href=url;a.download='gokoba-foto-'+nr+'.png';
+          document.body.appendChild(a);a.click();a.remove();
+          chip.remove();
+        });
+        chip.querySelector('[data-weg]').addEventListener('click',function(){chip.remove();});
+        fotoLeisteHol().appendChild(chip);
+      }
+      cv.addEventListener('pointerdown',function(e){
+        if(aktiv!=='foto')return;
+        bandX=e.clientX;bandY=e.clientY;
+        band=el('div','position:fixed;z-index:33;border:1.5px dashed '+AKZENT+';border-radius:6px;'+
+          'background:color-mix(in srgb,'+AKZENT+' 12%, transparent);pointer-events:none;');
+        band.style.left=bandX+'px';band.style.top=bandY+'px';band.style.width='0';band.style.height='0';
+        document.body.appendChild(band);
+        try{cv.setPointerCapture(e.pointerId);}catch(x){}
+      });
+      cv.addEventListener('pointermove',function(e){
+        if(aktiv!=='foto'||!band)return;
+        band.style.left=Math.min(bandX,e.clientX)+'px';band.style.top=Math.min(bandY,e.clientY)+'px';
+        band.style.width=Math.abs(e.clientX-bandX)+'px';band.style.height=Math.abs(e.clientY-bandY)+'px';
+        e.preventDefault();
+      });
       cv.addEventListener('pointerup',function(e){
-        /* ★ e.timeStamp misst die echte Tippdauer (Eingabezeit), nicht die Verarbeitung - wichtig auf schwachen Geraeten */
-        if(Math.abs(e.clientX-tX)>7||Math.abs(e.clientY-tY)>7||e.timeStamp-tZeit>600)return; /* ★ Ziehen = Drehen */
+        if(aktiv!=='foto'||!band)return;
+        var x1=e.clientX,y1=e.clientY;
+        band.remove();band=null;
+        knips(bandX,bandY,x1,y1);
+      });
+
+      /* ── Antippen: je nach Werkzeug ── */
+      var ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
+      function triff(e){
         var r=cv.getBoundingClientRect();
         ptr.x=((e.clientX-r.left)/r.width)*2-1;ptr.y=-((e.clientY-r.top)/r.height)*2+1;
         ray.setFromCamera(ptr,camera);
         var hits=ray.intersectObjects(meshes,false);
-        var o=null,d=null;
         for(var i=0;i<hits.length;i++){
           var k=hits[i].object,nm=null;
           while(k){if(k.name&&/^E\d+$/.test(k.name)){nm=k.name;break;}k=k.parent;}
-          if(nm&&GOKOBA_TEILE[nm]){o=hits[i].object;d=GOKOBA_TEILE[nm];break;}
+          if(nm&&GOKOBA_TEILE[nm])return {o:hits[i].object,d:GOKOBA_TEILE[nm],name:nm,x:e.clientX-r.left,y:e.clientY-r.top};
         }
-        if(o)zeige(o,d,e.clientX-r.left,e.clientY-r.top);
-        else abwaehlen();
+        return null;
+      }
+      var tX=0,tY=0,tZeit=0;
+      cv.addEventListener('pointerdown',function(e){if(aktiv==='foto')return;tX=e.clientX;tY=e.clientY;tZeit=e.timeStamp;});
+      cv.addEventListener('pointerup',function(e){
+        if(aktiv==='foto')return;
+        /* ★ e.timeStamp misst die echte Tippdauer, nicht die Verarbeitung */
+        if(Math.abs(e.clientX-tX)>7||Math.abs(e.clientY-tY)>7||e.timeStamp-tZeit>600)return;
+        var t=triff(e);
+        if(!t){if(!aktiv)abwaehlen();return;}
+        if(aktiv==='summe')summeKlick(t.o,t.d,t.name);
+        else if(aktiv==='farbe')farbeKlick(t.o,t.name);
+        else zeigeKarte(t.o,t.d,t.x,t.y);
       });
     })();}
     box.getSize(size);

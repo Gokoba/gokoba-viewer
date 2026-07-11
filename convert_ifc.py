@@ -94,6 +94,40 @@ SCHRAUBEN_TYPEN = ('IfcFastener', 'IfcMechanicalFastener')
 BETON_LAYER = ('AS_Betondecken', 'AS_Betonw?nde')
 
 
+# ★ Bauteilart aus Layer + IFC-Typ (Grundlage der Kaertchen-Gestaltung im Viewer)
+ART_LAYER = {
+    'AS_Tr?ger':'profil','AS_St?tze':'profil','AS_Stuetzen':'profil','AS_Treppe':'profil',
+    'AS_Pfette':'profil','AS_Verband':'profil','AS_Fachwerk':'profil',
+    'AS_Kanttr?ger':'kantprofil',
+    'AS_Bleche':'blech',
+    'AS_Gitterroste':'gitterrost','AS_Stufen':'gitterroststufe',
+    'AS_Schrauben':'schraube','AS_Kopfbolzen':'kopfbolzen','AS_Ankerk?fige':'anker',
+    'AS_Sonderteile':'sonderteil',
+    'AS_Betondecken':'beton','AS_Betonw?nde':'beton','AS_Betonfundament':'beton','AS_Betontr?ger':'beton',
+}
+def art_von(layer, typ):
+    a = ART_LAYER.get(layer)
+    if a: return a
+    if typ == 'IfcPlate': return 'blech'
+    if typ == 'IfcMechanicalFastener': return 'schraube'
+    if typ == 'IfcFastener': return 'schraube'
+    if typ == 'IfcBuildingElementProxy': return 'sonderteil'
+    if typ in ('IfcWall','IfcSlab'): return 'beton'
+    if typ in ('IfcBeam','IfcColumn','IfcMember'): return 'profil'
+    return 'sonstiges'
+
+def masse_aus_obb(m):
+    """Orientierte Box: liefert (a, b, dicke) in mm, absteigend sortiert, oder None."""
+    try:
+        ext = sorted(float(x) * 1000.0 for x in m.bounding_box_oriented.primitive.extents)
+        return (ext[2], ext[1], ext[0])
+    except Exception:
+        try:
+            ext = sorted(float(x) * 1000.0 for x in m.extents)
+            return (ext[2], ext[1], ext[0])
+        except Exception:
+            return None
+
 def ist_em11(pfad):
     try:
         with open(pfad, 'rb') as f:
@@ -222,6 +256,18 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                     d = daten_von(prod)
                     d['typ'] = typ
                     d['layer'] = L
+                    d['art'] = art_von(L, typ)
+                    # ★ Seitliche Laschen/Stäbe auf Rost-/Stufenlayern tragen ein Profil -> Profilkarte
+                    if d['art'] in ('gitterrost', 'gitterroststufe') and d.get('profil'):
+                        d['art'] = 'profil'
+                    if d['art'] in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
+                        mm = masse_aus_obb(m)
+                        if mm:
+                            d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+                    if d['art'] in ('profil', 'kantprofil') and not d.get('laenge'):
+                        mm = masse_aus_obb(m)
+                        if mm:
+                            d['laenge'] = round(mm[0], 1)   # laengste Kante = Stablaenge
                     if d['ref'] is None and em_zentren is not None:
                         z = v.mean(axis=0)
                         dist = np.linalg.norm(em_zentren[0] - z, axis=1)
