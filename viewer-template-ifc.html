@@ -5426,6 +5426,8 @@ var GOKOBA_LAYER_ACI = {
      * ★ ================================================================== */
     if(GOKOBA_TEILE){(function(){
       var AKZENT='#5FA8C9';
+      /* ★ Auf Touch-Geraeten dreht das Modell gemaechlicher - am Handy fliegt es sonst weg */
+      try{if(window.matchMedia&&matchMedia('(pointer: coarse)').matches)controls.rotateSpeed=0.55;}catch(x){}
       /* ★ Eigene Werkzeug-Farbvariablen: schalten mit dem Hell/Dunkel-Knopf automatisch um */
       var st=document.createElement('style');
       st.textContent=':root{--gkbg:rgba(11,14,18,.68);--gkln:rgba(255,255,255,.16);--gktx:#EDF3F6;--gktx2:#AAB8C2;}'+
