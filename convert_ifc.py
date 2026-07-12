@@ -138,11 +138,12 @@ def lese_namen(input_dir):
         for zeile in open(p[0], encoding='utf-8', errors='replace'):
             t = zeile.rstrip('\n').split('|')
             if len(t) < 6: continue
-            pos, klasse, x, y, z, name = t[0], t[1], t[2], t[3], t[4], '|'.join(t[5:])
+            pos, klasse, x, y, z, name = t[0], t[1], t[2], t[3], t[4], t[5]
+            attr1 = t[6].strip() if len(t) > 6 else ''
             if klasse == 'Baugruppe':
                 if pos and name.strip(): je_bg.setdefault(pos, name.strip())
                 continue
-            eintrag = {'klasse': klasse, 'name': name.strip()}
+            eintrag = {'klasse': klasse, 'name': name.strip(), 'attr1': attr1}
             if pos: je_pos.setdefault(pos, eintrag)
             if x and y and z:
                 try:
@@ -154,20 +155,27 @@ def lese_namen(input_dir):
     return je_pos, je_ort, je_bg
 
 def name_deute(d, name):
-    """Objektname in Kaertchenfelder uebersetzen."""
+    """Objektname in Kaertchenfelder uebersetzen (x- und /-Schreibweisen)."""
     import re as _re
     d['name'] = name
+    d['roh'] = name  # Diagnose: kompletter Objektname bleibt unsichtbar in den Daten
     unten = name.lower()
     if 'roststufe' in unten or 'stufe' in unten: d['art'] = 'gitterroststufe'
     elif 'rost' in unten or 'grating' in unten: d['art'] = 'gitterrost'
     if 'anker' in unten or 'hilti' in unten: d['art'] = 'anker'; d.setdefault('din', name)
     if d['art'] in ('gitterrost', 'gitterroststufe'):
         d['hersteller'] = name.split()[0] if name.split() else None
-        m = _re.search(r'(\d+\s*x\s*\d+)', name)
-        if m: d['masche'] = m.group(1).replace(' ', '')
-        # Tragstab: letztes AxB nach '-' (z.B. "- 60x4" oder "-40x3")
-        m = _re.search(r'-\s*(\d+(?:[\.,]\d+)?x\d+(?:[\.,]\d+)?)\s*(?:,|$)', name)
-        if m: d['tragstab'] = m.group(1)
+        paare = _re.findall(r'(\d+(?:[\.,]\d+)?)\s*[x/]\s*(\d+(?:[\.,]\d+)?)', name)
+        if paare:
+            d['masche'] = paare[0][0] + 'x' + paare[0][1]
+        # Tragstab: bevorzugt das Paar nach '-' oder hinter MW/TS-Kuerzeln, sonst das zweite Paar
+        m = _re.search(r'(?:-|TS\s*|Tragstab\s*)\s*(\d+(?:[\.,]\d+)?)\s*[x/]\s*(\d+(?:[\.,]\d+)?)', name, _re.I)
+        if m:
+            d['tragstab'] = m.group(1) + 'x' + m.group(2)
+        elif len(paare) > 1:
+            d['tragstab'] = paare[1][0] + 'x' + paare[1][1]
+        if d.get('masche') and d.get('tragstab') == d.get('masche'):
+            d['tragstab'] = None
         # Abm.AxB: A ist die Tragstabrichtung -> Masse entsprechend ordnen
         m = _re.search(r'Abm\.?\s*(\d+)\s*x\s*(\d+)', name, _re.I)
         if m and d.get('masse'):
@@ -523,6 +531,7 @@ def main():
                     e = namen_ort[k][1]
             if e:
                 name_deute(d, e['name']); getroffen += 1
+                if e.get('attr1'): d['bezeichnung'] = e['attr1']
             if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
                 d['bgname'] = namen_bg[d['bgnr']]
         print('* Namensliste zugeordnet: %d Bauteile' % getroffen)

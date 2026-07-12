@@ -62,7 +62,7 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 #cv:active{cursor:grabbing;}
 .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5E7080;font-size:13px;letter-spacing:.02em;pointer-events:none;transition:opacity .4s;}
 .foot-inner{width:100%;max-width:1080px;display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.82rem;flex-wrap:wrap;}
-.cpr{color:var(--ftx2);font-size:.72rem;}
+.cpr{color:var(--ftx2);font-size:.72rem;} .cpr a{font-size:.94em;} @media (pointer:coarse){.hint{display:none;} .cpr{font-size:.66rem;}}
 .cpr a{color:var(--ftx2);text-decoration:none;border-bottom:1px solid transparent;transition:color .18s,border-color .18s;}
 .cpr a:hover{color:var(--steel-lt);border-color:var(--steel-lt);}
 .hint{font-size:.6rem;color:var(--ftx2);opacity:.85;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;}
@@ -154,8 +154,8 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
   </div></header>
   <div id="vpanel"><canvas id="cv"></canvas><div class="loading" id="loading">Modell wird geladen ...</div><div class="ralpanel" id="ralpanel"><div class="ralhead"><span class="rallbl">Farbe für</span><button class="ralmode active" data-grp="stahlbau">Stahlbau</button><button class="ralmode" data-grp="gelaender">Geländer</button><span class="ralfinsep"></span><button class="raltyp active" data-typ="ral">RAL</button><button class="raltyp" data-typ="normal">Normal</button><span class="ralfinsep"></span><button class="ralfin" data-fin="verzinkt">Verzinkt</button><button class="ralfin" data-fin="edelstahl">Edelstahl</button><button class="ralfin" id="raldefault" style="margin-left:auto" title="Auf meine Ausgangsfarben zuruecksetzen">Standard</button><button class="ralclose" id="ralclose" style="margin-left:6px" aria-label="einklappen">&#9652;</button></div><div class="ralgrid"><div class="ralfam"><span class="ralfl">Gelb</span><button class="ralc" data-h="#CDBA88" title="RAL 1000 Gruenbeige" style="background:#CDBA88"></button><button class="ralc" data-h="#D0B084" title="RAL 1001 Beige" style="background:#D0B084"></button><button class="ralc" data-h="#D2AA6D" title="RAL 1002 Sandgelb" style="background:#D2AA6D"></button><button class="ralc" data-h="#F9A800" title="RAL 1003 Signalgelb" style="background:#F9A800"></button><button class="ralc" data-h="#E49E00" title="RAL 1004 Goldgelb" style="background:#E49E00"></button><button class="ralc" data-h="#CB8E00" title="RAL 1005 Honiggelb" style="background:#CB8E00"></button><button class="ralc" data-h="#E29000" title="RAL 1006 Maisgelb" style="background:#E29000"></button><button class="ralc" data-h="#E88C00" title="RAL 1007 Narzissengelb" style="background:#E88C00"></button><button class="ralc" data-h="#AF804F" title="RAL 1011 Braunbeige" style="background:#AF804F"></button><button class="ralc" data-h="#DDAF27" title="RAL 1012 Zitronengelb" style="background:#DDAF27"></button><button class="ralc" data-h="#E3D9C6" title="RAL 1013 Perlweiss" style="background:#E3D9C6"></button><button class="ralc" data-h="#DDC49A" title="RAL 1014 Elfenbein" style="background:#DDC49A"></button><button class="ralc" data-h="#E6D2B5" title="RAL 1015 Hellelfenbein" style="background:#E6D2B5"></button><button class="ralc" data-h="#F1DD38" title="RAL 1016 Schwefelgelb" style="background:#F1DD38"></button><button class="ralc" data-h="#F6A950" title="RAL 1017 Safrangelb" style="background:#F6A950"></button><button class="ralc" data-h="#FACA30" title="RAL 1018 Zinkgelb" style="background:#FACA30"></button><button class="ralc" data-h="#A48F7A" title="RAL 1019 Graubeige" style="background:#A48F7A"></button><button class="ralc" data-h="#A08F65" title="RAL 1020 Olivgelb" style="background:#A08F65"></button><button class="ralc" data-h="#F6B600" title="RAL 1021 Rapsgelb" style="background:#F6B600"></button><button class="ralc" data-h="#F7B500" title="RAL 1023 Verkehrsgelb" style="background:#F7B500"></button><button class="ralc" data-h="#BA8F4C" title="RAL 1024 Ockergelb" style="background:#BA8F4C"></button><button class="ralc" data-h="#FFFF00" title="RAL 1026 Leuchtgelb" style="background:#FFFF00"></button><button class="ralc" data-h="#A77F0E" title="RAL 1027 Curry" style="background:#A77F0E"></button><button class="ralc" data-h="#FF9B00" title="RAL 1028 Melonengelb" style="background:#FF9B00"></button><button class="ralc" data-h="#E2A300" title="RAL 1032 Ginstergelb" style="background:#E2A300"></button><button class="ralc" data-h="#F99A1C" title="RAL 1033 Dahliengelb" style="background:#F99A1C"></button><button class="ralc" data-h="#EB9C52" title="RAL 1034 Pastellgelb" style="background:#EB9C52"></button><button class="ralc" data-h="#908370" title="RAL 1035 Perlbeige" style="background:#908370"></button><button class="ralc" data-h="#806440" title="RAL 1036 Perlgold" style="background:#806440"></button><button class="ralc" data-h="#F09200" title="RAL 1037 Sonnengelb" style="background:#F09200"></button></div><div class="ralfam"><span class="ralfl">Orange</span><button class="ralc" data-h="#ED760E" title="RAL 2000 Gelborange" style="background:#ED760E"></button><button class="ralc" data-h="#BE4E20" title="RAL 2001 Rotorange" style="background:#BE4E20"></button><button class="ralc" data-h="#C63927" title="RAL 2002 Blutorange" style="background:#C63927"></button><button class="ralc" data-h="#FA842B" title="RAL 2003 Pastellorange" style="background:#FA842B"></button><button class="ralc" data-h="#E75B12" title="RAL 2004 Reinorange" style="background:#E75B12"></button><button class="ralc" data-h="#FF2300" title="RAL 2005 Leuchtorange" style="background:#FF2300"></button><button class="ralc" data-h="#FFA420" title="RAL 2007 Leuchthellorange" style="background:#FFA420"></button><button class="ralc" data-h="#F3752C" title="RAL 2008 Hellrotorange" style="background:#F3752C"></button><button class="ralc" data-h="#E15501" title="RAL 2009 Verkehrsorange" style="background:#E15501"></button><button class="ralc" data-h="#D4652F" title="RAL 2010 Signalorange" style="background:#D4652F"></button><button class="ralc" data-h="#EC7C25" title="RAL 2011 Tieforange" style="background:#EC7C25"></button><button class="ralc" data-h="#DB6A50" title="RAL 2012 Lachsorange" style="background:#DB6A50"></button><button class="ralc" data-h="#954527" title="RAL 2013 Perlorange" style="background:#954527"></button></div><div class="ralfam"><span class="ralfl">Rot</span><button class="ralc" data-h="#AF2B1E" title="RAL 3000 Feuerrot" style="background:#AF2B1E"></button><button class="ralc" data-h="#A52019" title="RAL 3001 Signalrot" style="background:#A52019"></button><button class="ralc" data-h="#A2231D" title="RAL 3002 Karminrot" style="background:#A2231D"></button><button class="ralc" data-h="#9B111E" title="RAL 3003 Rubinrot" style="background:#9B111E"></button><button class="ralc" data-h="#75151E" title="RAL 3004 Purpurrot" style="background:#75151E"></button><button class="ralc" data-h="#5E2028" title="RAL 3005 Weinrot" style="background:#5E2028"></button><button class="ralc" data-h="#412227" title="RAL 3007 Schwarzrot" style="background:#412227"></button><button class="ralc" data-h="#642424" title="RAL 3009 Oxidrot" style="background:#642424"></button><button class="ralc" data-h="#781F19" title="RAL 3011 Braunrot" style="background:#781F19"></button><button class="ralc" data-h="#C1876B" title="RAL 3012 Beigerot" style="background:#C1876B"></button><button class="ralc" data-h="#A12312" title="RAL 3013 Tomatenrot" style="background:#A12312"></button><button class="ralc" data-h="#D36E70" title="RAL 3014 Altrosa" style="background:#D36E70"></button><button class="ralc" data-h="#EA899A" title="RAL 3015 Hellrosa" style="background:#EA899A"></button><button class="ralc" data-h="#B32821" title="RAL 3016 Korallenrot" style="background:#B32821"></button><button class="ralc" data-h="#E63244" title="RAL 3017 Rose" style="background:#E63244"></button><button class="ralc" data-h="#D53032" title="RAL 3018 Erdbeerrot" style="background:#D53032"></button><button class="ralc" data-h="#CC0605" title="RAL 3020 Verkehrsrot" style="background:#CC0605"></button><button class="ralc" data-h="#D95030" title="RAL 3022 Lachsrot" style="background:#D95030"></button><button class="ralc" data-h="#F80000" title="RAL 3024 Leuchtrot" style="background:#F80000"></button><button class="ralc" data-h="#FE0000" title="RAL 3026 Leuchthellrot" style="background:#FE0000"></button><button class="ralc" data-h="#C51D34" title="RAL 3027 Himbeerrot" style="background:#C51D34"></button><button class="ralc" data-h="#CB3234" title="RAL 3028 Reinrot" style="background:#CB3234"></button><button class="ralc" data-h="#B32428" title="RAL 3031 Orientrot" style="background:#B32428"></button><button class="ralc" data-h="#721422" title="RAL 3032 Perlrubinrot" style="background:#721422"></button><button class="ralc" data-h="#B44C43" title="RAL 3033 Perlrosa" style="background:#B44C43"></button></div><div class="ralfam"><span class="ralfl">Violett</span><button class="ralc" data-h="#6D3F5B" title="RAL 4001 Rotlila" style="background:#6D3F5B"></button><button class="ralc" data-h="#922B3E" title="RAL 4002 Rotviolett" style="background:#922B3E"></button><button class="ralc" data-h="#DE4C8A" title="RAL 4003 Erikaviolett" style="background:#DE4C8A"></button><button class="ralc" data-h="#641C34" title="RAL 4004 Bordeauxviolett" style="background:#641C34"></button><button class="ralc" data-h="#6C4675" title="RAL 4005 Blaulila" style="background:#6C4675"></button><button class="ralc" data-h="#A03472" title="RAL 4006 Verkehrspurpur" style="background:#A03472"></button><button class="ralc" data-h="#4A192C" title="RAL 4007 Purpurviolett" style="background:#4A192C"></button><button class="ralc" data-h="#924E7D" title="RAL 4008 Signalviolett" style="background:#924E7D"></button><button class="ralc" data-h="#A18594" title="RAL 4009 Pastellviolett" style="background:#A18594"></button><button class="ralc" data-h="#CF3476" title="RAL 4010 Telemagenta" style="background:#CF3476"></button><button class="ralc" data-h="#8673A1" title="RAL 4011 Perlviolett" style="background:#8673A1"></button><button class="ralc" data-h="#6C6874" title="RAL 4012 Perlbrombeer" style="background:#6C6874"></button></div><div class="ralfam"><span class="ralfl">Blau</span><button class="ralc" data-h="#314F6F" title="RAL 5000 Violettblau" style="background:#314F6F"></button><button class="ralc" data-h="#0F3F4B" title="RAL 5001 Gruenblau" style="background:#0F3F4B"></button><button class="ralc" data-h="#20214F" title="RAL 5002 Ultramarinblau" style="background:#20214F"></button><button class="ralc" data-h="#1D1E33" title="RAL 5003 Saphirblau" style="background:#1D1E33"></button><button class="ralc" data-h="#18171C" title="RAL 5004 Schwarzblau" style="background:#18171C"></button><button class="ralc" data-h="#1E2460" title="RAL 5005 Signalblau" style="background:#1E2460"></button><button class="ralc" data-h="#3E5F8A" title="RAL 5007 Brillantblau" style="background:#3E5F8A"></button><button class="ralc" data-h="#26252D" title="RAL 5008 Graublau" style="background:#26252D"></button><button class="ralc" data-h="#025669" title="RAL 5009 Azurblau" style="background:#025669"></button><button class="ralc" data-h="#0E294B" title="RAL 5010 Enzianblau" style="background:#0E294B"></button><button class="ralc" data-h="#232C3F" title="RAL 5011 Stahlblau" style="background:#232C3F"></button><button class="ralc" data-h="#3B83BD" title="RAL 5012 Lichtblau" style="background:#3B83BD"></button><button class="ralc" data-h="#1E213D" title="RAL 5013 Kobaltblau" style="background:#1E213D"></button><button class="ralc" data-h="#606E8C" title="RAL 5014 Taubenblau" style="background:#606E8C"></button><button class="ralc" data-h="#2874B2" title="RAL 5015 Himmelblau" style="background:#2874B2"></button><button class="ralc" data-h="#063971" title="RAL 5017 Verkehrsblau" style="background:#063971"></button><button class="ralc" data-h="#3F888F" title="RAL 5018 Tuerkisblau" style="background:#3F888F"></button><button class="ralc" data-h="#1B5583" title="RAL 5019 Capriblau" style="background:#1B5583"></button><button class="ralc" data-h="#1D4E5B" title="RAL 5020 Ozeanblau" style="background:#1D4E5B"></button><button class="ralc" data-h="#0B5563" title="RAL 5021 Wasserblau" style="background:#0B5563"></button><button class="ralc" data-h="#20214C" title="RAL 5022 Nachtblau" style="background:#20214C"></button><button class="ralc" data-h="#41678D" title="RAL 5023 Fernblau" style="background:#41678D"></button><button class="ralc" data-h="#6A93B0" title="RAL 5024 Pastellblau" style="background:#6A93B0"></button></div><div class="ralfam"><span class="ralfl">Gruen</span><button class="ralc" data-h="#327662" title="RAL 6000 Patinagruen" style="background:#327662"></button><button class="ralc" data-h="#28713E" title="RAL 6001 Smaragdgruen" style="background:#28713E"></button><button class="ralc" data-h="#276235" title="RAL 6002 Laubgruen" style="background:#276235"></button><button class="ralc" data-h="#4B573E" title="RAL 6003 Olivgruen" style="background:#4B573E"></button><button class="ralc" data-h="#0E4243" title="RAL 6004 Blaugruen" style="background:#0E4243"></button><button class="ralc" data-h="#0F4336" title="RAL 6005 Moosgruen" style="background:#0F4336"></button><button class="ralc" data-h="#40433B" title="RAL 6006 Grauoliv" style="background:#40433B"></button><button class="ralc" data-h="#2C3222" title="RAL 6007 Flaschengruen" style="background:#2C3222"></button><button class="ralc" data-h="#3B3327" title="RAL 6008 Braungruen" style="background:#3B3327"></button><button class="ralc" data-h="#27352A" title="RAL 6009 Tannengruen" style="background:#27352A"></button><button class="ralc" data-h="#4D6F39" title="RAL 6010 Grasgruen" style="background:#4D6F39"></button><button class="ralc" data-h="#6C7C59" title="RAL 6011 Resedagruen" style="background:#6C7C59"></button><button class="ralc" data-h="#303D3A" title="RAL 6012 Schwarzgruen" style="background:#303D3A"></button><button class="ralc" data-h="#7D765A" title="RAL 6013 Schilfgruen" style="background:#7D765A"></button><button class="ralc" data-h="#474135" title="RAL 6014 Gelboliv" style="background:#474135"></button><button class="ralc" data-h="#3D3D36" title="RAL 6015 Schwarzoliv" style="background:#3D3D36"></button><button class="ralc" data-h="#026A52" title="RAL 6016 Tuerkisgruen" style="background:#026A52"></button><button class="ralc" data-h="#468641" title="RAL 6017 Maigruen" style="background:#468641"></button><button class="ralc" data-h="#48A43F" title="RAL 6018 Gelbgruen" style="background:#48A43F"></button><button class="ralc" data-h="#B7D9B1" title="RAL 6019 Weissgruen" style="background:#B7D9B1"></button><button class="ralc" data-h="#354733" title="RAL 6020 Chromoxidgruen" style="background:#354733"></button><button class="ralc" data-h="#86A47C" title="RAL 6021 Blassgruen" style="background:#86A47C"></button><button class="ralc" data-h="#3E3C32" title="RAL 6022 Braunoliv" style="background:#3E3C32"></button><button class="ralc" data-h="#008351" title="RAL 6024 Verkehrsgruen" style="background:#008351"></button><button class="ralc" data-h="#5E6E3B" title="RAL 6025 Farngruen" style="background:#5E6E3B"></button><button class="ralc" data-h="#005D52" title="RAL 6026 Opalgruen" style="background:#005D52"></button><button class="ralc" data-h="#7EBAB5" title="RAL 6027 Lichtgruen" style="background:#7EBAB5"></button><button class="ralc" data-h="#2C5545" title="RAL 6028 Kieferngruen" style="background:#2C5545"></button><button class="ralc" data-h="#007243" title="RAL 6029 Minzgruen" style="background:#007243"></button><button class="ralc" data-h="#0F8558" title="RAL 6032 Signalgruen" style="background:#0F8558"></button><button class="ralc" data-h="#478A84" title="RAL 6033 Minttuerkis" style="background:#478A84"></button><button class="ralc" data-h="#7FB0B2" title="RAL 6034 Pastelltuerkis" style="background:#7FB0B2"></button><button class="ralc" data-h="#1B542C" title="RAL 6035 Perlgruen" style="background:#1B542C"></button><button class="ralc" data-h="#005D4C" title="RAL 6036 Perlopalgruen" style="background:#005D4C"></button><button class="ralc" data-h="#008B29" title="RAL 6037 Reingruen" style="background:#008B29"></button><button class="ralc" data-h="#00BB2D" title="RAL 6038 Leuchtgruen" style="background:#00BB2D"></button></div><div class="ralfam"><span class="ralfl">Grau</span><button class="ralc" data-h="#7E8B92" title="RAL 7000 Fehgrau" style="background:#7E8B92"></button><button class="ralc" data-h="#8F999F" title="RAL 7001 Silbergrau" style="background:#8F999F"></button><button class="ralc" data-h="#817F68" title="RAL 7002 Olivgrau" style="background:#817F68"></button><button class="ralc" data-h="#7A7B6D" title="RAL 7003 Moosgrau" style="background:#7A7B6D"></button><button class="ralc" data-h="#9EA0A1" title="RAL 7004 Signalgrau" style="background:#9EA0A1"></button><button class="ralc" data-h="#6B716F" title="RAL 7005 Mausgrau" style="background:#6B716F"></button><button class="ralc" data-h="#756F61" title="RAL 7006 Beigegrau" style="background:#756F61"></button><button class="ralc" data-h="#6D5F3C" title="RAL 7008 Khakigrau" style="background:#6D5F3C"></button><button class="ralc" data-h="#60605A" title="RAL 7009 Gruengrau" style="background:#60605A"></button><button class="ralc" data-h="#575D57" title="RAL 7010 Zeltgrau" style="background:#575D57"></button><button class="ralc" data-h="#52595D" title="RAL 7011 Eisengrau" style="background:#52595D"></button><button class="ralc" data-h="#575B5A" title="RAL 7012 Basaltgrau" style="background:#575B5A"></button><button class="ralc" data-h="#55554A" title="RAL 7013 Braungrau" style="background:#55554A"></button><button class="ralc" data-h="#51565C" title="RAL 7015 Schiefergrau" style="background:#51565C"></button><button class="ralc" data-h="#383E42" title="RAL 7016 Anthrazitgrau" style="background:#383E42"></button><button class="ralc" data-h="#2F3234" title="RAL 7021 Schwarzgrau" style="background:#2F3234"></button><button class="ralc" data-h="#4C4A44" title="RAL 7022 Umbragrau" style="background:#4C4A44"></button><button class="ralc" data-h="#808179" title="RAL 7023 Betongrau" style="background:#808179"></button><button class="ralc" data-h="#45494E" title="RAL 7024 Graphitgrau" style="background:#45494E"></button><button class="ralc" data-h="#374547" title="RAL 7026 Granitgrau" style="background:#374547"></button><button class="ralc" data-h="#939183" title="RAL 7030 Steingrau" style="background:#939183"></button><button class="ralc" data-h="#5B6771" title="RAL 7031 Blaugrau" style="background:#5B6771"></button><button class="ralc" data-h="#B9B9A8" title="RAL 7032 Kieselgrau" style="background:#B9B9A8"></button><button class="ralc" data-h="#818979" title="RAL 7033 Zementgrau" style="background:#818979"></button><button class="ralc" data-h="#939176" title="RAL 7034 Gelbgrau" style="background:#939176"></button><button class="ralc" data-h="#D7D7D7" title="RAL 7035 Lichtgrau" style="background:#D7D7D7"></button><button class="ralc" data-h="#9C9C9C" title="RAL 7036 Platingrau" style="background:#9C9C9C"></button><button class="ralc" data-h="#7C7F7E" title="RAL 7037 Staubgrau" style="background:#7C7F7E"></button><button class="ralc" data-h="#B4B8B0" title="RAL 7038 Achatgrau" style="background:#B4B8B0"></button><button class="ralc" data-h="#6B695F" title="RAL 7039 Quarzgrau" style="background:#6B695F"></button><button class="ralc" data-h="#9DA1AA" title="RAL 7040 Fenstergrau" style="background:#9DA1AA"></button><button class="ralc" data-h="#8F9695" title="RAL 7042 Verkehrsgrau A" style="background:#8F9695"></button><button class="ralc" data-h="#4E5452" title="RAL 7043 Verkehrsgrau B" style="background:#4E5452"></button><button class="ralc" data-h="#BDBDB2" title="RAL 7044 Seidengrau" style="background:#BDBDB2"></button><button class="ralc" data-h="#8D9295" title="RAL 7045 Telegrau 1" style="background:#8D9295"></button><button class="ralc" data-h="#82898F" title="RAL 7046 Telegrau 2" style="background:#82898F"></button><button class="ralc" data-h="#CFD0CF" title="RAL 7047 Telegrau 4" style="background:#CFD0CF"></button><button class="ralc" data-h="#888175" title="RAL 7048 Perlmausgrau" style="background:#888175"></button></div><div class="ralfam"><span class="ralfl">Braun</span><button class="ralc" data-h="#89693F" title="RAL 8000 Gruenbraun" style="background:#89693F"></button><button class="ralc" data-h="#9D622B" title="RAL 8001 Ockerbraun" style="background:#9D622B"></button><button class="ralc" data-h="#794D3E" title="RAL 8002 Signalbraun" style="background:#794D3E"></button><button class="ralc" data-h="#7E4B26" title="RAL 8003 Lehmbraun" style="background:#7E4B26"></button><button class="ralc" data-h="#8E402A" title="RAL 8004 Kupferbraun" style="background:#8E402A"></button><button class="ralc" data-h="#6F4F28" title="RAL 8007 Rehbraun" style="background:#6F4F28"></button><button class="ralc" data-h="#6F4F28" title="RAL 8008 Olivbraun" style="background:#6F4F28"></button><button class="ralc" data-h="#5A3A29" title="RAL 8011 Nussbraun" style="background:#5A3A29"></button><button class="ralc" data-h="#6C3B2A" title="RAL 8012 Rotbraun" style="background:#6C3B2A"></button><button class="ralc" data-h="#49392D" title="RAL 8014 Sepiabraun" style="background:#49392D"></button><button class="ralc" data-h="#633A34" title="RAL 8015 Kastanienbraun" style="background:#633A34"></button><button class="ralc" data-h="#4C2F26" title="RAL 8016 Mahagonibraun" style="background:#4C2F26"></button><button class="ralc" data-h="#44322D" title="RAL 8017 Schokobraun" style="background:#44322D"></button><button class="ralc" data-h="#3F3A3A" title="RAL 8019 Graubraun" style="background:#3F3A3A"></button><button class="ralc" data-h="#211F20" title="RAL 8022 Schwarzbraun" style="background:#211F20"></button><button class="ralc" data-h="#A65E2E" title="RAL 8023 Orangebraun" style="background:#A65E2E"></button><button class="ralc" data-h="#79553D" title="RAL 8024 Beigebraun" style="background:#79553D"></button><button class="ralc" data-h="#755C48" title="RAL 8025 Blassbraun" style="background:#755C48"></button><button class="ralc" data-h="#4E3B31" title="RAL 8028 Terrabraun" style="background:#4E3B31"></button><button class="ralc" data-h="#763C28" title="RAL 8029 Perlkupfer" style="background:#763C28"></button></div><div class="ralfam"><span class="ralfl">Weiss / Schwarz</span><button class="ralc" data-h="#E9E0D2" title="RAL 9001 Cremeweiss" style="background:#E9E0D2"></button><button class="ralc" data-h="#D7D5CB" title="RAL 9002 Grauweiss" style="background:#D7D5CB"></button><button class="ralc" data-h="#ECECE7" title="RAL 9003 Signalweiss" style="background:#ECECE7"></button><button class="ralc" data-h="#2B2B2C" title="RAL 9004 Signalschwarz" style="background:#2B2B2C"></button><button class="ralc" data-h="#0A0A0A" title="RAL 9005 Tiefschwarz" style="background:#0A0A0A"></button><button class="ralc" data-h="#A5A5A5" title="RAL 9006 Weissaluminium" style="background:#A5A5A5"></button><button class="ralc" data-h="#8F8F8C" title="RAL 9007 Graualuminium" style="background:#8F8F8C"></button><button class="ralc" data-h="#F1EFE7" title="RAL 9010 Reinweiss" style="background:#F1EFE7"></button><button class="ralc" data-h="#27292B" title="RAL 9011 Graphitschwarz" style="background:#27292B"></button><button class="ralc" data-h="#F1F1EA" title="RAL 9016 Verkehrsweiss" style="background:#F1F1EA"></button><button class="ralc" data-h="#2A2A2B" title="RAL 9017 Verkehrsschwarz" style="background:#2A2A2B"></button><button class="ralc" data-h="#C9CBC6" title="RAL 9018 Papyrusweiss" style="background:#C9CBC6"></button><button class="ralc" data-h="#9C9B9A" title="RAL 9022 Perlhellgrau" style="background:#9C9B9A"></button><button class="ralc" data-h="#7E8182" title="RAL 9023 Perldunkelgrau" style="background:#7E8182"></button></div></div><div class="ralnormal"><div class="ralnsw"><button class="ralnc" data-h="#FFFFFF" style="background:#FFFFFF"></button><button class="ralnc" data-h="#D9D9D9" style="background:#D9D9D9"></button><button class="ralnc" data-h="#B3B3B3" style="background:#B3B3B3"></button><button class="ralnc" data-h="#808080" style="background:#808080"></button><button class="ralnc" data-h="#4D4D4D" style="background:#4D4D4D"></button><button class="ralnc" data-h="#1A1A1A" style="background:#1A1A1A"></button><button class="ralnc" data-h="#8C1D18" style="background:#8C1D18"></button><button class="ralnc" data-h="#DC2626" style="background:#DC2626"></button><button class="ralnc" data-h="#EA580C" style="background:#EA580C"></button><button class="ralnc" data-h="#F59E0B" style="background:#F59E0B"></button><button class="ralnc" data-h="#FACC15" style="background:#FACC15"></button><button class="ralnc" data-h="#A3E635" style="background:#A3E635"></button><button class="ralnc" data-h="#22C55E" style="background:#22C55E"></button><button class="ralnc" data-h="#10B981" style="background:#10B981"></button><button class="ralnc" data-h="#14B8A6" style="background:#14B8A6"></button><button class="ralnc" data-h="#06B6D4" style="background:#06B6D4"></button><button class="ralnc" data-h="#0EA5E9" style="background:#0EA5E9"></button><button class="ralnc" data-h="#3B82F6" style="background:#3B82F6"></button><button class="ralnc" data-h="#6366F1" style="background:#6366F1"></button><button class="ralnc" data-h="#8B5CF6" style="background:#8B5CF6"></button><button class="ralnc" data-h="#A855F7" style="background:#A855F7"></button><button class="ralnc" data-h="#D946EF" style="background:#D946EF"></button><button class="ralnc" data-h="#EC4899" style="background:#EC4899"></button><button class="ralnc" data-h="#9F1239" style="background:#9F1239"></button><button class="ralnc" data-h="#7C4A28" style="background:#7C4A28"></button><button class="ralnc" data-h="#A16207" style="background:#A16207"></button><button class="ralnc" data-h="#3F6212" style="background:#3F6212"></button><button class="ralnc" data-h="#134E4A" style="background:#134E4A"></button><button class="ralnc" data-h="#1E3A8A" style="background:#1E3A8A"></button><button class="ralnc" data-h="#312E81" style="background:#312E81"></button><button class="ralnc" data-h="#3F3F46" style="background:#3F3F46"></button><button class="ralnc" data-h="#0F172A" style="background:#0F172A"></button></div><div class="ralnrow"><span class="rallbl">oder</span><input type="color" id="ralcolor" value="#3B4A57"><input type="text" id="ralhex" placeholder="#RRGGBB" maxlength="7" spellcheck="false"><span class="ralnhint">eigenen Farbcode eingeben</span></div></div><div class="raldisc">Hinweis: Die dargestellten Farben können je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.</div></div></div>
   <footer><div class="foot-inner">
-    <div class="cpr">&copy; 2026 Gokoba <a href="mailto:info@gokoba.com">Paul Thomas</a> &nbsp;&middot;&nbsp; <a href="mailto:info@gokoba.com">info@gokoba.com</a> &nbsp;&middot;&nbsp; <a href="https://www.gokoba.com" target="_blank" rel="noopener">www.gokoba.com</a></div>
-    <span class="ablauf" id="ablauf"></span><span class="hint">Ziehen zum Drehen &middot; Scrollen zum Zoomen &middot; Rechte Maustaste zum Verschieben</span>
+    <div class="cpr">&copy; 2026 Gokoba <a href="mailto:info@gokoba.com">Paul Thomas</a> &nbsp;&middot;&nbsp; <a href="mailto:info@gokoba.com">info@gokoba.com</a> &nbsp;&middot;&nbsp; <a href="https://www.gokoba.com" target="_blank" rel="noopener">www.gokoba.com</a> &nbsp;&middot;&nbsp; <span class="ablauf" id="ablauf"></span></div>
+    <span class="hint">Ziehen zum Drehen &middot; Scrollen zum Zoomen &middot; Rechte Maustaste zum Verschieben</span>
   </div></footer>
 </div>
 <script>/**
@@ -5193,7 +5193,7 @@ var GOKOBA_LAYER_ACI = {
     var f=[],n=128;for(var i=0;i<6;i++){var c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
       if(i===2){g.fillStyle='#f4f7fa';g.fillRect(0,0,n,n);} /* ★ oben gleichmaessig hell */
       else if(i===3){g.fillStyle='#2b323a';g.fillRect(0,0,n,n);} /* ★ unten gleichmaessig dunkel */
-      else{var gr=g.createLinearGradient(0,0,0,n);gr.addColorStop(0,'#f4f7fa');gr.addColorStop(0.5,'#aeb8c0');gr.addColorStop(1,'#2b323a');g.fillStyle=gr;g.fillRect(0,0,n,n);} /* ★ Seiten mit passendem Verlauf, so entstehen keine harten Kanten */
+      else{g.fillStyle='#c2cad1';g.fillRect(0,0,n,n);} /* ★ Seiten gleichmaessig hell: Verzinkt wird von allen Seiten angestrahlt */ /* ★ Seiten mit passendem Verlauf, so entstehen keine harten Kanten */
       f.push(c);}
     var t=new THREE.CubeTexture(f);t.needsUpdate=true;return t;
   }
@@ -5332,7 +5332,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.7;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5449,6 +5449,15 @@ var GOKOBA_LAYER_ACI = {
         'body.hell .ralbtn,body.hell .ralbtn .ralcv{color:#22303B!important;}';
       document.head.appendChild(st);
       var ACHSEN=GOKOBA_TEILE['__achsen__']||null; delete GOKOBA_TEILE['__achsen__'];
+      /* ★ Startzustand: Stahlbau RAL 7016 + Gelaender RAL 3005 (Farbmodus),
+         dann Graustufen AN und Schatten AUS */
+      try{
+        function klick(sel){var b=document.querySelector(sel);if(b)b.click();return !!b;}
+        klick('.ralmode[data-grp="gelaender"]'); klick('.ralc[data-h="#5E2028"]');
+        klick('.ralmode[data-grp="stahlbau"]');  klick('.ralc[data-h="#383E42"]');
+        var g=document.querySelector('.tbtn[data-mode="gray"]'); if(g&&!g.classList.contains('active'))g.click();
+        var so=document.querySelector('.tbtn[data-shade="off"]'); if(so&&!so.classList.contains('active'))so.click();
+      }catch(x){}
       var GLAS='var(--gkbg)';
       var RAND='1px solid var(--gkln)';
       function mobil(){return panel.clientWidth<640;}
@@ -5478,6 +5487,8 @@ var GOKOBA_LAYER_ACI = {
         function zeile(k,v){if(v)z.push([k,v]);}
         if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Gewicht',fmtKg(d.gewicht));}
+        if(d.bezeichnung)zeile('Bezeichnung',d.bezeichnung);
+        if(d.bgnr)zeile('Baugruppe',d.bgname?(d.bgnr+' \u00b7 '+d.bgname):d.bgnr);
         else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Hersteller',d.hersteller);zeile('Masche',d.masche);zeile('Tragstab',d.tragstab);zeile('Gr\u00f6\u00dfe',fmtMass(d.masse));zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
@@ -5527,24 +5538,30 @@ var GOKOBA_LAYER_ACI = {
           g.fillText(txt,96,102);
           return c;
         }
+        var achsSk=dist*0.11;           /* Schildgroesse */
+        var achsRk=achsSk*0.42;         /* Kreisradius in Modelleinheiten */
         function achsLabel(txt,pos){
+          /* ★ flach auf dem Boden liegend (Ebene in Modell-XY), ohne Kasten drumherum */
           var c=achsLabelCanvas(txt,achsFarbeAktuell());
           var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
-          /* ★ depthTest an: hinter Bauteilen wird das Schild verdeckt */
-          var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:true}));
-          sp.position.copy(pos);
-          var sk=dist*0.12; sp.scale.set(sk,sk,1);  /* ★ rund 3,5x groesser */
-          achsTeile.push({sprite:sp,txt:txt});
-          return sp;
+          var m=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:0.06,depthWrite:false,side:THREE.DoubleSide});
+          var fl=new THREE.Mesh(new THREE.PlaneGeometry(achsSk,achsSk),m);
+          fl.position.copy(pos);
+          achsTeile.push({fl:fl,txt:txt});
+          return fl;
         }
         ACHSEN.forEach(function(a){
           var p=a.p;
           var v1=new THREE.Vector3(p[0],p[1],p[2]), v2=new THREE.Vector3(p[3],p[4],p[5]);
-          var len=v1.distanceTo(v2);
+          var richt=v2.clone().sub(v1).normalize();
+          /* ★ Linie erst hinter dem Kreis beginnen lassen */
+          var a1=v1.clone().add(richt.clone().multiplyScalar(achsRk));
+          var a2=v2.clone().sub(richt.clone().multiplyScalar(achsRk));
+          var len=a1.distanceTo(a2);
           if(len>0.001){
             var zyl=new THREE.Mesh(new THREE.CylinderGeometry(achsR,achsR,len,8),achsMat);
-            zyl.position.copy(v1).add(v2).multiplyScalar(0.5);
-            zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v2.clone().sub(v1).normalize());
+            zyl.position.copy(a1).add(a2).multiplyScalar(0.5);
+            zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),a2.clone().sub(a1).normalize());
             achsGruppe.add(zyl);
           }
           if(a.tag){
@@ -5559,8 +5576,8 @@ var GOKOBA_LAYER_ACI = {
           achsMat.color=new THREE.Color(fb).convertSRGBToLinear();
           achsTeile.forEach(function(e){
             var t2=new THREE.CanvasTexture(achsLabelCanvas(e.txt,fb)); t2.encoding=THREE.sRGBEncoding;
-            e.sprite.material.map=t2;
-            e.sprite.material.needsUpdate=true;
+            e.fl.material.map=t2;
+            e.fl.material.needsUpdate=true;
           });
         }).observe(document.body,{attributes:true,attributeFilter:['class']});
       }
@@ -5575,6 +5592,8 @@ var GOKOBA_LAYER_ACI = {
         foto:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7 10 4.5h4L15.5 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>',
         liste:'<path d="M8 6h12M8 12h12M8 18h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="4.2" cy="6" r="1.1" fill="currentColor"/><circle cx="4.2" cy="12" r="1.1" fill="currentColor"/><circle cx="4.2" cy="18" r="1.1" fill="currentColor"/>',
         bg:'<rect x="3.5" y="9.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.5" y="4.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+        mass:'<rect x="2.8" y="9.2" width="18.4" height="6.2" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-18 12 12)"/><path d="M8 8.2v2.6M11.4 7.1v3.6M14.8 6v2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" transform="rotate(-18 12 12)"/>',
+        schnitt:'<rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.5v19" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.6 2.2" stroke-linecap="round"/>',
         achsen:'<path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>'
       };
       var TIP={summe:'Bauteile antippen, die Liste rechnet mit.',
@@ -5583,12 +5602,35 @@ var GOKOBA_LAYER_ACI = {
                notiz:'Punkt am Modell antippen, dann Text schreiben.',
                foto:'Bereich mit gedr\u00fcckter Maustaste bzw. Finger aufziehen.',
                liste:'Kennzahlen und Profilsuche zum ganzen Modell.',
-               bg:'Bauteil antippen - die ganze Schwei\u00dfbaugruppe leuchtet.'};
-      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe'};
+               bg:'Bauteil antippen - die ganze Schwei\u00dfbaugruppe leuchtet.',
+               mass:'Punkte antippen - Eckpunkte werden gefangen.',
+               schnitt:'Achse w\u00e4hlen, dann die Scheibe greifen und durchs Modell ziehen.'};
+      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe',mass:'Messen',schnitt:'Schnitt'};
       var palette=el('div',glasBox('display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'));
       palette.id='gkpalette'; panel.appendChild(palette);
+      /* ★ Mobil: Palette startet eingeklappt; ein Griffstrich am rechten Rand zeigt das Menue.
+         Antippen oder Daruberziehen holt sie rein; aktives Drehen im Modell blendet sie aus
+         (ausser ein Werkzeug ist gerade offen). */
+      var palZeig=null;
+      if(mobil()){
+        palette.style.transition='transform .28s ease';
+        var palOffen=true;
+        var griff=el('div','position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:31;'+
+          'width:22px;height:78px;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;');
+        griff.innerHTML='<div style="width:5px;height:48px;border-radius:3px;background:var(--gktx2);opacity:.9;box-shadow:0 0 0 1px var(--gkln);"></div>';
+        palZeig=function(offen){
+          palOffen=offen; window.__gkPalZu=!offen;
+          palette.style.transform=offen?'translateX(0)':'translateX(130%)';
+          griff.style.opacity=offen?'0':'1';
+          griff.style.pointerEvents=offen?'none':'auto';
+        };
+        griff.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();palZeig(true);});
+        panel.appendChild(griff);
+        controls.addEventListener('start',function(){ if(palOffen&&!aktiv)palZeig(false); });
+        palZeig(false);
+      }
       function paletteLegen(){
-        if(mobil()){palette.style.right='10px';palette.style.top='';palette.style.bottom='14px';palette.style.transform='';}
+        if(mobil()){palette.style.right='10px';palette.style.top='';palette.style.bottom='14px';palette.style.transform=(window.__gkPalZu?'translateX(130%)':'');}
         else{palette.style.right='16px';palette.style.bottom='';palette.style.top='50%';palette.style.transform='translateY(-50%)';}
       }
       paletteLegen(); window.addEventListener('resize',paletteLegen);
@@ -5622,7 +5664,11 @@ var GOKOBA_LAYER_ACI = {
           '<div style="padding:0 13px 8px;color:var(--gktx2);font-size:11.5px;">'+TIP[w]+'</div>';
       }
       var knoepfe={};
-      ['summe','farbe','bg','iso','notiz','foto','liste'].forEach(function(w){
+      ['mass','schnitt','|','liste','summe','bg','|','farbe','iso','|','notiz','foto'].forEach(function(w){
+        if(w==='|'){
+          palette.appendChild(el('div','width:26px;height:1px;background:var(--gkln);margin:1px auto;'));
+          return;
+        }
         var b=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
           'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
         b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
@@ -5640,7 +5686,10 @@ var GOKOBA_LAYER_ACI = {
           ab.style.background=achsGruppe.visible?AKZENT:'transparent';
         }
         ab.addEventListener('click',function(ev){ev.stopPropagation();achsGruppe.visible=!achsGruppe.visible;malAchsKnopf();});
-        palette.appendChild(ab); malAchsKnopf();
+        var vorNotiz=document.getElementById('gk_notiz');
+        if(vorNotiz&&vorNotiz.previousSibling)palette.insertBefore(ab,vorNotiz.previousSibling); /* ★ in den Ansicht-Block */
+        else palette.appendChild(ab);
+        malAchsKnopf();
       }
       function malKnopf(){
         Object.keys(knoepfe).forEach(function(w){
@@ -5651,7 +5700,7 @@ var GOKOBA_LAYER_ACI = {
         });
       }
       function schalte(neu){
-        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde,liste:listeEnde,bg:bgEnde})[aktiv]();}
+        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde,liste:listeEnde,bg:bgEnde,mass:massEnde,schnitt:schnittEnde})[aktiv]();}
         aktiv=neu; malKnopf(); abwaehlen();
         if(neu==='summe')summeStart();
         if(neu==='farbe')farbeStart();
@@ -5659,6 +5708,8 @@ var GOKOBA_LAYER_ACI = {
         if(neu==='foto')fotoStart();
         if(neu==='liste')listeStart();
         if(neu==='bg')bgStart();
+        if(neu==='mass')massStart();
+        if(neu==='schnitt')schnittStart();
         if(neu==='notiz'||neu==='foto')sagHinweis(TIP[neu]);
       }
 
@@ -5904,6 +5955,354 @@ var GOKOBA_LAYER_ACI = {
         panel.appendChild(listePanel); flyLegen(listePanel);
       }
       function listeEnde(){ sucheLeeren(); if(listePanel){listePanel.remove();listePanel=null;} }
+
+      /* ── Schnitt: Scheibe je Achse, frei durchs Modell ziehbar (GPU-Clipping) ── */
+      var schnittPanel=null, schnittEbene=null, schnittQuad=null, schnittAchse=null,
+          schnittZieht=false, schnittMove=null, schnittDown=null, schnittUp=null, schnittBox=null;
+      var SCHNITT_N={x:new THREE.Vector3(1,0,0), y:new THREE.Vector3(0,0,-1), z:new THREE.Vector3(0,1,0)};
+      function schnittAnwenden(planes){
+        model.traverse(function(o){
+          if(!o.isMesh||!o.material)return;
+          (Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){
+            m.clippingPlanes=planes; m.needsUpdate=true;
+          });
+        });
+      }
+      function schnittSetzAchse(a){
+        schnittAchse=a;
+        var n=SCHNITT_N[a].clone();
+        var mitte=schnittBox.getCenter(new THREE.Vector3());
+        if(!schnittEbene)schnittEbene=new THREE.Plane();
+        schnittEbene.normal.copy(n);
+        schnittEbene.constant=-mitte.dot(n);
+        schnittAnwenden([schnittEbene]);
+        /* Scheibe passend zur Achse aufspannen */
+        if(schnittQuad){scene.remove(schnittQuad);schnittQuad=null;}
+        var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.72;
+        schnittQuad=new THREE.Group();
+        var fl=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),
+          new THREE.MeshBasicMaterial({color:0x5FA8C9,transparent:true,opacity:0.13,side:THREE.DoubleSide,depthWrite:false}));
+        var rahmen=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(gr,gr)),
+          new THREE.LineBasicMaterial({color:0x5FA8C9,transparent:true,opacity:0.85}));
+        schnittQuad.add(fl); schnittQuad.add(rahmen);
+        schnittQuad.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+        schnittQuadLege();
+        scene.add(schnittQuad);
+        schnittLese();
+      }
+      function schnittQuadLege(){
+        if(!schnittQuad)return;
+        var n=schnittEbene.normal, mitte=schnittBox.getCenter(new THREE.Vector3());
+        var p=mitte.clone().sub(n.clone().multiplyScalar(mitte.dot(n)+schnittEbene.constant));
+        schnittQuad.position.copy(p);
+      }
+      function schnittLese(){
+        if(!schnittPanel)return;
+        Array.prototype.forEach.call(schnittPanel.querySelectorAll('[data-sa]'),function(b){
+          var an=b.getAttribute('data-sa')===schnittAchse;
+          b.style.background=an?AKZENT:'transparent'; b.style.color=an?'#0d1216':'var(--gktx2)';
+        });
+        var h=schnittPanel.querySelector('[data-shin]');
+        if(h)h.textContent=schnittAchse?'Scheibe greifen und ziehen - der Schnitt wandert live mit.':'Achse w\u00e4hlen, dann die Scheibe greifen und ziehen.';
+      }
+      function schnittStart(){
+        renderer.localClippingEnabled=true;
+        schnittBox=new THREE.Box3().setFromObject(model);
+        schnittPanel=el('div',glasBox('width:min(252px,72vw);'));
+        schnittPanel.id='gkschnitt';
+        function kn(attr,txt){return '<button '+attr+' style="all:unset;cursor:pointer;padding:5px 10px;border-radius:9px;border:'+RAND+';color:var(--gktx2);font:600 11.5px var(--ui);">'+txt+'</button>';}
+        schnittPanel.innerHTML=flyKopf('schnitt')+
+          '<div style="display:flex;gap:6px;padding:0 13px 8px;align-items:center;">'+
+          '<span style="color:var(--gktx2);font-size:11.5px;">Schnitt</span>'+
+          kn('data-sa="x"','X')+kn('data-sa="y"','Y')+kn('data-sa="z"','Z')+
+          kn('data-sflip',"Seite wechseln")+'</div>'+
+          '<div style="display:flex;gap:6px;padding:0 13px 9px;align-items:center;flex-wrap:wrap;">'+
+          '<span style="color:var(--gktx2);font-size:11.5px;">Ansicht</span>'+
+          ['oben|Oben','vorn|Vorn','rechts|Rechts','links|Links','hinten|Hinten','iso|Iso'].map(function(x){var t=x.split('|');return kn('data-sv="'+t[0]+'"',t[1]);}).join('')+'</div>'+
+          '<div data-shin style="padding:0 13px 12px;color:var(--gktx2);font-size:12px;"></div>';
+        schnittPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        Array.prototype.forEach.call(schnittPanel.querySelectorAll('[data-sa]'),function(b){
+          b.addEventListener('click',function(ev){ev.stopPropagation();schnittSetzAchse(b.getAttribute('data-sa'));});
+        });
+        schnittPanel.querySelector('[data-sflip]').addEventListener('click',function(ev){ev.stopPropagation();
+          if(!schnittEbene)return;
+          schnittEbene.normal.negate(); schnittEbene.constant*=-1;
+          schnittLese();
+        });
+        Array.prototype.forEach.call(schnittPanel.querySelectorAll('[data-sv]'),function(b){
+          b.addEventListener('click',function(ev){ev.stopPropagation();
+            var mitte=schnittBox.getCenter(new THREE.Vector3());
+            var abst=camera.position.distanceTo(controls.target);
+            var richt={oben:[0,1,0.0001],vorn:[0,0,1],hinten:[0,0,-1],rechts:[1,0,0],links:[-1,0,0],iso:[0.72,0.6,0.72]}[b.getAttribute('data-sv')];
+            var v=new THREE.Vector3(richt[0],richt[1],richt[2]).normalize().multiplyScalar(abst);
+            controls.target.copy(mitte);
+            camera.position.copy(mitte.clone().add(v));
+            controls.update();
+          });
+        });
+        panel.appendChild(schnittPanel); flyLegen(schnittPanel);
+        schnittLese();
+        /* ★ Scheibe greifen: waehrend des Ziehens wandert der Schnitt live */
+        var greifRay=new THREE.Raycaster(), greifPtr=new THREE.Vector2(), greifStart=null, greifKonst=0, ziehEbene=new THREE.Plane();
+        function zeiger(e){
+          var r=cv.getBoundingClientRect();
+          greifPtr.x=((e.clientX-r.left)/r.width)*2-1; greifPtr.y=-((e.clientY-r.top)/r.height)*2+1;
+          greifRay.setFromCamera(greifPtr,camera);
+        }
+        schnittDown=function(e){
+          if(!schnittQuad)return;
+          zeiger(e);
+          var h=greifRay.intersectObject(schnittQuad.children[0],false);
+          if(!h.length)return;
+          schnittZieht=true; controls.enabled=false;
+          greifStart=h[0].point.clone(); greifKonst=schnittEbene.constant;
+          /* Ziehflaeche: enthaelt die Achse, zeigt zur Kamera */
+          var n=schnittEbene.normal;
+          var blick=camera.getWorldDirection(new THREE.Vector3());
+          var quer=new THREE.Vector3().crossVectors(n,blick).normalize();
+          var zn=new THREE.Vector3().crossVectors(quer,n).normalize();
+          ziehEbene.setFromNormalAndCoplanarPoint(zn,greifStart);
+          cv.style.cursor='grabbing';
+          e.preventDefault(); e.stopPropagation();
+        };
+        schnittMove=function(e){
+          if(!schnittQuad)return;
+          zeiger(e);
+          if(!schnittZieht){
+            var h=greifRay.intersectObject(schnittQuad.children[0],false);
+            cv.style.cursor=h.length?'grab':'';
+            return;
+          }
+          var tp=new THREE.Vector3();
+          if(greifRay.ray.intersectPlane(ziehEbene,tp)){
+            var d=tp.clone().sub(greifStart).dot(schnittEbene.normal);
+            schnittEbene.constant=greifKonst-d;
+            schnittQuadLege();
+          }
+        };
+        schnittUp=function(){ if(schnittZieht){schnittZieht=false;controls.enabled=true;cv.style.cursor='';} };
+        cv.addEventListener('pointerdown',schnittDown,true);
+        cv.addEventListener('pointermove',schnittMove);
+        cv.addEventListener('pointerup',schnittUp);
+      }
+      function schnittEnde(){
+        if(schnittDown){cv.removeEventListener('pointerdown',schnittDown,true);schnittDown=null;}
+        if(schnittMove){cv.removeEventListener('pointermove',schnittMove);schnittMove=null;}
+        if(schnittUp){cv.removeEventListener('pointerup',schnittUp);schnittUp=null;}
+        if(schnittQuad){scene.remove(schnittQuad);schnittQuad=null;}
+        schnittAnwenden(null);
+        schnittEbene=null; schnittAchse=null; schnittZieht=false; controls.enabled=true; cv.style.cursor='';
+        if(schnittPanel){schnittPanel.remove();schnittPanel=null;}
+      }
+
+      /* ── Messen: Punkt-zu-Punkt (mit Eckpunkt-Fang), Flaeche-zu-Flaeche, Hoehenkoten ── */
+      var massPanel=null, massModus='punkt', messP=[], messGrafik=null, snapKugel=null,
+          flHelfer=null, flWahl=null, koten=[], kotenLoop=false, achsKreuz=null, massAus=null;
+      function lokal(pw){return model.worldToLocal(pw.clone());}
+      function fmm(v){return Math.round(Math.abs(v)*1000).toLocaleString('de-DE')+' mm';}
+      function fkote(z){return (z>=-0.0005?'+':'-')+Math.abs(z).toFixed(3).replace('.',',');}
+      function massFangen(t){
+        /* ★ Eckpunkt-Fang: naechster Dreieckspunkt der getroffenen Flaeche, wenn er
+           auf dem Bildschirm nahe genug liegt (18 px) - sonst der Trefferpunkt selbst */
+        if(!t.f)return t.p3.clone();
+        var g=t.o.geometry.getAttribute('position'), r=cv.getBoundingClientRect();
+        var best=null, bestD=1e9;
+        [t.f.a,t.f.b,t.f.c].forEach(function(ix){
+          var v=new THREE.Vector3().fromBufferAttribute(g,ix); t.o.localToWorld(v);
+          var s=v.clone().project(camera);
+          var sx=(s.x+1)/2*r.width, sy=(-s.y+1)/2*r.height;
+          var d=Math.hypot(sx-t.x,sy-t.y);
+          if(d<bestD){bestD=d;best=v;}
+        });
+        return (best&&bestD<18)?best:t.p3.clone();
+      }
+      function massMarker(pw,farbe){
+        var k=new THREE.Mesh(new THREE.SphereGeometry(dist*0.005,10,10),
+          new THREE.MeshBasicMaterial({color:farbe||0x2E86AD,depthTest:false,transparent:true,opacity:0.95}));
+        k.position.copy(pw); k.renderOrder=9; messGrafik.add(k); return k;
+      }
+      function massLinie(p1,p2){
+        var len=p1.distanceTo(p2); if(len<0.0005)return;
+        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0012,dist*0.0012,len,6),
+          new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.9}));
+        zyl.position.copy(p1).add(p2).multiplyScalar(0.5);
+        zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p2.clone().sub(p1).normalize());
+        zyl.renderOrder=9; messGrafik.add(zyl);
+      }
+      function massLeeren(){ messP=[]; flWahl=null;
+        if(messGrafik){while(messGrafik.children.length)messGrafik.remove(messGrafik.children[0]);} }
+      function massLese(html){var e=massPanel&&massPanel.querySelector('[data-mess]');if(e)e.innerHTML=html;}
+      function massZeile(k,v){return '<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span style="color:var(--gktx2);">'+k+'</span><strong style="color:var(--gktx);white-space:nowrap;">'+v+'</strong></div>';}
+      function massHinweisText(){
+        return massModus==='punkt' ? 'Zwei Punkte antippen - Eckpunkte werden gefangen.'
+             : massModus==='flaeche' ? 'Zwei Fl\u00e4chen antippen - der senkrechte Abstand wird gemessen.'
+             : 'Punkt antippen - die H\u00f6henkote bleibt stehen (\u00b10,000 = Modellnullpunkt).';
+      }
+      function massStart(){
+        messGrafik=new THREE.Group(); scene.add(messGrafik);
+        /* Fang-Kugel + Flaechen-Vorschau */
+        snapKugel=new THREE.Mesh(new THREE.SphereGeometry(dist*0.006,10,10),
+          new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.9}));
+        snapKugel.visible=false; snapKugel.renderOrder=10; scene.add(snapKugel);
+        flHelfer=new THREE.Mesh(new THREE.CircleGeometry(dist*0.028,24),
+          new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.35,side:THREE.DoubleSide,depthTest:false}));
+        flHelfer.visible=false; flHelfer.renderOrder=10; scene.add(flHelfer);
+        /* ★ Achsenkreuz am Modellnullpunkt: Richtungen X/Y/Z + Hoehen-Null */
+        achsKreuz=new THREE.Group();
+        var al=dist*0.14;
+        [[1,0,0,0xE5484D,'X'],[0,1,0,0x3DD68C,'Y'],[0,0,1,0x5FA8C9,'Z']].forEach(function(ax){
+          achsKreuz.add(new THREE.ArrowHelper(new THREE.Vector3(ax[0],ax[1],ax[2]),new THREE.Vector3(0,0,0),al,ax[3],al*0.18,al*0.09));
+          var c=document.createElement('canvas');c.width=96;c.height=96;
+          var g=c.getContext('2d');g.fillStyle='#'+ax[3].toString(16).padStart(6,'0');
+          g.font='700 60px system-ui';g.textAlign='center';g.textBaseline='middle';g.fillText(ax[4],48,52);
+          var tx=new THREE.CanvasTexture(c); tx.encoding=THREE.sRGBEncoding;
+          var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false}));
+          sp.position.set(ax[0]*al*1.16,ax[1]*al*1.16,ax[2]*al*1.16);
+          sp.scale.set(dist*0.045,dist*0.045,1); sp.renderOrder=10;
+          achsKreuz.add(sp);
+        });
+        model.add(achsKreuz);
+        /* Panel */
+        massPanel=el('div',glasBox('width:min(252px,72vw);'));
+        massPanel.id='gkmass';
+        massPanel.innerHTML=flyKopf('mass')+
+          '<div style="display:flex;gap:6px;padding:0 13px 9px;">'+
+          ['punkt|Punkte','flaeche|Fl\u00e4che','kote|H\u00f6henkote'].map(function(x){var t=x.split('|');
+            return '<button data-mm="'+t[0]+'" style="all:unset;cursor:pointer;padding:5px 9px;border-radius:9px;border:'+RAND+';color:var(--gktx2);font:600 11.5px var(--ui);">'+t[1]+'</button>';}).join('')+
+          '</div>'+
+          '<div data-mess style="padding:0 13px 8px;color:var(--gktx2);font-size:12px;"></div>'+
+          '<div style="padding:0 13px 12px;display:flex;gap:8px;">'+
+          '<button data-neu style="all:unset;cursor:pointer;padding:5px 10px;border-radius:9px;border:'+RAND+';color:var(--gktx2);font:600 11.5px var(--ui);">Neu messen</button>'+
+          '<button data-kweg style="all:unset;cursor:pointer;padding:5px 10px;border-radius:9px;border:'+RAND+';color:var(--gktx2);font:600 11.5px var(--ui);display:none;">Koten l\u00f6schen</button>'+
+          '</div>';
+        massPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        massPanel.querySelector('[data-neu]').addEventListener('click',function(ev){ev.stopPropagation();massLeeren();massLese(massHinweisText());});
+        massPanel.querySelector('[data-kweg]').addEventListener('click',function(ev){ev.stopPropagation();kotenLeeren();});
+        function malModus(){
+          Array.prototype.forEach.call(massPanel.querySelectorAll('[data-mm]'),function(b){
+            var an=b.getAttribute('data-mm')===massModus;
+            b.style.background=an?AKZENT:'transparent'; b.style.color=an?'#0d1216':'var(--gktx2)';
+          });
+          massPanel.querySelector('[data-kweg]').style.display=(massModus==='kote'&&koten.length)?'':'none';
+        }
+        Array.prototype.forEach.call(massPanel.querySelectorAll('[data-mm]'),function(b){
+          b.addEventListener('click',function(ev){ev.stopPropagation();
+            massModus=b.getAttribute('data-mm'); massLeeren(); malModus(); massLese(massHinweisText());
+            if(hinweis){hinweis.textContent=massHinweisText();}
+          });
+        });
+        malModus(); massLese(massHinweisText());
+        panel.appendChild(massPanel); flyLegen(massPanel);
+        /* Hover: Fang-Kugel bzw. Flaechen-Vorschau nachfuehren */
+        massAus=function(e){
+          if(massModus==='flaeche'){ snapKugel.visible=false;
+            var t=triff(e);
+            if(t&&t.f){
+              var n=t.f.normal.clone().transformDirection(t.o.matrixWorld);
+              flHelfer.position.copy(t.p3).add(n.clone().multiplyScalar(dist*0.001));
+              flHelfer.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+              flHelfer.visible=true;
+            } else flHelfer.visible=false;
+          } else { flHelfer.visible=false;
+            var t2=triff(e);
+            if(t2){snapKugel.position.copy(massFangen(t2));snapKugel.visible=true;}
+            else snapKugel.visible=false;
+          }
+        };
+        cv.addEventListener('pointermove',massAus);
+      }
+      function massKlick(t){
+        if(massModus==='kote'){
+          var lz=lokal(t.p3).z;
+          koteSetzen(t.p3.clone(),lz);
+          massLese(massZeile('H\u00f6henkote',fkote(lz)+' m')+'<div style="padding-top:4px;">Weitere Punkte antippen oder Koten l\u00f6schen.</div>');
+          if(massPanel)massPanel.querySelector('[data-kweg]').style.display='';
+          return;
+        }
+        if(massModus==='flaeche'){
+          if(!t.f)return;
+          var n=t.f.normal.clone().transformDirection(t.o.matrixWorld).normalize();
+          if(!flWahl||messP.length>=2){ massLeeren();
+            flWahl={p:t.p3.clone(),n:n}; messP=[t.p3.clone()];
+            var d1=new THREE.Mesh(new THREE.CircleGeometry(dist*0.028,24),
+              new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.45,side:THREE.DoubleSide,depthTest:false}));
+            d1.position.copy(t.p3).add(n.clone().multiplyScalar(dist*0.001));
+            d1.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n); d1.renderOrder=9;
+            messGrafik.add(d1);
+            massLese('Erste Fl\u00e4che gew\u00e4hlt - jetzt die zweite antippen.');
+          } else {
+            messP.push(t.p3.clone());
+            var par=Math.abs(flWahl.n.dot(n));
+            if(par>0.996){
+              /* ★ Abstand in Modellkoordinaten rechnen (Viewer skaliert die Szene) */
+              var p1L=lokal(flWahl.p), p2L=lokal(t.p3);
+              var n1L=lokal(flWahl.p.clone().add(flWahl.n)).sub(p1L).normalize();
+              var dnL=p2L.clone().sub(p1L).dot(n1L);
+              var senk=Math.abs(dnL);
+              var dnW=t.p3.clone().sub(flWahl.p).dot(flWahl.n);
+              var fuss=t.p3.clone().sub(flWahl.n.clone().multiplyScalar(dnW)); /* Lotfuss (Anzeige) */
+              massMarker(flWahl.p); massMarker(t.p3); massLinie(t.p3,fuss);
+              massLese(massZeile('Abstand senkrecht',fmm(senk)));
+            } else {
+              var pA=lokal(flWahl.p), pB=lokal(t.p3);
+              massMarker(flWahl.p); massMarker(t.p3); massLinie(flWahl.p,t.p3);
+              massLese('<div style="padding-bottom:3px;">Fl\u00e4chen nicht parallel - direktes Ma\u00df:</div>'+massZeile('Direkt',fmm(pA.distanceTo(pB))));
+            }
+          }
+          return;
+        }
+        /* Punktmessung */
+        var pw=massFangen(t);
+        if(messP.length>=2){ massLeeren(); }
+        messP.push(pw); massMarker(pw);
+        if(messP.length===1){ massLese('Zweiten Punkt antippen.'); return; }
+        massLinie(messP[0],messP[1]);
+        var l1=lokal(messP[0]), l2=lokal(messP[1]);
+        massLese(
+          massZeile('\u0394X',fmm(l2.x-l1.x))+
+          massZeile('\u0394Y',fmm(l2.y-l1.y))+
+          massZeile('\u0394Z',fmm(l2.z-l1.z))+
+          massZeile('Direkt',fmm(l1.distanceTo(l2)))); /* ★ in Modellkoordinaten - der Viewer skaliert die Szene */
+      }
+      /* Hoehenkoten: kamerafest nachgefuehrte Schilder, bleiben auch nach Werkzeugende stehen */
+      function koteSetzen(pw,lz){
+        var m=new THREE.Mesh(new THREE.SphereGeometry(dist*0.004,8,8),
+          new THREE.MeshBasicMaterial({color:0xE5484D,depthTest:false,transparent:true,opacity:0.95}));
+        m.position.copy(pw); m.renderOrder=9; scene.add(m);
+        var box=el('div',glasBox('padding:3px 8px 3px 9px;border-radius:9px;display:flex;align-items:center;gap:7px;z-index:33;font:700 11.5px var(--ui);color:var(--gktx);'));
+        box.innerHTML='<span>'+fkote(lz)+'</span><span data-x style="cursor:pointer;color:var(--gktx2);font-weight:600;">\u00d7</span>';
+        panel.appendChild(box);
+        var k={p3:pw,box:box,marker:m};
+        box.querySelector('[data-x]').addEventListener('click',function(ev){ev.stopPropagation();
+          box.remove(); scene.remove(m); koten.splice(koten.indexOf(k),1);
+          if(massPanel)massPanel.querySelector('[data-kweg]').style.display=(massModus==='kote'&&koten.length)?'':'none';
+        });
+        koten.push(k); koteMale();
+        if(!kotenLoop){kotenLoop=true;(function tick(){if(koten.length)requestAnimationFrame(tick);else kotenLoop=false;koteMale();})();}
+      }
+      function koteMale(){
+        var r=cv.getBoundingClientRect(), pp=panel.getBoundingClientRect();
+        koten.forEach(function(k){
+          var v=k.p3.clone().project(camera);
+          var sx=(v.x+1)/2*r.width+(r.left-pp.left), sy=(-v.y+1)/2*r.height+(r.top-pp.top);
+          k.box.style.left=Math.round(sx+10)+'px'; k.box.style.top=Math.round(sy-12)+'px';
+          k.box.style.display=(v.z<1&&v.z>-1)?'flex':'none';
+        });
+      }
+      function kotenLeeren(){
+        koten.forEach(function(k){k.box.remove();scene.remove(k.marker);});
+        koten=[];
+        if(massPanel)massPanel.querySelector('[data-kweg]').style.display='none';
+      }
+      function massEnde(){
+        if(massAus){cv.removeEventListener('pointermove',massAus);massAus=null;}
+        if(snapKugel){scene.remove(snapKugel);snapKugel=null;}
+        if(flHelfer){scene.remove(flHelfer);flHelfer=null;}
+        if(messGrafik){scene.remove(messGrafik);messGrafik=null;}
+        if(achsKreuz){model.remove(achsKreuz);achsKreuz=null;}
+        messP=[]; flWahl=null;
+        if(massPanel){massPanel.remove();massPanel=null;}
+      }
 
       /* ── Baugruppe: Teil antippen -> ganze Schweissbaugruppe leuchtet + Kennzahlen ── */
       var bgPanel=null, bgMarkiert=[];
@@ -6233,7 +6632,7 @@ var GOKOBA_LAYER_ACI = {
           if(hits[i].object.visible===false)continue;   /* ★ Ausgeblendetes nicht treffen */
           var k=hits[i].object,nm=null;
           while(k){if(k.name&&/^E\d+$/.test(k.name)){nm=k.name;break;}k=k.parent;}
-          if(nm&&GOKOBA_TEILE[nm])return {o:hits[i].object,d:GOKOBA_TEILE[nm],name:nm,x:e.clientX-r.left,y:e.clientY-r.top,p3:hits[i].point};
+          if(nm&&GOKOBA_TEILE[nm])return {o:hits[i].object,d:GOKOBA_TEILE[nm],name:nm,x:e.clientX-r.left,y:e.clientY-r.top,p3:hits[i].point,f:hits[i].face};
         }
         return null;
       }
@@ -6247,6 +6646,7 @@ var GOKOBA_LAYER_ACI = {
         if(!t){if(!aktiv)abwaehlen();return;}
         if(aktiv==='summe')summeKlick(t.o,t.d,t.name);
         else if(aktiv==='bg')bgKlick(t.o,t.d);
+        else if(aktiv==='mass')massKlick(t);
         else if(aktiv==='farbe')farbeKlick(t.o,t.name);
         else if(aktiv==='iso')isoKlick(t.o,t.name);
         else if(aktiv==='notiz')notizSetze(t.p3);
@@ -6385,7 +6785,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.7;m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
