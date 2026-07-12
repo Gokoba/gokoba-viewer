@@ -8,6 +8,9 @@ on:
     paths:
       - 'jobs-ifc/**'
   workflow_dispatch:
+  # ★ Besenwagen: verarbeitet liegengebliebene Jobs, falls ein Lauf je scheitert
+  schedule:
+    - cron: '*/30 * * * *'
 
 permissions:
   contents: write
@@ -123,7 +126,13 @@ jobs:
             echo "Keine Aenderungen."
           else
             git commit -m "IFC-Viewer erstellt/aktualisiert"
-            git push
+            # ★ Der Zweig bewegt sich waehrend des Laufs (Warteseiten, neue Uploads).
+            #   Deshalb: vor jedem Push aktualisieren und bis zu fuenfmal erneut versuchen.
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && break
+              echo "Push-Versuch $i abgeprallt - neuer Anlauf..."
+              sleep $((i * 3))
+            done
           fi
 
       - name: GitHub Pages veroeffentlichen
