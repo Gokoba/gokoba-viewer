@@ -426,7 +426,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                     if d['art'] in ('gitterrost', 'gitterroststufe') and d.get('masse'):
                         # ★ Flache Begleitteile (Stufenlaschen, Auflagerbleche) sind Bleche;
                         #   echte Roste/Stufen sind 20 mm und hoeher. Danach: Stufe vs. Rost
-                        #   an der Breite (Stufen max ~420 mm tief). Namensliste verfeinert spaeter.
+                        #   vorlaeufig an der Breite - die Rostklasse aus der Namensliste entscheidet danach endgueltig.
                         if d['masse'][2] < 18:
                             d['art'] = 'blech'
                         else:
@@ -540,6 +540,34 @@ def main():
             if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
                 d['bgname'] = namen_bg[d['bgnr']]
         print('* Namensliste zugeordnet: %d Bauteile' % getroffen)
+    # ★ Rost oder Stufe: die Rostklasse aus dem Modell entscheidet, nicht die Breite.
+    #   Prioritaet: Klasse sagt Grating/Graiting -> Rost; Klasse/Beschreibung sagt Stufe -> Stufe;
+    #   sonst Pauls Standard-Stufentiefen 240/270/305; sonst bleibt die bisherige Zuordnung.
+    umsortiert = 0
+    for d in teile.values():
+        if not isinstance(d, dict) or d.get('art') not in ('gitterrost', 'gitterroststufe'):
+            continue
+        texte = [(d.get('roh') or '')]
+        texte += d.get('attrs') or ([d['bezeichnung']] if d.get('bezeichnung') else [])
+        if d.get('bgname'): texte.append(d['bgname'])
+        quelle = ' '.join(t for t in texte if t).lower()
+        alt_art = d['art']
+        m = d.get('masse') or []
+        tiefe = m[1] if len(m) > 1 else 0
+        if 'graiting' in quelle or 'grating' in quelle:
+            d['art'] = 'gitterrost'
+        elif 'stufe' in quelle or 'step' in quelle or 'tread' in quelle:
+            d['art'] = 'gitterroststufe'
+        elif tiefe and any(abs(tiefe - st) <= 3 for st in (240, 270, 305)) and (m[0] if m else 0) <= 1700:
+            d['art'] = 'gitterroststufe'
+        if d['art'] != alt_art:
+            umsortiert += 1
+            # Stufen-Laengenkorrektur (+6 mm Einfassung) mitziehen
+            if m:
+                if d['art'] == 'gitterroststufe': d['masse'][0] = round(d['masse'][0] + 6)
+                else: d['masse'][0] = round(d['masse'][0] - 6)
+    if umsortiert:
+        print('* Rost/Stufe nach Rostklasse umsortiert: %d Teile' % umsortiert)
     for d in teile.values():
         if isinstance(d, dict): d.pop('zentrum', None)
     small = glb.replace('.glb', '_pack.glb')
