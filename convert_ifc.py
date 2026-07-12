@@ -132,13 +132,16 @@ def lese_namen(input_dir):
     """namen.txt aus dem Plugin: pos|klasse|x|y|z|name (Koordinaten in mm)."""
     import glob as _g
     p = _g.glob(os.path.join(input_dir, 'namen.txt'))
-    je_pos = {}; je_ort = []
-    if not p: return je_pos, je_ort
+    je_pos = {}; je_ort = []; je_bg = {}
+    if not p: return je_pos, je_ort, je_bg
     try:
         for zeile in open(p[0], encoding='utf-8', errors='replace'):
             t = zeile.rstrip('\n').split('|')
             if len(t) < 6: continue
             pos, klasse, x, y, z, name = t[0], t[1], t[2], t[3], t[4], '|'.join(t[5:])
+            if klasse == 'Baugruppe':
+                if pos and name.strip(): je_bg.setdefault(pos, name.strip())
+                continue
             eintrag = {'klasse': klasse, 'name': name.strip()}
             if pos: je_pos.setdefault(pos, eintrag)
             if x and y and z:
@@ -148,7 +151,7 @@ def lese_namen(input_dir):
                     pass
     except Exception:
         pass
-    return je_pos, je_ort
+    return je_pos, je_ort, je_bg
 
 def name_deute(d, name):
     """Objektname in Kaertchenfelder uebersetzen."""
@@ -235,6 +238,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
 
     em_zentren = None
     em_bolzen = None
+    em_baugruppen = None
     if em11_pfad:
         print('* Lese EM.11 fuer Positionsnummern: ' + em11_pfad)
         f2 = ifcopenshell.open(em11_pfad)
@@ -246,21 +250,42 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
             except Exception:
                 pass
             return None
+        # ★ Schweissbaugruppen: Mitglied-Id -> Baugruppen-PieceMark
+        bg_von = {}
+        try:
+            for rel in f2.by_type('IfcRelAggregates'):
+                asm = rel.RelatingObject
+                if not asm.is_a('IfcElementAssembly'):
+                    continue
+                bgm = mark_von(asm)
+                if not bgm:
+                    continue
+                # ★ Instanz-Schluessel (jede Baugruppe einzeln) + Nummer fuer die Anzeige
+                for mitglied in rel.RelatedObjects:
+                    bg_von[mitglied.id()] = (str(asm.id()), bgm)
+        except Exception:
+            pass
         s2 = ifcopenshell.geom.settings(); s2.set(s2.USE_WORLD_COORDS, True)
         it2 = ifcopenshell.geom.iterator(s2, f2, 4)
-        pkt = []; mrk = []
+        pkt = []; mrk = []; bgp = []; bgm2 = []
         if it2.initialize():
             while True:
                 try:
                     shp2 = it2.get(); p2 = f2.by_id(shp2.id)
                     if p2.is_a() != 'IfcOpeningElement':
                         m = mark_von(p2)
-                        if m:
+                        bgx = bg_von.get(p2.id())
+                        if m or bgx:
                             v2 = np.array(shp2.geometry.verts).reshape(-1, 3)
-                            pkt.append(v2.mean(axis=0)); mrk.append(m)
+                            z2 = v2.mean(axis=0)
+                            if m: pkt.append(z2); mrk.append(m)
+                            if bgx: bgp.append(z2); bgm2.append(bgx)
                 except Exception:
                     pass
                 if not it2.next(): break
+        if bgp:
+            em_baugruppen = (np.array(bgp), bgm2)
+            print('  EM.11: %d Teile mit Baugruppenzuordnung (%d Baugruppen)' % (len(bgm2), len(set(bgm2))))
         if pkt:
             em_zentren = (np.array(pkt), mrk)
             print('  EM.11: %d gekennzeichnete Teile' % len(mrk))
@@ -414,6 +439,13 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             if dm1 == dm2 and ln1 == ln2:   # ★ Sicherung: Masse muessen passen
                                 if din2: d['din'] = din2
                                 if g2 and not d.get('material'): d['material'] = str(g2)
+                    if em_baugruppen is not None:
+                        z = v.mean(axis=0)
+                        dist = np.linalg.norm(em_baugruppen[0] - z, axis=1)
+                        k = int(dist.argmin())
+                        if dist[k] < 0.005:
+                            d['bg'] = em_baugruppen[1][k][0]
+                            d['bgnr'] = em_baugruppen[1][k][1]
                     if d['ref'] is None and em_zentren is not None:
                         z = v.mean(axis=0)
                         dist = np.linalg.norm(em_zentren[0] - z, axis=1)
@@ -470,9 +502,10 @@ def main():
     if not em:
         print('Hinweis: keine EM.11-Datei dabei - Gelaenderteile bekommen keine Positionsnummern.')
 
-    namen_pos, namen_ort = lese_namen(args.input_dir)
-    if namen_pos or namen_ort:
-        print('* Namensliste: %d Positionen, %d mit Koordinate' % (len(namen_pos), len(namen_ort)))
+    namen_pos, namen_ort, namen_bg = lese_namen(args.input_dir)
+    if namen_pos or namen_ort or namen_bg:
+        print('* Namensliste: %d Positionen, %d mit Koordinate, %d Baugruppen-Bezeichnungen'
+              % (len(namen_pos), len(namen_ort), len(namen_bg)))
     glb, teile = wandle(ifc, em, args.ohne_schrauben, args.ohne_beton)
     # ── Namensliste verheiraten: erst Position, dann Schwerpunkt (Sonderteile) ──
     if namen_pos or namen_ort:
@@ -490,6 +523,8 @@ def main():
                     e = namen_ort[k][1]
             if e:
                 name_deute(d, e['name']); getroffen += 1
+            if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
+                d['bgname'] = namen_bg[d['bgnr']]
         print('* Namensliste zugeordnet: %d Bauteile' % getroffen)
     for d in teile.values():
         if isinstance(d, dict): d.pop('zentrum', None)

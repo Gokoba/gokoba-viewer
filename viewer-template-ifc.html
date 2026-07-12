@@ -5512,33 +5512,57 @@ var GOKOBA_LAYER_ACI = {
           karte.style.top=Math.max(10,Math.min(y+14,ph-kh-10))+'px';}
       }
 
-      /* ── Achsraster: Linien + Beschriftung, per Palette schaltbar ── */
-      var achsGruppe=null;
+      /* ── Achsraster: Staebe + grosse Beschriftung, themenfest, per Palette schaltbar ── */
+      var achsGruppe=null, achsTeile=[];
+      function achsFarbeAktuell(){return document.body.classList.contains('hell')?'#3A4A56':'#FFFFFF';}
       if(ACHSEN&&ACHSEN.length){
         achsGruppe=new THREE.Group();
-        var am=new THREE.LineBasicMaterial({color:0x8FA6B5,transparent:true,opacity:0.75});
-        function achsLabel(txt,pos){
-          var c=document.createElement('canvas');c.width=128;c.height=128;
+        var achsMat=new THREE.MeshBasicMaterial({color:new THREE.Color(achsFarbeAktuell()).convertSRGBToLinear()});
+        var achsR=Math.max(0.011,dist*0.0028); /* ★ sichtbar dick, mit dem Modell skalierend */
+        function achsLabelCanvas(txt,farbe){
+          var c=document.createElement('canvas');c.width=192;c.height=192;
           var g=c.getContext('2d');
-          g.beginPath();g.arc(64,64,44,0,6.3);g.strokeStyle='#8FA6B5';g.lineWidth=6;g.stroke();
-          g.fillStyle='#8FA6B5';g.font='700 52px system-ui';g.textAlign='center';g.textBaseline='middle';
-          g.fillText(txt,64,68);
-          var t=new THREE.CanvasTexture(c);
-          var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
-          sp.position.copy(pos);sp.scale.set(dist*0.035,dist*0.035,1);
+          g.beginPath();g.arc(96,96,72,0,6.2832);g.strokeStyle=farbe;g.lineWidth=6;g.stroke();
+          g.fillStyle=farbe;g.font='500 76px system-ui';g.textAlign='center';g.textBaseline='middle';
+          g.fillText(txt,96,102);
+          return c;
+        }
+        function achsLabel(txt,pos){
+          var c=achsLabelCanvas(txt,achsFarbeAktuell());
+          var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+          /* ★ depthTest an: hinter Bauteilen wird das Schild verdeckt */
+          var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:true}));
+          sp.position.copy(pos);
+          var sk=dist*0.12; sp.scale.set(sk,sk,1);  /* ★ rund 3,5x groesser */
+          achsTeile.push({sprite:sp,txt:txt});
           return sp;
         }
         ACHSEN.forEach(function(a){
           var p=a.p;
-          var g=new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(p[0],p[1],p[2]),new THREE.Vector3(p[3],p[4],p[5])]);
-          achsGruppe.add(new THREE.Line(g,am));
+          var v1=new THREE.Vector3(p[0],p[1],p[2]), v2=new THREE.Vector3(p[3],p[4],p[5]);
+          var len=v1.distanceTo(v2);
+          if(len>0.001){
+            var zyl=new THREE.Mesh(new THREE.CylinderGeometry(achsR,achsR,len,8),achsMat);
+            zyl.position.copy(v1).add(v2).multiplyScalar(0.5);
+            zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v2.clone().sub(v1).normalize());
+            achsGruppe.add(zyl);
+          }
           if(a.tag){
-            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[0],p[1],p[2])));
-            achsGruppe.add(achsLabel(a.tag,new THREE.Vector3(p[3],p[4],p[5])));
+            achsGruppe.add(achsLabel(a.tag,v1));
+            achsGruppe.add(achsLabel(a.tag,v2));
           }
         });
         model.add(achsGruppe); /* ★ erbt Z-oben-Drehung und Zentrierung des Modells */
+        /* ★ Themenwechsel live nachziehen (Hell/Dunkel-Knopf) */
+        new MutationObserver(function(){
+          var fb=achsFarbeAktuell();
+          achsMat.color=new THREE.Color(fb).convertSRGBToLinear();
+          achsTeile.forEach(function(e){
+            var t2=new THREE.CanvasTexture(achsLabelCanvas(e.txt,fb)); t2.encoding=THREE.sRGBEncoding;
+            e.sprite.material.map=t2;
+            e.sprite.material.needsUpdate=true;
+          });
+        }).observe(document.body,{attributes:true,attributeFilter:['class']});
       }
 
       /* ── Palette ── */
@@ -5550,6 +5574,7 @@ var GOKOBA_LAYER_ACI = {
         notiz:'<path d="M4 5.5h16v10.5H10.5L6.5 19.5v-3.5H4V5.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 9.5h8M8 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
         foto:'<rect x="3.5" y="7" width="17" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 7 10 4.5h4L15.5 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>',
         liste:'<path d="M8 6h12M8 12h12M8 18h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="4.2" cy="6" r="1.1" fill="currentColor"/><circle cx="4.2" cy="12" r="1.1" fill="currentColor"/><circle cx="4.2" cy="18" r="1.1" fill="currentColor"/>',
+        bg:'<rect x="3.5" y="9.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.5" y="4.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>',
         achsen:'<path d="M8.5 3v18M15.5 3v18M3 8.5h18M3 15.5h18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>'
       };
       var TIP={summe:'Bauteile antippen, die Liste rechnet mit.',
@@ -5557,8 +5582,9 @@ var GOKOBA_LAYER_ACI = {
                iso:'Bauteile antippen und unten w\u00e4hlen.',
                notiz:'Punkt am Modell antippen, dann Text schreiben.',
                foto:'Bereich mit gedr\u00fcckter Maustaste bzw. Finger aufziehen.',
-               liste:'Kennzahlen und Profilsuche zum ganzen Modell.'};
-      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung'};
+               liste:'Kennzahlen und Profilsuche zum ganzen Modell.',
+               bg:'Bauteil antippen - die ganze Schwei\u00dfbaugruppe leuchtet.'};
+      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe'};
       var palette=el('div',glasBox('display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'));
       palette.id='gkpalette'; panel.appendChild(palette);
       function paletteLegen(){
@@ -5596,7 +5622,7 @@ var GOKOBA_LAYER_ACI = {
           '<div style="padding:0 13px 8px;color:var(--gktx2);font-size:11.5px;">'+TIP[w]+'</div>';
       }
       var knoepfe={};
-      ['summe','farbe','iso','notiz','foto','liste'].forEach(function(w){
+      ['summe','farbe','bg','iso','notiz','foto','liste'].forEach(function(w){
         var b=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
           'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
         b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
@@ -5625,13 +5651,14 @@ var GOKOBA_LAYER_ACI = {
         });
       }
       function schalte(neu){
-        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde,liste:listeEnde})[aktiv]();}
+        if(aktiv&&aktiv!==neu){({summe:summeEnde,farbe:farbeEnde,iso:isoEnde,notiz:function(){},foto:fotoEnde,liste:listeEnde,bg:bgEnde})[aktiv]();}
         aktiv=neu; malKnopf(); abwaehlen();
         if(neu==='summe')summeStart();
         if(neu==='farbe')farbeStart();
         if(neu==='iso')isoStart();
         if(neu==='foto')fotoStart();
         if(neu==='liste')listeStart();
+        if(neu==='bg')bgStart();
         if(neu==='notiz'||neu==='foto')sagHinweis(TIP[neu]);
       }
 
@@ -5877,6 +5904,43 @@ var GOKOBA_LAYER_ACI = {
         panel.appendChild(listePanel); flyLegen(listePanel);
       }
       function listeEnde(){ sucheLeeren(); if(listePanel){listePanel.remove();listePanel=null;} }
+
+      /* ── Baugruppe: Teil antippen -> ganze Schweissbaugruppe leuchtet + Kennzahlen ── */
+      var bgPanel=null, bgMarkiert=[];
+      function bgStart(){
+        bgPanel=el('div',glasBox('width:min(238px,70vw);'));
+        bgPanel.id='gkbg';
+        bgPanel.innerHTML=flyKopf('bg')+'<div data-inhalt style="padding:0 13px 12px;color:var(--gktx2);">Noch nichts gew\u00e4hlt.</div>';
+        bgPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
+        panel.appendChild(bgPanel); flyLegen(bgPanel);
+      }
+      function bgLoesen(){bgMarkiert.forEach(function(e){e.o.material=e.mat;});bgMarkiert=[];}
+      function bgKlick(o,d){
+        if(!bgPanel)return;
+        var inhalt=bgPanel.querySelector('[data-inhalt]');
+        bgLoesen();
+        if(!d.bg){
+          inhalt.innerHTML='Dieses Teil tr\u00e4gt keine Baugruppen-Info.';
+          return;
+        }
+        var teilN=0, gew=0;
+        Object.keys(GOKOBA_TEILE).forEach(function(kn){
+          var t=GOKOBA_TEILE[kn];
+          if(t.bg!==d.bg)return;
+          teilN++;
+          if(t.gewicht!=null)gew+=t.gewicht;
+          (netzKarte()[kn]||[]).forEach(function(oo){
+            bgMarkiert.push({o:oo,mat:oo.material});
+            oo.material=heben(oo,0x2E86AD,0.75);
+          });
+        });
+        inhalt.innerHTML=
+          '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Baugruppe</span><strong style="color:var(--gktx);">'+(d.bgnr||d.bg)+'</strong></div>'+
+          (d.bgname?('<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span>Bezeichnung</span><strong style="color:var(--gktx);text-align:right;">'+d.bgname+'</strong></div>'):'')+
+          '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Teile</span><strong style="color:var(--gktx);">'+teilN+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Gewicht</span><strong style="color:var(--gktx);">'+fmtKg(gew)+'</strong></div>';
+      }
+      function bgEnde(){bgLoesen();if(bgPanel){bgPanel.remove();bgPanel=null;}}
 
       /* ── Notizen: Pfeil vom Modellpunkt zur Textbox, kamerafest nachgefuehrt ── */
       var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -6182,6 +6246,7 @@ var GOKOBA_LAYER_ACI = {
         var t=triff(e);
         if(!t){if(!aktiv)abwaehlen();return;}
         if(aktiv==='summe')summeKlick(t.o,t.d,t.name);
+        else if(aktiv==='bg')bgKlick(t.o,t.d);
         else if(aktiv==='farbe')farbeKlick(t.o,t.name);
         else if(aktiv==='iso')isoKlick(t.o,t.name);
         else if(aktiv==='notiz')notizSetze(t.p3);
