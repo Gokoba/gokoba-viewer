@@ -23,7 +23,7 @@ concurrency:
 jobs:
   convert:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
@@ -62,9 +62,13 @@ jobs:
           # ★ Kein "set -e": ein fehlerhafter Job darf die anderen nicht blockieren.
           shopt -s nullglob
           PROBLEME=0
-          for jobdir in jobs-ifc/*/; do
+          # ★ Neueste Auftraege zuerst: frische Kunden-Uploads ueberholen Altlasten.
+          LISTE=$(for d in jobs-ifc/*/; do t=$(git log -1 --format=%ct -- "$d" 2>/dev/null || echo 0); echo "$t $d"; done | sort -rn | awk '{print $2}')
+          for jobdir in $LISTE; do
             id=$(basename "$jobdir")
-            if [ -f "docs/v/$id/index.html" ]; then continue; fi
+            # ★ Eine WARTESEITE zaehlt nicht als fertiger Viewer! Das Plugin legt sie
+            #   beim Knopfdruck an - ohne diese Pruefung wuerde jeder Job uebersprungen.
+            if [ -f "docs/v/$id/index.html" ] && ! grep -q "Modell wird gerade erstellt" "docs/v/$id/index.html"; then continue; fi
             if [ -f "$jobdir/.done" ] || [ -f "$jobdir/.failed" ]; then continue; fi
             echo "::group::IFC-Job $id"
             # Stueckweise hochgeladene ZIPs wieder zusammenfuegen (grosse Modelle).
@@ -112,6 +116,19 @@ jobs:
               date -u +"%Y-%m-%dT%H:%M:%SZ (Code $rc)" > "jobs-ifc/$id/.failed"
               PROBLEME=$((PROBLEME + 1))
               echo "IFC-Job $id FEHLGESCHLAGEN (Code $rc) - uebersprungen."
+            fi
+            # ★ Ergebnis SOFORT sichern: stirbt der Lauf spaeter (Zeitlimit, Absturz),
+            #   bleibt jedes fertige Modell erhalten und der naechste Lauf macht weiter.
+            git config user.name "gokoba-bot"
+            git config user.email "bot@users.noreply.github.com"
+            git add -A
+            if ! git diff --cached --quiet; then
+              git commit -m "IFC-Viewer $id" >/dev/null
+              for i in 1 2 3 4 5; do
+                git pull --rebase origin main && git push && break
+                echo "Push-Versuch $i abgeprallt - neuer Anlauf..."
+                sleep $((i * 3))
+              done
             fi
             echo "::endgroup::"
           done
