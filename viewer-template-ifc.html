@@ -5487,12 +5487,19 @@ var GOKOBA_LAYER_ACI = {
         function zeile(k,v){if(v)z.push([k,v]);}
         if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Gewicht',fmtKg(d.gewicht));}
-        if(d.bezeichnung)zeile('Bezeichnung',d.bezeichnung);
-        if(d.bgnr)zeile('Baugruppe',d.bgname?(d.bgnr+' \u00b7 '+d.bgname):d.bgnr);
-        else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Hersteller',d.hersteller);zeile('Masche',d.masche);zeile('Tragstab',d.tragstab);zeile('Gr\u00f6\u00dfe',fmtMass(d.masse));zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='gitterrost'||art==='gitterroststufe'){/* \u2605 nur Pos, Art und Bezeichnung - alles Weitere steht in Attribut 1 */}
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
+        /* \u2605 Benutzerattribute 1-5: nur gefuellte Zeilen, leere komplett weg */
+        var atl=d.attrs||(d.bezeichnung?[d.bezeichnung]:null);
+        if(atl){
+          var AN=['Bezeichnung','Attribut 2','Attribut 3','Attribut 4','Attribut 5'];
+          atl.forEach(function(w,i){ if(w)zeile(AN[i]||('Attribut '+(i+1)),w); });
+        }
+        /* \u2605 Baugruppe: ueberall ausser an Rost/Stufe (dort stuende Doppeltes) */
+        if(d.bgnr&&art!=='gitterrost'&&art!=='gitterroststufe')
+          zeile('Baugruppe',d.bgname?(d.bgnr+' \u00b7 '+d.bgname):d.bgnr);
         return z;
       }
 
@@ -5981,9 +5988,9 @@ var GOKOBA_LAYER_ACI = {
         var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.72;
         schnittQuad=new THREE.Group();
         var fl=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),
-          new THREE.MeshBasicMaterial({color:0x5FA8C9,transparent:true,opacity:0.13,side:THREE.DoubleSide,depthWrite:false}));
+          new THREE.MeshBasicMaterial({color:0x5FA8C9,transparent:true,opacity:0.10,side:THREE.DoubleSide,depthWrite:false}));
         var rahmen=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(gr,gr)),
-          new THREE.LineBasicMaterial({color:0x5FA8C9,transparent:true,opacity:0.85}));
+          new THREE.LineBasicMaterial({color:0x5FA8C9,transparent:true,opacity:0.5}));
         schnittQuad.add(fl); schnittQuad.add(rahmen);
         schnittQuad.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
         schnittQuadLege();
@@ -6003,7 +6010,7 @@ var GOKOBA_LAYER_ACI = {
           b.style.background=an?AKZENT:'transparent'; b.style.color=an?'#0d1216':'var(--gktx2)';
         });
         var h=schnittPanel.querySelector('[data-shin]');
-        if(h)h.textContent=schnittAchse?'Scheibe greifen und ziehen - der Schnitt wandert live mit.':'Achse w\u00e4hlen, dann die Scheibe greifen und ziehen.';
+        if(h)h.textContent=schnittAchse?'Scheibe antippen, um sie zu greifen.':'Achse w\u00e4hlen, dann die Scheibe antippen und ziehen.';
       }
       function schnittStart(){
         renderer.localClippingEnabled=true;
@@ -6022,7 +6029,7 @@ var GOKOBA_LAYER_ACI = {
           '<div data-shin style="padding:0 13px 12px;color:var(--gktx2);font-size:12px;"></div>';
         schnittPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
         Array.prototype.forEach.call(schnittPanel.querySelectorAll('[data-sa]'),function(b){
-          b.addEventListener('click',function(ev){ev.stopPropagation();schnittSetzAchse(b.getAttribute('data-sa'));});
+          b.addEventListener('click',function(ev){ev.stopPropagation();schnittSetzAchse(b.getAttribute('data-sa'));schnittMarkiere(false);});
         });
         schnittPanel.querySelector('[data-sflip]').addEventListener('click',function(ev){ev.stopPropagation();
           if(!schnittEbene)return;
@@ -6049,14 +6056,26 @@ var GOKOBA_LAYER_ACI = {
           greifPtr.x=((e.clientX-r.left)/r.width)*2-1; greifPtr.y=-((e.clientY-r.top)/r.height)*2+1;
           greifRay.setFromCamera(greifPtr,camera);
         }
+        /* \u2605 Erst waehlen, dann ziehen: ein Tipp auf die Scheibe waehlt sie (leuchtet),
+           erst dann laesst sie sich ziehen. Tipp ins Leere oder Escape waehlt ab -
+           so kann man mitten im Schnitt frei drehen und zoomen. */
+        var schnittGewaehlt=false, downX=0, downY=0, downTrafF=false;
+        function schnittMarkiere(an){
+          schnittGewaehlt=an;
+          if(!schnittQuad)return;
+          schnittQuad.children[0].material.opacity=an?0.22:0.10;
+          schnittQuad.children[1].material.opacity=an?1.0:0.5;
+          var h=schnittPanel&&schnittPanel.querySelector('[data-shin]');
+          if(h&&schnittAchse)h.textContent=an?'Scheibe ziehen - Tipp daneben oder Escape gibt das Drehen frei.':'Scheibe antippen, um sie zu greifen.';
+        }
         schnittDown=function(e){
           if(!schnittQuad)return;
           zeiger(e);
           var h=greifRay.intersectObject(schnittQuad.children[0],false);
-          if(!h.length)return;
+          downX=e.clientX; downY=e.clientY; downTrafF=h.length>0;
+          if(!h.length||!schnittGewaehlt)return; /* nicht gewaehlt: Drehen laeuft normal weiter */
           schnittZieht=true; controls.enabled=false;
           greifStart=h[0].point.clone(); greifKonst=schnittEbene.constant;
-          /* Ziehflaeche: enthaelt die Achse, zeigt zur Kamera */
           var n=schnittEbene.normal;
           var blick=camera.getWorldDirection(new THREE.Vector3());
           var quer=new THREE.Vector3().crossVectors(n,blick).normalize();
@@ -6069,8 +6088,10 @@ var GOKOBA_LAYER_ACI = {
           if(!schnittQuad)return;
           zeiger(e);
           if(!schnittZieht){
-            var h=greifRay.intersectObject(schnittQuad.children[0],false);
-            cv.style.cursor=h.length?'grab':'';
+            if(schnittGewaehlt){
+              var h=greifRay.intersectObject(schnittQuad.children[0],false);
+              cv.style.cursor=h.length?'grab':'';
+            }
             return;
           }
           var tp=new THREE.Vector3();
@@ -6080,12 +6101,23 @@ var GOKOBA_LAYER_ACI = {
             schnittQuadLege();
           }
         };
-        schnittUp=function(){ if(schnittZieht){schnittZieht=false;controls.enabled=true;cv.style.cursor='';} };
+        schnittUp=function(e){
+          if(schnittZieht){schnittZieht=false;controls.enabled=true;cv.style.cursor='';return;}
+          /* Tipp (kaum Bewegung): auf Scheibe -> waehlen, daneben -> abwaehlen */
+          if(e&&Math.hypot(e.clientX-downX,e.clientY-downY)<6){
+            if(downTrafF&&!schnittGewaehlt)schnittMarkiere(true);
+            else if(!downTrafF&&schnittGewaehlt)schnittMarkiere(false);
+          }
+        };
+        var schnittTaste=function(ev){ if(ev.key==='Escape')schnittMarkiere(false); };
+        window.addEventListener('keydown',schnittTaste);
+        schnittPanel.__taste=schnittTaste;
         cv.addEventListener('pointerdown',schnittDown,true);
         cv.addEventListener('pointermove',schnittMove);
         cv.addEventListener('pointerup',schnittUp);
       }
       function schnittEnde(){
+        if(schnittPanel&&schnittPanel.__taste)window.removeEventListener('keydown',schnittPanel.__taste);
         if(schnittDown){cv.removeEventListener('pointerdown',schnittDown,true);schnittDown=null;}
         if(schnittMove){cv.removeEventListener('pointermove',schnittMove);schnittMove=null;}
         if(schnittUp){cv.removeEventListener('pointerup',schnittUp);schnittUp=null;}
@@ -6101,6 +6133,42 @@ var GOKOBA_LAYER_ACI = {
       function lokal(pw){return model.worldToLocal(pw.clone());}
       function fmm(v){return Math.round(Math.abs(v)*1000).toLocaleString('de-DE')+' mm';}
       function fkote(z){return (z>=-0.0005?'+':'-')+Math.abs(z).toFixed(3).replace('.',',');}
+      var flCache={schluessel:null,geo:null};
+      function flaecheVon(t){
+        /* \u2605 komplette ebene Flaeche: alle Dreiecke des Objekts mit gleicher Normale
+           und gleichem Ebenenabstand wie das getroffene Dreieck (Toleranzen eng) */
+        var o=t.o, g=o.geometry, pos=g.getAttribute('position'), idx=g.getIndex();
+        var nHit=t.f.normal, a=new THREE.Vector3().fromBufferAttribute(pos,t.f.a);
+        var dHit=nHit.dot(a);
+        var schluessel=o.uuid+'|'+nHit.x.toFixed(3)+'|'+nHit.y.toFixed(3)+'|'+nHit.z.toFixed(3)+'|'+dHit.toFixed(4);
+        if(flCache.schluessel===schluessel)return flCache.geo;
+        var tri=idx?idx.count/3:pos.count/3;
+        if(tri>80000)return null; /* Notbremse fuer Monsternetze */
+        var pkt=[], va=new THREE.Vector3(), vb=new THREE.Vector3(), vc=new THREE.Vector3(),
+            ab=new THREE.Vector3(), ac=new THREE.Vector3(), nn=new THREE.Vector3();
+        function ix(i){return idx?idx.getX(i):i;}
+        for(var i=0;i<tri;i++){
+          var i0=ix(i*3),i1=ix(i*3+1),i2=ix(i*3+2);
+          va.fromBufferAttribute(pos,i0);vb.fromBufferAttribute(pos,i1);vc.fromBufferAttribute(pos,i2);
+          nn.copy(ab.copy(vb).sub(va).cross(ac.copy(vc).sub(va))).normalize();
+          if(Math.abs(nn.dot(nHit))<0.999)continue;
+          if(Math.abs(nHit.dot(va)-dHit)>0.0015)continue;
+          pkt.push(va.x,va.y,va.z,vb.x,vb.y,vb.z,vc.x,vc.y,vc.z);
+        }
+        if(!pkt.length)return null;
+        var geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.Float32BufferAttribute(pkt,3));
+        flCache={schluessel:schluessel,geo:geo};
+        return geo;
+      }
+      function flaecheZeig(ziel,t){
+        var geo=flaecheVon(t);
+        if(!geo)return false;
+        ziel.geometry.dispose&&ziel.geometry!==geo&&ziel.geometry.dispose();
+        ziel.geometry=geo;
+        ziel.matrixAutoUpdate=false; ziel.matrix.copy(t.o.matrixWorld);
+        return true;
+      }
       function massFangen(t){
         /* ★ Eckpunkt-Fang: naechster Dreieckspunkt der getroffenen Flaeche, wenn er
            auf dem Bildschirm nahe genug liegt (18 px) - sonst der Trefferpunkt selbst */
@@ -6116,15 +6184,29 @@ var GOKOBA_LAYER_ACI = {
         });
         return (best&&bestD<18)?best:t.p3.clone();
       }
-      function massMarker(pw,farbe){
-        var k=new THREE.Mesh(new THREE.SphereGeometry(dist*0.005,10,10),
-          new THREE.MeshBasicMaterial({color:farbe||0x2E86AD,depthTest:false,transparent:true,opacity:0.95}));
+      function quadratSprite(gefuellt,farbe){
+        var c=document.createElement('canvas');c.width=48;c.height=48;
+        var g=c.getContext('2d');
+        g.lineWidth=6;g.strokeStyle=farbe;
+        if(gefuellt){g.fillStyle=farbe;g.fillRect(10,10,28,28);}
+        else g.strokeRect(8,8,32,32);
+        var tx=new THREE.CanvasTexture(c); tx.encoding=THREE.sRGBEncoding;
+        return new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,depthTest:false}));
+      }
+      function schirmSkala(pw,px){
+        /* \u2605 konstante Bildschirmgroesse: Weltmass fuer px Pixel am Punkt pw */
+        var r=cv.getBoundingClientRect();
+        return camera.position.distanceTo(pw)*2*Math.tan(camera.fov*Math.PI/360)*px/r.height;
+      }
+      function massMarker(pw){
+        var k=quadratSprite(true,'#2E86AD');
+        var sk=schirmSkala(pw,9); k.scale.set(sk,sk,1);
         k.position.copy(pw); k.renderOrder=9; messGrafik.add(k); return k;
       }
       function massLinie(p1,p2){
         var len=p1.distanceTo(p2); if(len<0.0005)return;
-        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0012,dist*0.0012,len,6),
-          new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.9}));
+        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0005,dist*0.0005,len,6),
+          new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.95}));
         zyl.position.copy(p1).add(p2).multiplyScalar(0.5);
         zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p2.clone().sub(p1).normalize());
         zyl.renderOrder=9; messGrafik.add(zyl);
@@ -6141,12 +6223,12 @@ var GOKOBA_LAYER_ACI = {
       function massStart(){
         messGrafik=new THREE.Group(); scene.add(messGrafik);
         /* Fang-Kugel + Flaechen-Vorschau */
-        snapKugel=new THREE.Mesh(new THREE.SphereGeometry(dist*0.006,10,10),
-          new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.9}));
+        snapKugel=quadratSprite(false,'#2E86AD');
         snapKugel.visible=false; snapKugel.renderOrder=10; scene.add(snapKugel);
-        flHelfer=new THREE.Mesh(new THREE.CircleGeometry(dist*0.028,24),
-          new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.35,side:THREE.DoubleSide,depthTest:false}));
-        flHelfer.visible=false; flHelfer.renderOrder=10; scene.add(flHelfer);
+        flHelfer=new THREE.Mesh(new THREE.BufferGeometry(),
+          new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.4,side:THREE.DoubleSide,
+            polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+        flHelfer.visible=false; flHelfer.renderOrder=8; scene.add(flHelfer);
         /* ★ Achsenkreuz am Modellnullpunkt: Richtungen X/Y/Z + Hoehen-Null */
         achsKreuz=new THREE.Group();
         var al=dist*0.14;
@@ -6197,15 +6279,17 @@ var GOKOBA_LAYER_ACI = {
         massAus=function(e){
           if(massModus==='flaeche'){ snapKugel.visible=false;
             var t=triff(e);
-            if(t&&t.f){
-              var n=t.f.normal.clone().transformDirection(t.o.matrixWorld);
-              flHelfer.position.copy(t.p3).add(n.clone().multiplyScalar(dist*0.001));
-              flHelfer.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
-              flHelfer.visible=true;
-            } else flHelfer.visible=false;
-          } else { flHelfer.visible=false;
+            /* \u2605 ganze ebene Flaeche leuchtet - so weiss man sicher, was man klickt */
+            flHelfer.visible=!!(t&&t.f&&flaecheZeig(flHelfer,t));
+          } else if(massModus==='kote'){ flHelfer.visible=false; snapKugel.visible=false; }
+          else { flHelfer.visible=false;
             var t2=triff(e);
-            if(t2){snapKugel.position.copy(massFangen(t2));snapKugel.visible=true;}
+            if(t2){
+              var fp=massFangen(t2);
+              var sk2=schirmSkala(fp,11);
+              snapKugel.scale.set(sk2,sk2,1);
+              snapKugel.position.copy(fp); snapKugel.visible=true;
+            }
             else snapKugel.visible=false;
           }
         };
@@ -6224,10 +6308,16 @@ var GOKOBA_LAYER_ACI = {
           var n=t.f.normal.clone().transformDirection(t.o.matrixWorld).normalize();
           if(!flWahl||messP.length>=2){ massLeeren();
             flWahl={p:t.p3.clone(),n:n}; messP=[t.p3.clone()];
-            var d1=new THREE.Mesh(new THREE.CircleGeometry(dist*0.028,24),
-              new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.45,side:THREE.DoubleSide,depthTest:false}));
-            d1.position.copy(t.p3).add(n.clone().multiplyScalar(dist*0.001));
-            d1.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n); d1.renderOrder=9;
+            var d1=new THREE.Mesh(new THREE.BufferGeometry(),
+              new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.5,side:THREE.DoubleSide,
+                polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+            if(!flaecheZeig(d1,t)){
+              d1.geometry=new THREE.CircleGeometry(dist*0.02,20);
+              d1.matrixAutoUpdate=true;
+              d1.position.copy(t.p3).add(n.clone().multiplyScalar(dist*0.001));
+              d1.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+            }
+            d1.renderOrder=8;
             messGrafik.add(d1);
             massLese('Erste Fl\u00e4che gew\u00e4hlt - jetzt die zweite antippen.');
           } else {
@@ -6266,15 +6356,23 @@ var GOKOBA_LAYER_ACI = {
       }
       /* Hoehenkoten: kamerafest nachgefuehrte Schilder, bleiben auch nach Werkzeugende stehen */
       function koteSetzen(pw,lz){
-        var m=new THREE.Mesh(new THREE.SphereGeometry(dist*0.004,8,8),
-          new THREE.MeshBasicMaterial({color:0xE5484D,depthTest:false,transparent:true,opacity:0.95}));
-        m.position.copy(pw); m.renderOrder=9; scene.add(m);
+        /* \u2605 flach liegendes, deckendes Quadrat am Klickpunkt + senkrechter Kotenpfeil */
+        var m=new THREE.Group();
+        var mat=new THREE.MeshBasicMaterial({color:new THREE.Color('#2E86AD').convertSRGBToLinear()});
+        var q=new THREE.Mesh(new THREE.PlaneGeometry(dist*0.0055,dist*0.0055),mat);
+        m.add(q);
+        var st=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0006,dist*0.0006,dist*0.016,6),mat);
+        st.rotation.x=Math.PI/2; st.position.z=dist*0.008+dist*0.0035; m.add(st);
+        var sp=new THREE.Mesh(new THREE.ConeGeometry(dist*0.0022,dist*0.007,10),mat);
+        sp.rotation.x=Math.PI/2; sp.position.z=dist*0.0035; m.add(sp);
+        var pl=lokal(pw); m.position.copy(pl);
+        model.add(m); m.userData._amModell=true;
         var box=el('div',glasBox('padding:3px 8px 3px 9px;border-radius:9px;display:flex;align-items:center;gap:7px;z-index:33;font:700 11.5px var(--ui);color:var(--gktx);'));
         box.innerHTML='<span>'+fkote(lz)+'</span><span data-x style="cursor:pointer;color:var(--gktx2);font-weight:600;">\u00d7</span>';
         panel.appendChild(box);
         var k={p3:pw,box:box,marker:m};
         box.querySelector('[data-x]').addEventListener('click',function(ev){ev.stopPropagation();
-          box.remove(); scene.remove(m); koten.splice(koten.indexOf(k),1);
+          box.remove(); (m.userData._amModell?model:scene).remove(m); koten.splice(koten.indexOf(k),1);
           if(massPanel)massPanel.querySelector('[data-kweg]').style.display=(massModus==='kote'&&koten.length)?'':'none';
         });
         koten.push(k); koteMale();
@@ -6290,7 +6388,7 @@ var GOKOBA_LAYER_ACI = {
         });
       }
       function kotenLeeren(){
-        koten.forEach(function(k){k.box.remove();scene.remove(k.marker);});
+        koten.forEach(function(k){k.box.remove();(k.marker.userData._amModell?model:scene).remove(k.marker);});
         koten=[];
         if(massPanel)massPanel.querySelector('[data-kweg]').style.display='none';
       }

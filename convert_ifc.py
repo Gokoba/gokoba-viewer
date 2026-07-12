@@ -139,11 +139,12 @@ def lese_namen(input_dir):
             t = zeile.rstrip('\n').split('|')
             if len(t) < 6: continue
             pos, klasse, x, y, z, name = t[0], t[1], t[2], t[3], t[4], t[5]
-            attr1 = t[6].strip() if len(t) > 6 else ''
+            attrs = [w.strip() for w in t[6:11]]
+            while len(attrs) < 5: attrs.append('')
             if klasse == 'Baugruppe':
                 if pos and name.strip(): je_bg.setdefault(pos, name.strip())
                 continue
-            eintrag = {'klasse': klasse, 'name': name.strip(), 'attr1': attr1}
+            eintrag = {'klasse': klasse, 'name': name.strip(), 'attrs': attrs}
             if pos: je_pos.setdefault(pos, eintrag)
             if x and y and z:
                 try:
@@ -530,8 +531,12 @@ def main():
                 if dist[k] < 0.01:
                     e = namen_ort[k][1]
             if e:
-                name_deute(d, e['name']); getroffen += 1
-                if e.get('attr1'): d['bezeichnung'] = e['attr1']
+                if e.get('klasse') != 'Attr':
+                    name_deute(d, e['name']); getroffen += 1
+                a = [w for w in (e.get('attrs') or [])]
+                if any(a):
+                    d['attrs'] = [w for w in a if w] and a  # volle Liste mit Leerstellen fuer Index-Treue
+                    while d['attrs'] and not d['attrs'][-1]: d['attrs'].pop()
             if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
                 d['bgname'] = namen_bg[d['bgnr']]
         print('* Namensliste zugeordnet: %d Bauteile' % getroffen)
