@@ -5218,6 +5218,32 @@ var GOKOBA_LAYER_ACI = {
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var gitterTex=gitterTextur(GOKOBA_GITTER_TEX.indexOf('3010')>=0?'3010':'3030');
+  /* ★ Triplanar: Textur aus Weltkoordinaten auf JEDE Flaeche projizieren (von oben,
+     vorn und der Seite, weich nach Flaechenrichtung gemischt). Ohne UV-Koordinaten aus
+     der Cloud waere die Textur sonst unsichtbar bzw. nur von oben gestrahlt. */
+  var uGkSkal={value:1};
+  function triplanarAn(m,fein){
+    if(m.userData._gkTri)return; m.userData._gkTri=true;
+    var uFein={value:fein};
+    m.customProgramCacheKey=function(){return 'gktri'+fein;};
+    m.onBeforeCompile=function(sh){
+      sh.uniforms.uGkSkal=uGkSkal; sh.uniforms.uGkFein=uFein;
+      sh.vertexShader=sh.vertexShader
+        .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor;')
+        .replace('#include <fog_vertex>','#include <fog_vertex>\n vGkPos=(modelMatrix*vec4(transformed,1.0)).xyz; vGkNor=normalize(mat3(modelMatrix)*objectNormal);');
+      sh.fragmentShader=sh.fragmentShader
+        .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor; uniform float uGkSkal; uniform float uGkFein;')
+        .replace('#include <map_fragment>',
+          '#ifdef USE_MAP\n'+
+          ' vec3 gkW=abs(normalize(vGkNor)); gkW=pow(gkW,vec3(4.0)); gkW/=(gkW.x+gkW.y+gkW.z);\n'+
+          ' vec3 gkP=vGkPos*uGkSkal*uGkFein;\n'+
+          ' vec4 gkT=texture2D(map,gkP.yz)*gkW.x+texture2D(map,gkP.zx)*gkW.y+texture2D(map,gkP.xy)*gkW.z;\n'+
+          ' gkT=mapTexelToLinear(gkT);\n'+
+          ' diffuseColor*=gkT;\n'+
+          '#endif');
+    };
+    m.needsUpdate=true;
+  }
   /* ★ Dekor-Auswahl aus dem Dialog (bws=..;min=..;t1=#..;t2=..;t3=..;t4=..) */
   function dekorWert(k){var m=GOKOBA_DEKOR.match(new RegExp('(?:^|;)'+k+'=([^;]*)'));return (m&&m[1]&&m[1].indexOf('__')<0)?m[1]:'';}
   /* ★ BWS Betonwerkstein: eine Kachel = 40x40 cm Platte, geschliffen (Werte aus den Musterfotos, aufgehellt) */
@@ -5332,7 +5358,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;triplanarAn(m,4.5);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5385,7 +5411,7 @@ var GOKOBA_LAYER_ACI = {
               }
               else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
               else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;} /* ★ Riffelblech */
-              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xffffff);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;gitterFlach(m);m.needsUpdate=true;} /* ★ Gitterrost: immer verzinkt + Textur */
+              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xffffff);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7);gitterFlach(m);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
@@ -5408,7 +5434,7 @@ var GOKOBA_LAYER_ACI = {
     rm.forEach(function(o){if(o.parent)o.parent.remove(o);});
     var box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),ctr=new THREE.Vector3();
     box.getSize(size);var maxd=Math.max(size.x,size.y,size.z)||1;var s=2.7/maxd;
-    model.scale.setScalar(s);
+    model.scale.setScalar(s); uGkSkal.value=1/(s||1); /* ★ Weltmass -> Modellmeter fuer die Triplanar-Kachelung */
     box.setFromObject(model);box.getSize(size);box.getCenter(ctr);
     model.position.x-=ctr.x;model.position.z-=ctr.z;model.position.y-=box.min.y;
     scene.add(model);
@@ -5963,6 +5989,110 @@ var GOKOBA_LAYER_ACI = {
       }
       function listeEnde(){ sucheLeeren(); if(listePanel){listePanel.remove();listePanel=null;} }
 
+      /* ── Ansichtswuerfel oben links + flache 2D-Ansicht ── */
+      var FLACH={an:false,fovN:camera.fov,maxAlt:null,minAlt:null};
+      function flachSetze(an){
+        /* ★ Tele-Trick: Blickwinkel 3 Grad + exakt passende Rueckfahrt = ansichtsgleiche
+           "2D"-Projektion ohne Kamerawechsel - alle Werkzeuge laufen unveraendert weiter. */
+        if(an===FLACH.an)return;
+        var t=controls.target, d=camera.position.distanceTo(t);
+        var zielFov=an?3:FLACH.fovN;
+        var h=2*d*Math.tan(camera.fov*Math.PI/360);
+        var dNeu=h/(2*Math.tan(zielFov*Math.PI/360));
+        var richt=camera.position.clone().sub(t).normalize();
+        camera.position.copy(t).add(richt.multiplyScalar(dNeu));
+        camera.fov=zielFov; camera.updateProjectionMatrix();
+        if(an){FLACH.maxAlt=controls.maxDistance;FLACH.minAlt=controls.minDistance;
+               controls.maxDistance=dist*90;controls.minDistance=dist*0.5;}
+        else{if(FLACH.maxAlt!=null)controls.maxDistance=FLACH.maxAlt;
+             if(FLACH.minAlt!=null)controls.minDistance=FLACH.minAlt;}
+        FLACH.an=an;
+      }
+      controls.addEventListener('start',function(){ if(FLACH.an&&!window.__gkWfahrt)flachSetze(false); });
+
+      (function(){
+        var wGr=mobil()?72:92, wPad=12;
+        var wScene=new THREE.Scene();
+        wScene.add(new THREE.AmbientLight(0xffffff,1));
+        var wCam=new THREE.OrthographicCamera(-1.5,1.5,1.5,-1.5,0.1,10);
+        function wFl(txt,dreh){
+          var c=document.createElement('canvas');c.width=c.height=128;var g=c.getContext('2d');
+          g.fillStyle='#39434D';g.fillRect(0,0,128,128);
+          g.strokeStyle='rgba(220,229,235,.5)';g.lineWidth=3;g.strokeRect(2,2,124,124);
+          g.save();g.translate(64,64);if(dreh)g.rotate(dreh);
+          g.fillStyle='#DCE5EB';g.font='700 25px system-ui';g.textAlign='center';g.textBaseline='middle';
+          g.fillText(txt,0,1);g.restore();
+          var tx=new THREE.CanvasTexture(c);tx.encoding=THREE.sRGBEncoding;
+          return new THREE.MeshBasicMaterial({map:tx});
+        }
+        var wMats=[wFl('RECHTS'),wFl('LINKS'),wFl('OBEN',Math.PI),wFl('UNTEN'),wFl('VORN'),wFl('HINTEN')];
+        var wBox=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,1.6),wMats);
+        wScene.add(wBox);
+        wScene.add(new THREE.LineSegments(new THREE.EdgesGeometry(wBox.geometry),
+          new THREE.LineBasicMaterial({color:0x9FB3C0,transparent:true,opacity:0.9})));
+        var wDiv=el('div','position:absolute;left:'+wPad+'px;top:'+wPad+'px;width:'+wGr+'px;height:'+wGr+'px;z-index:25;touch-action:none;');
+        wDiv.title='Ansicht w\u00e4hlen';
+        panel.appendChild(wDiv);
+        var wRay=new THREE.Raycaster();
+        function wRegion(ev){
+          var r=wDiv.getBoundingClientRect();
+          var nd=new THREE.Vector2(((ev.clientX-r.left)/r.width)*2-1,-((ev.clientY-r.top)/r.height)*2+1);
+          wRay.setFromCamera(nd,wCam);
+          var h=wRay.intersectObject(wBox,false);
+          if(!h.length)return null;
+          var p=h[0].point, hal=0.8, sw=0.55; /* Ecken und Kanten griffig gross */
+          var a=[p.x/hal,p.y/hal,p.z/hal], dir=new THREE.Vector3(), n=0;
+          for(var i=0;i<3;i++){ if(Math.abs(a[i])>sw){ dir.setComponent(i,Math.sign(a[i])); n++; } }
+          if(!n)return null;
+          dir.normalize();
+          return {dir:dir,art:n};
+        }
+        function wLicht(reg){
+          wMats.forEach(function(m){m.color.setHex(0xffffff);});
+          if(reg){
+            var d=reg.dir, ix=[];
+            if(d.x>0.2)ix.push(0); if(d.x<-0.2)ix.push(1);
+            if(d.y>0.2)ix.push(2); if(d.y<-0.2)ix.push(3);
+            if(d.z>0.2)ix.push(4); if(d.z<-0.2)ix.push(5);
+            ix.forEach(function(i){wMats[i].color.setHex(0x9fd8f2);});
+          }
+        }
+        wDiv.addEventListener('pointermove',function(ev){
+          var reg=wRegion(ev); wLicht(reg);
+          wDiv.style.cursor=reg?'pointer':'default';
+        });
+        wDiv.addEventListener('pointerleave',function(){wLicht(null);wDiv.style.cursor='default';});
+        wDiv.addEventListener('pointerdown',function(ev){
+          ev.preventDefault(); ev.stopPropagation();
+          var reg=wRegion(ev); if(!reg)return;
+          window.__gkWfahrt=true;
+          try{
+            var d=camera.position.distanceTo(controls.target);
+            var up=(Math.abs(reg.dir.y)>0.9)?new THREE.Vector3(0,0,reg.dir.y>0?-1:1):new THREE.Vector3(0,1,0);
+            camera.up.copy(up);
+            camera.position.copy(controls.target).add(reg.dir.clone().multiplyScalar(d));
+            controls.update();
+            flachSetze(reg.art<=2);
+          } finally { window.__gkWfahrt=false; }
+        });
+        function malWuerfel(){
+          var r=cv.getBoundingClientRect();
+          wCam.position.copy(camera.position).sub(controls.target).normalize().multiplyScalar(4);
+          wCam.up.copy(camera.up); wCam.lookAt(0,0,0);
+          var alt=renderer.autoClear;
+          renderer.autoClear=false;
+          renderer.setScissorTest(true);
+          renderer.setScissor(wPad,r.height-wPad-wGr,wGr,wGr);
+          renderer.setViewport(wPad,r.height-wPad-wGr,wGr,wGr);
+          renderer.clearDepth();
+          renderer.render(wScene,wCam);
+          renderer.setScissorTest(false);
+          renderer.setViewport(0,0,r.width,r.height);
+          renderer.autoClear=alt;
+        }
+        window.__gkWuerfel=malWuerfel;
+      })();
+
       /* ── Schnitt: Scheibe je Achse, frei durchs Modell ziehbar (GPU-Clipping) ── */
       var schnittPanel=null, schnittEbene=null, schnittQuad=null, schnittAchse=null,
           schnittZieht=false, schnittMove=null, schnittDown=null, schnittUp=null, schnittBox=null;
@@ -6023,9 +6153,6 @@ var GOKOBA_LAYER_ACI = {
           '<span style="color:var(--gktx2);font-size:11.5px;">Schnitt</span>'+
           kn('data-sa="x"','X')+kn('data-sa="y"','Y')+kn('data-sa="z"','Z')+
           kn('data-sflip',"Seite wechseln")+'</div>'+
-          '<div style="display:flex;gap:6px;padding:0 13px 9px;align-items:center;flex-wrap:wrap;">'+
-          '<span style="color:var(--gktx2);font-size:11.5px;">Ansicht</span>'+
-          ['oben|Oben','vorn|Vorn','rechts|Rechts','links|Links','hinten|Hinten','iso|Iso'].map(function(x){var t=x.split('|');return kn('data-sv="'+t[0]+'"',t[1]);}).join('')+'</div>'+
           '<div data-shin style="padding:0 13px 12px;color:var(--gktx2);font-size:12px;"></div>';
         schnittPanel.querySelector('[data-zu]').addEventListener('click',function(){schalte(null);});
         Array.prototype.forEach.call(schnittPanel.querySelectorAll('[data-sa]'),function(b){
@@ -6036,17 +6163,7 @@ var GOKOBA_LAYER_ACI = {
           schnittEbene.normal.negate(); schnittEbene.constant*=-1;
           schnittLese();
         });
-        Array.prototype.forEach.call(schnittPanel.querySelectorAll('[data-sv]'),function(b){
-          b.addEventListener('click',function(ev){ev.stopPropagation();
-            var mitte=schnittBox.getCenter(new THREE.Vector3());
-            var abst=camera.position.distanceTo(controls.target);
-            var richt={oben:[0,1,0.0001],vorn:[0,0,1],hinten:[0,0,-1],rechts:[1,0,0],links:[-1,0,0],iso:[0.72,0.6,0.72]}[b.getAttribute('data-sv')];
-            var v=new THREE.Vector3(richt[0],richt[1],richt[2]).normalize().multiplyScalar(abst);
-            controls.target.copy(mitte);
-            camera.position.copy(mitte.clone().add(v));
-            controls.update();
-          });
-        });
+        /* Ansichten uebernimmt jetzt der Wuerfel oben links */
         panel.appendChild(schnittPanel); flyLegen(schnittPanel);
         schnittLese();
         /* ★ Scheibe greifen: waehrend des Ziehens wandert der Schnitt live */
@@ -6522,9 +6639,17 @@ var GOKOBA_LAYER_ACI = {
         c.width=basis.width;c.height=basis.height;
         c.style.cssText='display:block;max-width:min(86vw,'+(panel.clientWidth-140)+'px);max-height:82vh;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.5);touch-action:none;';
         var g=c.getContext('2d');
-        var striche=[],werk='frei',farbe='#E5484D',dicke=4,laufend=null,gespeichert=true;
+        var striche=[],werk='frei',farbe='#3DD68C',dicke=7,laufend=null,gespeichert=true; /* ★ Standard: gruen + dick */
         function skala(){var r=c.getBoundingClientRect();return c.width/r.width;}
-        function malAlles(){
+        function textRuecken(g,t,x,y,fs){
+        /* ★ mattweisse Hinterlegung, damit Text auf jedem Motiv lesbar bleibt */
+        var w=g.measureText(t).width, p=Math.max(4,fs*0.22);
+        g.save(); g.fillStyle='rgba(255,255,255,0.78)';
+        if(g.roundRect){g.beginPath();g.roundRect(x-p,y-fs*0.88-p,w+2*p,fs*1.12+2*p,Math.min(8,fs*0.3));g.fill();}
+        else g.fillRect(x-p,y-fs*0.88-p,w+2*p,fs*1.12+2*p);
+        g.restore();
+      }
+      function malAlles(){
           g.clearRect(0,0,c.width,c.height);g.drawImage(basis,0,0);
           striche.concat(laufend?[laufend]:[]).forEach(function(st){
             g.strokeStyle=st.f;g.fillStyle=st.f;g.lineWidth=st.d;g.lineCap='round';g.lineJoin='round';
@@ -6533,7 +6658,12 @@ var GOKOBA_LAYER_ACI = {
             else if(st.w==='rechteck'){g.strokeRect(Math.min(st.a[0],st.b[0]),Math.min(st.a[1],st.b[1]),Math.abs(st.b[0]-st.a[0]),Math.abs(st.b[1]-st.a[1]));}
             else if(st.w==='kreis'){var r=Math.hypot(st.b[0]-st.a[0],st.b[1]-st.a[1]);g.beginPath();g.arc(st.a[0],st.a[1],r,0,6.2832);g.stroke();}
             else if(st.w==='ellipse'){g.beginPath();g.ellipse((st.a[0]+st.b[0])/2,(st.a[1]+st.b[1])/2,Math.abs(st.b[0]-st.a[0])/2,Math.abs(st.b[1]-st.a[1])/2,0,0,6.2832);g.stroke();}
-            else if(st.w==='text'){g.font='700 '+Math.round(st.d*7)+'px '+"'Hanken Grotesk',system-ui";g.fillText(st.t,st.a[0],st.a[1]);}
+            else if(st.w==='text'){
+          var fs=Math.round(st.d*7);
+          g.font='700 '+fs+'px '+"'Hanken Grotesk',system-ui";
+          textRuecken(g,st.t,st.a[0],st.a[1],fs);
+          g.fillStyle=st.f; g.fillText(st.t,st.a[0],st.a[1]);
+        }
             else if(st.w==='pfeil'){
               g.beginPath();g.moveTo(st.a[0],st.a[1]);g.lineTo(st.b[0],st.b[1]);g.stroke();
               var wnk=Math.atan2(st.a[1]-st.b[1],st.a[0]-st.b[0]),kl=st.d*4.5;
@@ -6541,8 +6671,12 @@ var GOKOBA_LAYER_ACI = {
               g.lineTo(st.a[0]-kl*Math.cos(wnk-0.42),st.a[1]-kl*Math.sin(wnk-0.42));
               g.lineTo(st.a[0]-kl*Math.cos(wnk+0.42),st.a[1]-kl*Math.sin(wnk+0.42));
               g.closePath();g.fill();
-              if(st.t){g.font='700 '+Math.round(st.d*6)+'px '+"'Hanken Grotesk',system-ui";
-                g.fillText(st.t,st.b[0]+(st.b[0]>=st.a[0]?8:-8-g.measureText(st.t).width),st.b[1]+5);}
+              if(st.t){
+                var fs2=Math.round(st.d*6);
+                g.font='700 '+fs2+'px '+"'Hanken Grotesk',system-ui";
+                var tx=st.b[0]+(st.b[0]>=st.a[0]?8:-8-g.measureText(st.t).width);
+                textRuecken(g,st.t,tx,st.b[1]+5,fs2);
+                g.fillStyle=st.f; g.fillText(st.t,tx,st.b[1]+5);}
             }
           });
         }
@@ -6551,6 +6685,25 @@ var GOKOBA_LAYER_ACI = {
         c.addEventListener('pointerdown',function(e){
           e.preventDefault();var p=ort(e);
           if(werk==='text'){
+            /* ★ Klick auf bestehenden Text (auch Pfeiltext) oeffnet ihn zum Korrigieren */
+            var altSt=null;
+            for(var si=striche.length-1;si>=0;si--){
+              var st=striche[si]; if(!st.t)continue;
+              var fs=Math.round(st.d*(st.w==='text'?7:6));
+              g.font='700 '+fs+'px '+"'Hanken Grotesk',system-ui";
+              var tw=g.measureText(st.t).width;
+              var tx=(st.w==='text')?st.a[0]:st.b[0]+(st.b[0]>=st.a[0]?8:-8-tw);
+              var ty=(st.w==='text')?st.a[1]:st.b[1]+5;
+              if(p[0]>=tx-8&&p[0]<=tx+tw+8&&p[1]>=ty-fs-8&&p[1]<=ty+10){altSt=st;break;}
+            }
+            if(altSt){
+              textEingabe(e.clientX,e.clientY,function(t){
+                if(t===null)return;
+                if(t)altSt.t=t; else striche.splice(striche.indexOf(altSt),1); /* leer = loeschen */
+                gespeichert=false; malAlles();
+              },altSt.t);
+              return;
+            }
             textEingabe(e.clientX,e.clientY,function(t){
               if(t){striche.push({w:'text',t:t,a:p,f:farbe,d:dicke});gespeichert=false;malAlles();}
             });
@@ -6575,11 +6728,11 @@ var GOKOBA_LAYER_ACI = {
           }
           striche.push(laufend);laufend=null;gespeichert=false;malAlles();
         });
-        function textEingabe(x,y,fertig){
+        function textEingabe(x,y,fertig,anfang){
           var inp=el('input','position:fixed;z-index:60;left:'+x+'px;top:'+(y-16)+'px;min-width:120px;padding:6px 9px;'+
             'border-radius:10px;border:1.5px solid '+AKZENT+';background:var(--gkbg);color:var(--gktx);font:600 13px var(--ui);outline:none;'+
             'backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);');
-          inp.placeholder='Text...';
+          inp.placeholder='Text...'; if(anfang)inp.value=anfang;
           document.body.appendChild(inp);
           setTimeout(function(){inp.focus();},30);
           var zuEnde=false;
@@ -6658,15 +6811,15 @@ var GOKOBA_LAYER_ACI = {
           frage.querySelector('[data-nein]').addEventListener('click',function(ev){ev.stopPropagation();zu();});
           gross.appendChild(frage);
         }
-        var xk=el('div','position:absolute;top:14px;right:16px;z-index:41;cursor:pointer;color:#DDE6EC;font-size:24px;line-height:1;'+
-          'text-shadow:0 1px 6px rgba(0,0,0,.6);');
+        var xk=el('div','position:absolute;top:8px;right:8px;z-index:41;cursor:pointer;color:#fff;font-size:20px;line-height:1;'+
+        'width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(10,14,18,.55);backdrop-filter:blur(4px);'); /* ★ oben rechts AM FOTO */
         xk.textContent='\u00d7'; xk.title='Schlie\u00dfen';
         xk.addEventListener('click',function(ev){ev.stopPropagation();vielleichtZu();});
         gross.addEventListener('click',function(e){if(e.target===gross)vielleichtZu();});
         innen.appendChild(c);
         innen.appendChild(leiste); /* ★ Leiste dockt rechts mittig AM FOTO an */
         gross.appendChild(innen);
-        gross.appendChild(xk);
+        innen.appendChild(xk); /* ★ haengt am Bild, nicht am Bildschirm */
         panel.appendChild(gross);
       }
       function knips(x0,y0,x1,y1){
@@ -6687,15 +6840,48 @@ var GOKOBA_LAYER_ACI = {
         chip.innerHTML='<img src="'+halter.url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
           '<span>Foto '+nr+'</span>'+
           '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
-          '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--gktx2);font-size:15px;">\u00d7</span>';
+          '<span data-mail title="Alle Fotos per E-Mail" style="cursor:pointer;color:'+AKZENT+';font-size:14px;">\u2709</span>'+
+        '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--gktx2);font-size:15px;">\u00d7</span>';
         chip.addEventListener('click',function(){zeigGross(halter,chip.querySelector('img'));});
         chip.querySelector('[data-dl]').addEventListener('click',function(e){
           e.stopPropagation();
           var a=document.createElement('a');a.href=halter.url;a.download='gokoba-foto-'+nr+'.png';
           document.body.appendChild(a);a.click();a.remove();chip.remove();
         });
+        chip.querySelector('[data-mail]').addEventListener('click',function(e){
+          e.stopPropagation(); fotosPerMail();
+        });
         chip.querySelector('[data-weg]').addEventListener('click',function(e){e.stopPropagation();chip.remove();});
         fotoLeisteHol().appendChild(chip);
+      }
+      function fotosPerMail(){
+        /* ★ Alle Fotos der Leiste in EINE E-Mail. Browser koennen keine fertige Mail mit
+           Anhang bauen - zwei ehrliche Wege:
+           1) Teilen-Dialog (Handy/Tablet): haengt alle Bilder direkt an die Mail-App an.
+           2) Arbeitsplatz: erstes Bild in die Zwischenablage + leere Mail oeffnen -> Strg+V. */
+        var bilder=[]; var leiste=fotoLeisteHol();
+        if(leiste)Array.prototype.forEach.call(leiste.querySelectorAll('img'),function(im,i){bilder.push({url:im.src,nr:i+1});});
+        if(!bilder.length)return;
+        var betreff='3D-Modell '+(document.title.split(', ')[1]||'Gokoba');
+        var text='Ansicht aus dem Gokoba 3D-Viewer: '+location.href;
+        Promise.all(bilder.map(function(b){return fetch(b.url).then(function(r){return r.blob();}).then(function(bl){return new File([bl],'gokoba-foto-'+b.nr+'.png',{type:'image/png'});});}))
+        .then(function(dateien){
+          if(navigator.canShare&&navigator.canShare({files:dateien})){
+            return navigator.share({files:dateien,title:betreff,text:text}).catch(function(){});
+          }
+          /* Arbeitsplatz-Weg */
+          var p=Promise.resolve();
+          if(navigator.clipboard&&window.ClipboardItem){
+            p=fetch(bilder[0].url).then(function(r){return r.blob();})
+             .then(function(bl){return navigator.clipboard.write([new ClipboardItem({'image/png':bl})]);}).catch(function(){});
+          }
+          return p.then(function(){
+            window.location.href='mailto:?subject='+encodeURIComponent(betreff)+'&body='+encodeURIComponent(text+'\n\n(Foto ist in der Zwischenablage - mit Strg+V hier einfuegen.)');
+            sagHinweis(bilder.length>1
+              ? 'Erstes Foto in der Zwischenablage - mit Strg+V in die E-Mail einfuegen. Weitere Fotos bitte per Pfeil herunterladen und anhaengen.'
+              : 'Foto in der Zwischenablage - mit Strg+V in die E-Mail einfuegen.');
+          });
+        }).catch(function(){ sagHinweis('E-Mail-Weg hier nicht verfuegbar - bitte Fotos herunterladen und anhaengen.'); });
       }
       cv.addEventListener('pointerdown',function(e){
         if(aktiv!=='foto')return;
@@ -6883,7 +7069,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;triplanarAn(m,4.5);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
@@ -6960,7 +7146,7 @@ var GOKOBA_LAYER_ACI = {
   window.addEventListener('resize',resize);
   if(window.ResizeObserver){new ResizeObserver(resize).observe(panel);}
   resize();
-  function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera);}
+  function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera);if(window.__gkWuerfel)window.__gkWuerfel();}
   tick();
 })();
 </script>
