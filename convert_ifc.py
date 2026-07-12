@@ -503,9 +503,15 @@ def main():
     ifcs = sorted(glob.glob(os.path.join(args.input_dir, '*.ifc')))
     haupt = [p for p in ifcs if not ist_em11(p)]
     em11 = [p for p in ifcs if ist_em11(p)]
+    if not haupt and em11:
+        # ★ EM.11-Notweg: der AS-IFC2x3-Export haengt an manchen Modellen (Kanttraeger).
+        #   Dann baut der Viewer die Geometrie direkt aus der EM.11-Datei. Bauteilarten
+        #   kommen ueber den Entity-Rueckfall in art_von(); der Positionsabgleich laeuft
+        #   gegen dieselbe Datei und trifft damit jedes Teil.
+        print('* NOTWEG: keine IFC2x3-Datei - Viewer wird komplett aus der EM.11 gebaut.')
+        haupt = em11
     if not haupt:
-        raise SystemExit('Keine IFC2x3-Datei (CoordinationView) im Ordner gefunden.' +
-                         (' Nur EM.11 vorhanden - bitte auch den normalen IFC2x3-Export beilegen.' if em11 else ''))
+        raise SystemExit('Keine IFC-Datei im Ordner gefunden.')
     ifc = haupt[0]
     em = em11[0] if em11 else None
     if not em:
