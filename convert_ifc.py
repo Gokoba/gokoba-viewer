@@ -699,9 +699,11 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     kn = None; dreiecke = []; aussen = None; loecher = []
 
     def _fl_ab():
+        nonlocal flLeer
         if aussen is not None:
             t3 = _flaeche_zerlegen(aussen, loecher)
             if t3 is not None: dreiecke.append(t3)
+            else: flLeer += 1
 
     def _teil_ab():
         nonlocal n, fehler
@@ -761,20 +763,27 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return k.reshape(-1, 3)
 
     kaputt = 0
+    nT = nL = nH = 0; flLeer = 0; probeZeilen = []
     with open(geo_pfad, encoding='utf-8', errors='replace') as fh:
         for zeile in fh:
             try:
                 z = zeile.strip()
                 if not z: continue
                 if z[0] == 'T':
+                    nT += 1
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
                     dreiecke = []; aussen = None; loecher = []
                 elif z[0] == 'L':
+                    nL += 1
+                    if len(probeZeilen) < 3: probeZeilen.append(z[:140])
                     _fl_ab()
                     aussen = _tripel(z); loecher = []
                 elif z[0] == 'H':
+                    nH += 1
                     if aussen is not None: loecher.append(_tripel(z))
+                elif len(probeZeilen) < 3:
+                    probeZeilen.append('UNBEKANNT: ' + z[:140])
             except Exception:
                 kaputt += 1
     if kaputt:
@@ -782,8 +791,11 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     _fl_ab(); _teil_ab()
 
     print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
+    print('* DIREKT-Diagnose: T=%d L=%d H=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, flLeer, kaputt))
+    for pz in probeZeilen:
+        print('* Probezeile: %s' % pz)
     if n == 0:
-        raise SystemExit('Direkt-Geo-Paket enthaelt keine Bauteile.')
+        raise SystemExit('Direkt-Geo-Paket enthaelt keine Bauteile - siehe Diagnosezeilen daruber.')
     achsen = []
     for a in (meta.get('achsen') or []):
         try:
