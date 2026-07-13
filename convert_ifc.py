@@ -707,16 +707,26 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if schl in k: return art
         return None
     material_cache = {}
-    def material_fuer(layer, art):
+    def material_fuer(layer, art, eigen=None):
+        # ★ Objekt-Farbe (nicht 'Von Layer') schlaegt die Layertabelle - fuer alle Bauteile
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
-        if layer in material_cache: return material_cache[layer]
+        schl = (layer, eigen)
+        if schl in material_cache: return material_cache[schl]
         col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
+        zusatz = ''
+        if eigen:
+            try:
+                h = str(eigen).lstrip('#')
+                col = (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+                zusatz = '_F' + h.upper()
+            except Exception:
+                zusatz = ''
         mat = trimesh.visual.material.PBRMaterial(
             baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
             metallicFactor=0.15, roughnessFactor=0.7)
-        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(norm_layer(layer), 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
-        material_cache[layer] = mat
+        mat.name = 'GOKOBA_ACI_%d_%s%s' % (LAYER_ACI.get(norm_layer(layer), 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)), zusatz)
+        material_cache[schl] = mat
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
@@ -740,6 +750,12 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             m = trimesh.Trimesh(vertices=va, faces=fa, process=False)
             m.merge_vertices()
             try:
+                # ★ weiche Normalen mit Faltkante 34 Grad: Rohre und Bolzen wirken rund,
+                #   Profilkanten bleiben scharf (gltfpack -kn behaelt die Normalen)
+                m = trimesh.graph.smooth_shade(m, angle=0.5934)
+            except Exception:
+                pass
+            try:
                 m.fix_normals()
                 if m.is_watertight and m.volume < 0: m.invert()
             except Exception:
@@ -748,9 +764,9 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             L = d0.get('layer')
             art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'): return
-            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
+            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art, d0.get('farbe')))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
-            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'familie': d0.get('familie'),
+            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
                  'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
@@ -906,16 +922,26 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             if schl in k: return art
         return None
     material_cache = {}
-    def material_fuer(layer, art):
+    def material_fuer(layer, art, eigen=None):
+        # ★ Objekt-Farbe (nicht 'Von Layer') schlaegt die Layertabelle - fuer alle Bauteile
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
-        if layer in material_cache: return material_cache[layer]
+        schl = (layer, eigen)
+        if schl in material_cache: return material_cache[schl]
         col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
+        zusatz = ''
+        if eigen:
+            try:
+                h = str(eigen).lstrip('#')
+                col = (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+                zusatz = '_F' + h.upper()
+            except Exception:
+                zusatz = ''
         mat = trimesh.visual.material.PBRMaterial(
             baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
             metallicFactor=0.15, roughnessFactor=0.7)
-        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(norm_layer(layer), 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
-        material_cache[layer] = mat
+        mat.name = 'GOKOBA_ACI_%d_%s%s' % (LAYER_ACI.get(norm_layer(layer), 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)), zusatz)
+        material_cache[schl] = mat
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
@@ -930,9 +956,9 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'):
                 continue
-            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
+            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art, d0.get('farbe')))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
-            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'familie': d0.get('familie'),
+            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
                  'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}

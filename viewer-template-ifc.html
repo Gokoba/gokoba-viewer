@@ -5360,7 +5360,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;triplanarAn(m,4.5);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.46;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.5);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5438,15 +5438,28 @@ var GOKOBA_LAYER_ACI = {
        bleiben auch bei gleicher Flaechenfarbe unterscheidbar (hilft auch dem Fangen) */
     setTimeout(function(){
       try{
-        var km=new THREE.LineBasicMaterial({color:0x10151b,transparent:true,opacity:0.26});
+        var kmDunkel=new THREE.LineBasicMaterial({color:0x0d1217,transparent:true,opacity:0.34});
+        var kmHell=new THREE.LineBasicMaterial({color:0xE9EDF0,transparent:true,opacity:0.32});
+        var kListe=[];
         meshes.forEach(function(o){
           if(!o.geometry)return;
           try{
-            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,26),km);
+            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,26),kmDunkel);
             ls.userData._kanten=true; ls.raycast=function(){};
-            o.add(ls);
+            o.add(ls); kListe.push(ls);
           }catch(e){}
         });
+        /* \u2605 dunkle Flaechen bekommen HELLE Kanten - laeuft gedrosselt im Takt mit */
+        window.gkKantenSync=function(){
+          kListe.forEach(function(ls){
+            var pm=ls.parent&&ls.parent.material;if(!pm)return;
+            var c=(Array.isArray(pm)?pm[0]:pm).color;if(!c)return;
+            var l=0.2126*c.r+0.7152*c.g+0.0722*c.b;
+            var soll=(l<0.22)?kmHell:kmDunkel;
+            if(ls.material!==soll)ls.material=soll;
+          });
+        };
+        window.gkKantenSync();
       }catch(e){}
     },60);
     var box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),ctr=new THREE.Vector3();
@@ -5545,11 +5558,13 @@ var GOKOBA_LAYER_ACI = {
         if(atl){
           atl.forEach(function(w,i){ if(i>0&&w)zeile('Attribut '+(i+1),w); });
         }
-        /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt */
-        var bgN=d.bgname||(atl&&atl[0])||null;
-        if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
-        if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
-        else if(bgN)zeile('Baugruppe',bgN);
+        /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt - Schrauben und Anker haben keine */
+        if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'){
+          var bgN=d.bgname||(atl&&atl[0])||null;
+          if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
+          if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
+          else if(bgN)zeile('Baugruppe',bgN);
+        }
         return z;
       }
 
@@ -5570,7 +5585,7 @@ var GOKOBA_LAYER_ACI = {
         karte.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+
           '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);">'+kopfVon(d)+'</strong>'+
           '<span data-zu style="cursor:pointer;color:var(--gktx2);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span></div>'+
-          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;">'+p[1]+'</span></div>';}).join('');
+          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;'+(p[0]==='Baugruppe'?'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
@@ -5663,7 +5678,7 @@ var GOKOBA_LAYER_ACI = {
                mass:'Punkte antippen - Eckpunkte werden gefangen.',
                schnitt:'Achse w\u00e4hlen, dann die Scheibe greifen und durchs Modell ziehen.'};
       var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe',mass:'Messen',schnitt:'Schnitt'};
-      var palette=el('div','display:flex;flex-direction:column;gap:2px;padding:4px 2px;align-items:flex-end;user-select:none;');
+      var palette=el('div','display:flex;flex-direction:column;gap:5px;padding:6px 5px;align-items:center;user-select:none;');
       palette.id='gkpalette'; panel.appendChild(palette);
       /* ★ Mobil: Palette startet eingeklappt; ein Griffstrich am rechten Rand zeigt das Menue.
          Antippen oder Daruberziehen holt sie rein; aktives Drehen im Modell blendet sie aus
@@ -5720,20 +5735,41 @@ var GOKOBA_LAYER_ACI = {
           '<span data-zu style="cursor:pointer;color:var(--gktx2);font-size:16px;padding:0 3px;">\u00d7</span></div>'+
           '<div style="padding:0 13px 8px;color:var(--gktx2);font-size:11.5px;">'+TIP[w]+'</div>';
       }
+      /* \u2605 fluechtiger Werkzeug-Tipp: reiner Text links neben dem Knopf, kein Kasten */
+      var wkTipEl=el('div','position:absolute;z-index:34;display:none;font:600 11.5px var(--ui);color:var(--gktx);'+
+        'white-space:nowrap;pointer-events:none;opacity:.9;');
+      panel.appendChild(wkTipEl);
+      function wkTip(b,txt){
+        var r=b.getBoundingClientRect(), p=panel.getBoundingClientRect();
+        wkTipEl.textContent=txt;
+        wkTipEl.style.display='block';
+        wkTipEl.style.right=(p.right-r.left+10)+'px';
+        wkTipEl.style.left='';
+        wkTipEl.style.top=(r.top-p.top+r.height/2-8)+'px';
+      }
+      function wkTipWeg(){wkTipEl.style.display='none';}
       var knoepfe={};
       ['mass','schnitt','|','liste','summe','bg','|','farbe','iso','|','notiz','foto'].forEach(function(w){
         if(w==='|'){
-          palette.appendChild(el('div','height:7px;'));
+          palette.appendChild(el('div','width:26px;height:1px;background:var(--gkln);opacity:.55;margin:1px auto;'));
           return;
         }
-        var b=el('button','text-align:right;',NAME[w]); b.className='gkfv';
-        b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
+        var b=el('button','width:42px;height:42px;border-radius:12px;border:none;cursor:pointer;padding:0;'+
+          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);');
+        b.className='gkico'; b.id='gk_'+w;
+        b.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24">'+IK[w]+'</svg>';
+        b.addEventListener('mouseenter',function(){wkTip(b,NAME[w]);});
+        b.addEventListener('mouseleave',wkTipWeg);
         b.addEventListener('click',function(ev){ev.stopPropagation();schalte(aktiv===w?null:w);});
         palette.appendChild(b); knoepfe[w]=b;
       });
       if(achsGruppe){
-        var ab=el('button','text-align:right;','Achsen'); ab.className='gkfv';
-        ab.id='gk_achsen'; ab.title='Achsen ein- / ausblenden';
+        var ab=el('button','width:42px;height:42px;border-radius:12px;border:none;cursor:pointer;padding:0;'+
+          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);');
+        ab.className='gkico'; ab.id='gk_achsen';
+        ab.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24">'+IK.achsen+'</svg>';
+        ab.addEventListener('mouseenter',function(){wkTip(ab,'Achsen ein-/ausblenden');});
+        ab.addEventListener('mouseleave',wkTipWeg);
         function malAchsKnopf(){
           ab.classList.toggle('on',!!achsGruppe.visible);
         }
@@ -6012,12 +6048,19 @@ var GOKOBA_LAYER_ACI = {
          nahtlos zurueck in die freie perspektivische Ansicht. ── */
       window.gk2d=null;
       var gkOrtho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,1000000);
+      var gkFestDir=null, gkFestUp=null;
       window.gk2dSync=function(){
         var d=camera.position.distanceTo(controls.target);
         var hh=d*Math.tan(camera.fov*Math.PI/360), hw=hh*camera.aspect;
         gkOrtho.left=-hw; gkOrtho.right=hw; gkOrtho.top=hh; gkOrtho.bottom=-hh;
         gkOrtho.near=camera.near; gkOrtho.far=camera.far;
-        gkOrtho.position.copy(camera.position); gkOrtho.quaternion.copy(camera.quaternion);
+        if(gkFestDir){ /* \u2605 exakt frontale Pose - OrbitControls klemmt am Pol, wir nicht */
+          gkOrtho.up.copy(gkFestUp);
+          gkOrtho.position.copy(controls.target).addScaledVector(gkFestDir,d);
+          gkOrtho.lookAt(controls.target);
+        } else {
+          gkOrtho.position.copy(camera.position); gkOrtho.quaternion.copy(camera.quaternion);
+        }
         gkOrtho.updateProjectionMatrix();
         return gkOrtho;
       };
@@ -6035,27 +6078,31 @@ var GOKOBA_LAYER_ACI = {
         controls.target.copy(mr.m);
         controls.update();
         gkMerkAz=controls.getAzimuthalAngle(); gkMerkPo=controls.getPolarAngle();
+        gkFestDir=new THREE.Vector3(dx,dy,dz); gkFestUp=new THREE.Vector3(ux,uy,uz);
         window.gk2d=gkOrtho;
       }
       controls.addEventListener('change',function(){
         if(!window.gk2d)return;
         if(Math.abs(controls.getAzimuthalAngle()-gkMerkAz)>0.01 ||
            Math.abs(controls.getPolarAngle()-gkMerkPo)>0.01){
-          window.gk2d=null; camera.up.set(0,1,0);   /* zurueck in die Perspektive */
+          window.gk2d=null; gkFestDir=null; gkFestUp=null; camera.up.set(0,1,0);   /* zurueck in die Perspektive */
         }
       });
       (function(){
         /* \u2605 futuristisch: schwacher Text, erst beim Darueberfahren erscheint eine Glas-Pille */
         var stl=document.createElement('style');
-        stl.textContent='.gkfv{all:unset;cursor:pointer;font:500 11.5px var(--ui,sans-serif);color:var(--gktx);'+
+        stl.textContent='.gkfv{all:unset;cursor:pointer;font:500 12.5px var(--ui,sans-serif);color:var(--gktx);'+
           'opacity:.5;padding:3px 10px;border-radius:8px;text-align:center;'+
           'transition:opacity .16s ease,background .16s ease,box-shadow .16s ease;}'+
           '.gkfv:hover{opacity:1;background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.22);}'+
-          '.gkfv.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}';
+          '.gkfv.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}'+
+          '.gkico{opacity:.6;transition:opacity .15s ease,background .15s ease,box-shadow .15s ease;}'+
+          '.gkico:hover{opacity:1;background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.22);}'+
+          '.gkico.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}';
         document.head.appendChild(stl);
         var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;');
         w.innerHTML='<div style="font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:0 2px 4px;">SCHNELLANSICHTEN</div>';
-        var g=el('div','display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 3px;');
+        var g=el('div','display:grid;grid-template-columns:1fr;gap:1px;');
         var bs='';
         [['Vorne',  0,0, 1, 0,1,0],
          ['Hinten', 0,0,-1, 0,1,0],
@@ -6350,14 +6397,14 @@ var GOKOBA_LAYER_ACI = {
         return camera.position.distanceTo(pw)*2*Math.tan(camera.fov*Math.PI/360)*px/r.height;
       }
       function massMarker(pw){
-        var k=quadratSprite(true,'#D6367F');
+        var k=quadratSprite(true,'#E8348F');
         var sk=schirmSkala(pw,9); k.scale.set(sk,sk,1);
         k.position.copy(pw); k.renderOrder=9; messGrafik.add(k); return k;
       }
       function massLinie(p1,p2){
         var len=p1.distanceTo(p2); if(len<0.0005)return;
-        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.00016,dist*0.00016,len,8),
-          new THREE.MeshBasicMaterial({color:0xD6367F,depthTest:false,transparent:true,opacity:0.95}));
+        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0001,dist*0.0001,len,8),
+          new THREE.MeshBasicMaterial({color:0xE8348F,depthTest:false,transparent:true,opacity:0.95}));
         zyl.position.copy(p1).add(p2).multiplyScalar(0.5);
         zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p2.clone().sub(p1).normalize());
         zyl.renderOrder=9; messGrafik.add(zyl);
@@ -6374,10 +6421,10 @@ var GOKOBA_LAYER_ACI = {
       function massStart(){
         messGrafik=new THREE.Group(); scene.add(messGrafik);
         /* Fang-Kugel + Flaechen-Vorschau */
-        snapKugel=quadratSprite(false,'#D6367F');
+        snapKugel=quadratSprite(false,'#E8348F');
         snapKugel.visible=false; snapKugel.renderOrder=10; scene.add(snapKugel);
         flHelfer=new THREE.Mesh(new THREE.BufferGeometry(),
-          new THREE.MeshBasicMaterial({color:0xD6367F,transparent:true,opacity:0.4,side:THREE.DoubleSide,
+          new THREE.MeshBasicMaterial({color:0xE8348F,transparent:true,opacity:0.4,side:THREE.DoubleSide,
             polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
         flHelfer.visible=false; flHelfer.renderOrder=8; scene.add(flHelfer);
         /* ★ Achsenkreuz am Modellnullpunkt: Richtungen X/Y/Z + Hoehen-Null */
@@ -6465,7 +6512,7 @@ var GOKOBA_LAYER_ACI = {
           if(!flWahl||messP.length>=2){ massLeeren();
             flWahl={p:t.p3.clone(),n:n}; messP=[t.p3.clone()];
             var d1=new THREE.Mesh(new THREE.BufferGeometry(),
-              new THREE.MeshBasicMaterial({color:0xD6367F,transparent:true,opacity:0.5,side:THREE.DoubleSide,
+              new THREE.MeshBasicMaterial({color:0xE8348F,transparent:true,opacity:0.5,side:THREE.DoubleSide,
                 polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
             if(!flaecheZeig(d1,t)){
               d1.geometry=new THREE.CircleGeometry(dist*0.02,20);
@@ -6514,7 +6561,7 @@ var GOKOBA_LAYER_ACI = {
       function koteSetzen(pw,lz){
         /* \u2605 flach liegendes, deckendes Quadrat am Klickpunkt + senkrechter Kotenpfeil */
         var m=new THREE.Group();
-        var mat=new THREE.MeshBasicMaterial({color:new THREE.Color('#D6367F').convertSRGBToLinear(),
+        var mat=new THREE.MeshBasicMaterial({color:new THREE.Color('#E8348F').convertSRGBToLinear(),
           polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
         var q=new THREE.Mesh(new THREE.PlaneGeometry(dist*0.009,dist*0.009),mat);
         q.position.z=dist*0.0006; q.renderOrder=6; m.add(q);
@@ -6569,6 +6616,12 @@ var GOKOBA_LAYER_ACI = {
         panel.appendChild(bgPanel); flyLegen(bgPanel);
       }
       function bgLoesen(){bgMarkiert.forEach(function(e){e.o.material=e.mat;});bgMarkiert=[];}
+      function bgLeuchtFarbe(o){
+        var m=Array.isArray(o.material)?o.material[0]:o.material;
+        var c=m&&m.color;if(!c)return 0xC81E6E;
+        var l=0.2126*c.r+0.7152*c.g+0.0722*c.b;
+        return l>0.4?0xC81E6E:0xFF6FB0; /* \u2605 hell -> sattes Pink, dunkel -> helles Pink */
+      }
       function bgKlick(o,d){
         if(!bgPanel)return;
         var inhalt=bgPanel.querySelector('[data-inhalt]');
@@ -6585,7 +6638,7 @@ var GOKOBA_LAYER_ACI = {
           if(t.gewicht!=null)gew+=t.gewicht;
           (netzKarte()[kn]||[]).forEach(function(oo){
             bgMarkiert.push({o:oo,mat:oo.material});
-            oo.material=heben(oo,0x2E86AD,0.75);
+            oo.material=heben(oo,bgLeuchtFarbe(oo),0.75);
           });
         });
         inhalt.innerHTML=
@@ -7112,7 +7165,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.9;triplanarAn(m,4.5);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.46;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.5);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
@@ -7189,7 +7242,7 @@ var GOKOBA_LAYER_ACI = {
   window.addEventListener('resize',resize);
   if(window.ResizeObserver){new ResizeObserver(resize).observe(panel);}
   resize();
-  function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
+  function tick(){requestAnimationFrame(tick);controls.update();if(!((window.__gkKf=((window.__gkKf||0)+1)%45))&&window.gkKantenSync)window.gkKantenSync();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
   tick();
 })();
 </script>
