@@ -659,8 +659,11 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     t0 = _t.time()
     meta = {}
     if json_pfad and os.path.exists(json_pfad):
-        with open(json_pfad, encoding='utf-8') as fh:
-            meta = _js.load(fh)
+        try:
+            with open(json_pfad, encoding='utf-8', errors='replace') as fh:
+                meta = _js.load(fh)
+        except Exception as ex:
+            print('! direkt.json unlesbar (%s) - baue ohne Steckbriefe weiter.' % ex)
     skal = 0.001 if str(meta.get('einheit', 'mm')).lower().startswith('mm') else 1.0
     info = meta.get('teile', {}) or {}
 
@@ -757,19 +760,25 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         k = np.asarray([float(x) for x in w], dtype=float)
         return k.reshape(-1, 3)
 
+    kaputt = 0
     with open(geo_pfad, encoding='utf-8', errors='replace') as fh:
         for zeile in fh:
-            z = zeile.strip()
-            if not z: continue
-            if z[0] == 'T':
-                _fl_ab(); _teil_ab()
-                kn = z.split()[1] if len(z.split()) > 1 else None
-                dreiecke = []; aussen = None; loecher = []
-            elif z[0] == 'L':
-                _fl_ab()
-                aussen = _tripel(z); loecher = []
-            elif z[0] == 'H':
-                if aussen is not None: loecher.append(_tripel(z))
+            try:
+                z = zeile.strip()
+                if not z: continue
+                if z[0] == 'T':
+                    _fl_ab(); _teil_ab()
+                    kn = z.split()[1] if len(z.split()) > 1 else None
+                    dreiecke = []; aussen = None; loecher = []
+                elif z[0] == 'L':
+                    _fl_ab()
+                    aussen = _tripel(z); loecher = []
+                elif z[0] == 'H':
+                    if aussen is not None: loecher.append(_tripel(z))
+            except Exception:
+                kaputt += 1
+    if kaputt:
+        print('! %d unlesbare Geo-Zeilen uebersprungen.' % kaputt)
     _fl_ab(); _teil_ab()
 
     print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
