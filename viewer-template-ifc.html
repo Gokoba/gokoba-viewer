@@ -5509,14 +5509,14 @@ var GOKOBA_LAYER_ACI = {
         function zeile(k,v){if(v)z.push([k,v]);}
         if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Gewicht',fmtKg(d.gewicht));}
-        else if(art==='gitterrost'||art==='gitterroststufe'){/* \u2605 nur Pos, Art und Bezeichnung - alles Weitere steht in Attribut 1 */}
+        else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Maschenweite',d.masche);zeile('Tragstab',d.tragstab);zeile('Hersteller',d.hersteller);zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
         /* \u2605 Benutzerattribute 1-5: nur gefuellte Zeilen, leere komplett weg */
         var atl=d.attrs||(d.bezeichnung?[d.bezeichnung]:null);
         if(atl){
-          var AN=['Bezeichnung','Attribut 2','Attribut 3','Attribut 4','Attribut 5'];
+          var AN=['Baugruppenname','Attribut 2','Attribut 3','Attribut 4','Attribut 5'];
           atl.forEach(function(w,i){ if(w)zeile(AN[i]||('Attribut '+(i+1)),w); });
         }
         /* \u2605 Baugruppe: ueberall ausser an Rost/Stufe (dort stuende Doppeltes) */
@@ -6274,7 +6274,7 @@ var GOKOBA_LAYER_ACI = {
       }
       function massLinie(p1,p2){
         var len=p1.distanceTo(p2); if(len<0.0005)return;
-        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0005,dist*0.0005,len,6),
+        var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.00016,dist*0.00016,len,8),
           new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.95}));
         zyl.position.copy(p1).add(p2).multiplyScalar(0.5);
         zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p2.clone().sub(p1).normalize());
@@ -6335,6 +6335,7 @@ var GOKOBA_LAYER_ACI = {
             b.style.background=an?AKZENT:'transparent'; b.style.color=an?'#0d1216':'var(--gktx2)';
           });
           massPanel.querySelector('[data-kweg]').style.display=(massModus==='kote'&&koten.length)?'':'none';
+          cv.style.cursor=(massModus==='punkt')?'none':'';
         }
         Array.prototype.forEach.call(massPanel.querySelectorAll('[data-mm]'),function(b){
           b.addEventListener('click',function(ev){ev.stopPropagation();
@@ -6443,6 +6444,7 @@ var GOKOBA_LAYER_ACI = {
         box.querySelector('[data-x]').addEventListener('click',function(ev){ev.stopPropagation();
           box.remove(); (m.userData._amModell?model:scene).remove(m); koten.splice(koten.indexOf(k),1);
           if(massPanel)massPanel.querySelector('[data-kweg]').style.display=(massModus==='kote'&&koten.length)?'':'none';
+          cv.style.cursor=(massModus==='punkt')?'none':'';
         });
         koten.push(k); koteMale();
         if(!kotenLoop){kotenLoop=true;(function tick(){if(koten.length)requestAnimationFrame(tick);else kotenLoop=false;koteMale();})();}
@@ -6468,7 +6470,7 @@ var GOKOBA_LAYER_ACI = {
         if(messGrafik){scene.remove(messGrafik);messGrafik=null;}
         if(achsKreuz){model.remove(achsKreuz);achsKreuz=null;}
         messP=[]; flWahl=null;
-        if(massPanel){massPanel.remove();massPanel=null;}
+        if(massPanel){massPanel.remove();cv.style.cursor='';massPanel=null;}
       }
 
       /* ── Baugruppe: Teil antippen -> ganze Schweissbaugruppe leuchtet + Kennzahlen ── */

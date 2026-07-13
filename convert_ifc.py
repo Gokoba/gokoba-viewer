@@ -19,6 +19,15 @@ import trimesh
 
 # ★ Farbtabelle: AS-Layername → RGB. AS schreibt Umlaute als '?' in die IFC,
 #   deshalb stehen die Namen hier genauso. Bei Bedarf anpassen/ergaenzen.
+def saniere_profil(p):
+    """AS-Profilname wie 'HEB DIN18800-1#@§@#HEB140' -> 'HEB 140'; 'FL60X10' -> 'FL 60x10'."""
+    if not p: return p
+    import re as _re
+    s2 = str(p).split('#@§@#')[-1].strip()
+    s2 = _re.sub(r'^([A-Za-z]+)\s*(\d)', r'\1 \2', s2)
+    s2 = _re.sub(r'(\d)\s*[xX*]\s*(\d)', r'\1x\2', s2)
+    return s2
+
 def norm_layer(l):
     """Direktweg liefert Layer mit ECHTEN Umlauten (AS_Traeger mit ae-Umlaut),
     die Tabellen-Schluessel stehen in AS-Exportschreibweise mit '?' -
@@ -214,7 +223,7 @@ def name_deute(d, name):
     d['roh'] = name  # Diagnose: kompletter Objektname bleibt unsichtbar in den Daten
     unten = name.lower()
     if 'roststufe' in unten or 'stufe' in unten: d['art'] = 'gitterroststufe'
-    elif 'rost' in unten or 'grating' in unten: d['art'] = 'gitterrost'
+    elif 'rost' in unten or 'grating' in unten or 'graiting' in unten: d['art'] = 'gitterrost'
     if 'anker' in unten or 'hilti' in unten: d['art'] = 'anker'; d.setdefault('din', name)
     if d['art'] in ('gitterrost', 'gitterroststufe'):
         d['hersteller'] = name.split()[0] if name.split() else None
@@ -277,7 +286,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
         try:
             for pn, props in ue.get_psets(prod).items():
                 if pn == 'ProfileProperties':
-                    d['profil'] = props.get('Section')
+                    d['profil'] = saniere_profil(props.get('Section'))
                     d['familie'] = props.get('SectionFamily')
                 else:
                     r = props.get('Reference')
@@ -733,7 +742,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'): return
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
-            d = {'ref': d0.get('pos'), 'profil': d0.get('profil'), 'familie': d0.get('familie'),
+            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'familie': d0.get('familie'),
                  'material': d0.get('material'), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
@@ -746,8 +755,17 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 if d0.get(feld): d[feld] = str(d0[feld])
             if d0.get('bestand'): d['bestand'] = True
             if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
-                mm = masse_aus_obb(m)
-                if mm: d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+                # ★ Masse aus dem AS-Dialog haben Vorrang - die orientierte Box irrt
+                #   bei Kantblechen und angeschweissten Anbauteilen (falsche 'Dicke').
+                gl = [d0.get('blechlaenge'), d0.get('blechbreite'), d0.get('dicke')]
+                if all(isinstance(x, (int, float)) and x > 0 for x in gl):
+                    d['masse'] = [round(gl[0]), round(gl[1]), round(gl[2], 1)]
+                else:
+                    mm = masse_aus_obb(m)
+                    di = d0.get('dicke')
+                    if mm:
+                        d['masse'] = [round(mm[0]), round(mm[1]),
+                                      round(di if isinstance(di, (int, float)) and di > 0 else mm[2], 1)]
             if art in ('profil', 'kantprofil') and not d.get('laenge'):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
@@ -899,7 +917,7 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
                 continue
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
-            d = {'ref': d0.get('pos'), 'profil': d0.get('profil'), 'familie': d0.get('familie'),
+            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'familie': d0.get('familie'),
                  'material': d0.get('material'), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
@@ -913,8 +931,17 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
                 if d0.get(feld): d[feld] = str(d0[feld])
             if d0.get('bestand'): d['bestand'] = True
             if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
-                mm = masse_aus_obb(m)
-                if mm: d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+                # ★ Masse aus dem AS-Dialog haben Vorrang - die orientierte Box irrt
+                #   bei Kantblechen und angeschweissten Anbauteilen (falsche 'Dicke').
+                gl = [d0.get('blechlaenge'), d0.get('blechbreite'), d0.get('dicke')]
+                if all(isinstance(x, (int, float)) and x > 0 for x in gl):
+                    d['masse'] = [round(gl[0]), round(gl[1]), round(gl[2], 1)]
+                else:
+                    mm = masse_aus_obb(m)
+                    di = d0.get('dicke')
+                    if mm:
+                        d['masse'] = [round(mm[0]), round(mm[1]),
+                                      round(di if isinstance(di, (int, float)) and di > 0 else mm[2], 1)]
             if art in ('profil', 'kantprofil') and not d.get('laenge'):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
@@ -1036,6 +1063,8 @@ def main():
             d['art'] = 'gitterroststufe'
         elif tiefe and any(abs(tiefe - st) <= 3 for st in (240, 270, 305)) and (m[0] if m else 0) <= 1700:
             d['art'] = 'gitterroststufe'
+        elif 'grating' in ((d.get('typ') or '')).lower() or 'graiting' in ((d.get('typ') or '')).lower():
+            d['art'] = 'gitterrost'
         if d['art'] != alt_art:
             umsortiert += 1
             # Stufen-Laengenkorrektur (+6 mm Einfassung) mitziehen
