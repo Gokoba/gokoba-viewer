@@ -98,22 +98,28 @@ jobs:
             fi
             mkdir -p "docs/v/$id"
             # ★ 15-Minuten-Zeitlimit je Modell; haengt eines, wird nur dieses abgebrochen.
+            LOGDATEI=$(mktemp)
             if timeout 900 python convert_ifc.py \
                  --input-dir "$jobdir" \
                  --output "docs/v/$id/index.html" \
                  --model-name "$name" \
                  --expiry-days 40 \
-                 --gltfpack gltfpack; then
+                 --gltfpack gltfpack > "$LOGDATEI" 2>&1; then
+              cat "$LOGDATEI"
               rm -rf "$jobdir"
               mkdir -p "jobs-ifc/$id"
               date -u +"%Y-%m-%dT%H:%M:%SZ" > "jobs-ifc/$id/.done"
               echo "IFC-Job $id fertig."
             else
               rc=$?
+              cat "$LOGDATEI"
               rm -rf "docs/v/$id"
               rm -rf "$jobdir"
               mkdir -p "jobs-ifc/$id"
-              date -u +"%Y-%m-%dT%H:%M:%SZ (Code $rc)" > "jobs-ifc/$id/.failed"
+              { date -u +"%Y-%m-%dT%H:%M:%SZ (Code $rc)"; echo "---"; tail -n 25 "$LOGDATEI"; } > "jobs-ifc/$id/.failed"
+              mkdir -p "docs/v/$id"
+              tail -n 6 "$LOGDATEI" > /tmp/gokoba_grund.txt
+              python3 -c 'import sys,html; g=html.escape(open("/tmp/gokoba_grund.txt",encoding="utf-8",errors="replace").read()[-800:]); open(sys.argv[1],"w",encoding="utf-8").write("<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Modell konnte nicht gebaut werden</title><style>body{font-family:system-ui;background:#0E1519;color:#DDE6EC;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}.k{max-width:640px;padding:36px;background:#141D23;border:1px solid #24313A;border-radius:14px}h1{font-size:19px;margin:0 0 10px}p{color:#9FB3C0;line-height:1.5}pre{background:#0E1519;border:1px solid #24313A;border-radius:8px;padding:12px;font-size:11px;overflow:auto;color:#C8D4DC;white-space:pre-wrap}</style></head><body><div class=\"k\"><h1>Dieses Modell konnte nicht gebaut werden.</h1><p>Beim Umwandeln ist ein Fehler aufgetreten. Bitte den Auftrag erneut hochladen oder diese Meldung an den Ersteller weitergeben:</p><pre>"+g+"</pre></div></body></html>")' "docs/v/$id/index.html" || true
               PROBLEME=$((PROBLEME + 1))
               echo "IFC-Job $id FEHLGESCHLAGEN (Code $rc) - uebersprungen."
             fi
