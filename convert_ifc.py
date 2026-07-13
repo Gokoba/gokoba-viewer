@@ -1085,10 +1085,9 @@ def main():
     for d in teile.values():
         if not isinstance(d, dict) or d.get('art') not in ('gitterrost', 'gitterroststufe'):
             continue
-        texte = [(d.get('roh') or '')]
-        texte += d.get('attrs') or ([d['bezeichnung']] if d.get('bezeichnung') else [])
-        if d.get('bgname'): texte.append(d['bgname'])
-        quelle = ' '.join(t for t in texte if t).lower()
+        # ★ NUR der eigene Rohname zaehlt: Baugruppenname/Attribute wuerden das
+        #   'Stufe'-Wort auf angeschweisste Laschen vererben (305x70-Bleche als Stufen!).
+        quelle = (d.get('roh') or '').lower()
         alt_art = d['art']
         m = d.get('masse') or []
         tiefe = m[1] if len(m) > 1 else 0
@@ -1102,10 +1101,12 @@ def main():
             d['art'] = 'gitterrost'
         if d['art'] != alt_art:
             umsortiert += 1
-            # Stufen-Laengenkorrektur (+6 mm Einfassung) mitziehen
-            if m:
-                if d['art'] == 'gitterroststufe': d['masse'][0] = round(d['masse'][0] + 6)
-                else: d['masse'][0] = round(d['masse'][0] - 6)
+    # ★ Stufenbreite = ZUKAUFMASS: Rostbreite + 2x 3-mm-Lasche - fuer JEDE Stufe genau einmal,
+    #   unabhaengig davon, auf welchem Weg sie als Stufe erkannt wurde (1154 -> 1160)
+    for d in teile.values():
+        if isinstance(d, dict) and d.get('art') == 'gitterroststufe' and d.get('masse') and not d.get('_plus6'):
+            d['_plus6'] = 1
+            d['masse'][0] = round(d['masse'][0]) + 6
     if umsortiert:
         print('* Rost/Stufe nach Rostklasse umsortiert: %d Teile' % umsortiert)
     for d in teile.values():

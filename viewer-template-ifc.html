@@ -5224,22 +5224,28 @@ var GOKOBA_LAYER_ACI = {
      vorn und der Seite, weich nach Flaechenrichtung gemischt). Ohne UV-Koordinaten aus
      der Cloud waere die Textur sonst unsichtbar bzw. nur von oben gestrahlt. */
   var uGkSkal={value:1};
-  function triplanarAn(m,fein){
+  function triplanarAn(m,fein,oben){
     if(m.userData._gkTri)return; m.userData._gkTri=true;
-    var uFein={value:fein};
-    m.customProgramCacheKey=function(){return 'gktri'+fein;};
+    var uFein={value:fein}, uOben={value:oben?1:0};
+    m.customProgramCacheKey=function(){return 'gktri'+fein+(oben?'o':'');};
     m.onBeforeCompile=function(sh){
-      sh.uniforms.uGkSkal=uGkSkal; sh.uniforms.uGkFein=uFein;
+      sh.uniforms.uGkSkal=uGkSkal; sh.uniforms.uGkFein=uFein; sh.uniforms.uGkOben=uOben;
       sh.vertexShader=sh.vertexShader
         .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor;')
         .replace('#include <fog_vertex>','#include <fog_vertex>\n vGkPos=(modelMatrix*vec4(transformed,1.0)).xyz; vGkNor=mat3(modelMatrix)*objectNormal;');
       sh.fragmentShader=sh.fragmentShader
-        .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor; uniform float uGkSkal; uniform float uGkFein;')
+        .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor; uniform float uGkSkal; uniform float uGkFein; uniform float uGkOben;')
         .replace('#include <map_fragment>',
           '#ifdef USE_MAP\n'+
           ' vec3 gkW=abs(vGkNor); float gkS=gkW.x+gkW.y+gkW.z; gkW=(gkS>1e-5)?pow(gkW/gkS,vec3(4.0)):vec3(0.0,1.0,0.0); gkW/=max(gkW.x+gkW.y+gkW.z,1e-5);\n'+
           ' vec3 gkP=vGkPos*uGkSkal*uGkFein;\n'+
-          ' vec4 gkT=texture2D(map,gkP.yz)*gkW.x+texture2D(map,gkP.zx)*gkW.y+texture2D(map,gkP.xy)*gkW.z;\n'+
+          ' vec4 gkT;\n'+
+          ' if(uGkOben>0.5){ /* nur Draufsicht: Stirn- und Seitenflaechen bleiben in der Grundfarbe */\n'+
+          '   float gkOb=clamp((vGkNor.y>0.0?gkW.y:0.0)*1.6,0.0,1.0);\n'+
+          '   gkT=mix(vec4(1.0),texture2D(map,gkP.zx),gkOb);\n'+
+          ' } else {\n'+
+          '   gkT=texture2D(map,gkP.yz)*gkW.x+texture2D(map,gkP.zx)*gkW.y+texture2D(map,gkP.xy)*gkW.z;\n'+
+          ' }\n'+
           ' gkT=mapTexelToLinear(gkT);\n'+
           ' diffuseColor*=gkT;\n'+
           '#endif');
@@ -5406,8 +5412,8 @@ var GOKOBA_LAYER_ACI = {
                 m.metalness=0.10;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.40;m.needsUpdate=true;
               }
               else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
-              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.55;m.roughness=0.3;m.envMap=gokobaEnv;m.envMapIntensity=0.8;triplanarAn(m,2.4);m.needsUpdate=true;} /* ★ Riffelblech */
-              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(gitterTex?0xffffff:0x9AA0A3);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
+              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.55;m.roughness=0.3;m.envMap=gokobaEnv;m.envMapIntensity=0.8;triplanarAn(m,4.0);m.needsUpdate=true;} /* ★ Riffelblech */
+              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xB8BDC0);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7,true);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
@@ -5433,12 +5439,12 @@ var GOKOBA_LAYER_ACI = {
     setTimeout(function(){
       try{
         var kmDunkel=new THREE.LineBasicMaterial({color:0x0d1217,transparent:true,opacity:0.34});
-        var kmHell=new THREE.LineBasicMaterial({color:0xE9EDF0,transparent:true,opacity:0.32});
+        var kmHell=new THREE.LineBasicMaterial({color:0xE9EDF0,transparent:true,opacity:0.22});
         var kListe=[];
         meshes.forEach(function(o){
           if(!o.geometry)return;
           try{
-            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,26),kmDunkel);
+            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,42),kmDunkel);
             ls.userData._kanten=true; ls.raycast=function(){};
             o.add(ls); kListe.push(ls);
           }catch(e){}
@@ -6067,6 +6073,37 @@ var GOKOBA_LAYER_ACI = {
           if(meld.length<8){meld.push('JS: '+(ev.message||'')+' @'+(ev.lineno||''));zeig();}
         });
       })();
+      /* \u2605 schlichtes Koordinaten-Dreibein unten links am BILDSCHIRM - dreht mit,
+         erscheint nur solange das Messwerkzeug offen ist */
+      (function(){
+        var box=null,sv=null;
+        window.gkAchsBild=function(an){
+          if(an&&!box){
+            box=el('div','position:absolute;left:14px;bottom:52px;z-index:9;pointer-events:none;opacity:.75;');
+            box.innerHTML='<svg width="86" height="86" viewBox="-43 -43 86 86" style="overflow:visible;">'+
+              '<line data-a="x" stroke="currentColor" stroke-width="1.6"/><text data-tx="x" font-size="9" fill="currentColor"></text>'+
+              '<line data-a="y" stroke="currentColor" stroke-width="1.6"/><text data-tx="y" font-size="9" fill="currentColor"></text>'+
+              '<line data-a="z" stroke="currentColor" stroke-width="1.6"/><text data-tx="z" font-size="9" fill="currentColor"></text></svg>';
+            box.style.color='var(--gktx2)';
+            panel.appendChild(box); sv=box.querySelector('svg');
+          }
+          if(box)box.style.display=an?'block':'none';
+        };
+        var A={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,1)};
+        var N={x:'X',y:'Z',z:'Y'}; /* \u2605 Bau-Beschriftung: Hoehe heisst Z */
+        window.gkAchsTick=function(){
+          if(!box||box.style.display==='none')return;
+          var q=camera.quaternion.clone().invert();
+          Object.keys(A).forEach(function(k){
+            var v=A[k].clone().applyQuaternion(q);
+            var l=sv.querySelector('[data-a="'+k+'"]'), t=sv.querySelector('[data-tx="'+k+'"]');
+            l.setAttribute('x1',0);l.setAttribute('y1',0);
+            l.setAttribute('x2',(v.x*30).toFixed(1));l.setAttribute('y2',(-v.y*30).toFixed(1));
+            t.setAttribute('x',(v.x*38-3).toFixed(1));t.setAttribute('y',(-v.y*38+3).toFixed(1));
+            t.textContent=N[k];
+          });
+        };
+      })();
       window.gk2d=null;
       var gkOrtho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,1000000);
       var gkFestDir=null, gkFestUp=null;
@@ -6137,7 +6174,12 @@ var GOKOBA_LAYER_ACI = {
           b.addEventListener('click',function(){ gkAnsicht(k[1],k[2],k[3],k[4],k[5],k[6]); });
           g.appendChild(b);
         });
-        w.appendChild(g); panel.appendChild(w);
+        w.appendChild(g);
+        var az=el('button','','Alles zeigen'); az.className='gkfv'; az.style.marginTop='6px'; az.style.opacity='.4';
+        az.addEventListener('click',function(){
+          model.traverse(function(o){ if(o.isMesh||o.isLineSegments)o.visible=true; });
+        });
+        w.appendChild(az); panel.appendChild(w);
       })();
 
       /* ── Schnitt: Scheibe je Achse, frei durchs Modell ziehbar (GPU-Clipping) ── */
@@ -6492,6 +6534,7 @@ var GOKOBA_LAYER_ACI = {
           });
           massPanel.querySelector('[data-kweg]').style.display=(massModus==='kote'&&koten.length)?'':'none';
           cv.style.cursor=(massModus==='punkt')?'none':'';
+          if(window.gkAchsBild)window.gkAchsBild(true);
         }
         Array.prototype.forEach.call(massPanel.querySelectorAll('[data-mm]'),function(b){
           b.addEventListener('click',function(ev){ev.stopPropagation();
@@ -6630,7 +6673,7 @@ var GOKOBA_LAYER_ACI = {
         if(messGrafik){scene.remove(messGrafik);messGrafik=null;}
         if(achsKreuz){model.remove(achsKreuz);achsKreuz=null;}
         messP=[]; flWahl=null;
-        if(massPanel){massPanel.remove();cv.style.cursor='';massPanel=null;}
+        if(massPanel){massPanel.remove();cv.style.cursor='';if(window.gkAchsBild)window.gkAchsBild(false);massPanel=null;}
       }
 
       /* ── Baugruppe: Teil antippen -> ganze Schweissbaugruppe leuchtet + Kennzahlen ── */
@@ -6691,8 +6734,8 @@ var GOKOBA_LAYER_ACI = {
             });
           });
         }
-        inhalt.querySelector('[data-bgiso]').addEventListener('click',function(ev){ev.stopPropagation();bgSicht('iso');});
-        inhalt.querySelector('[data-bgaus]').addEventListener('click',function(ev){ev.stopPropagation();bgSicht('aus');});
+        inhalt.querySelector('[data-bgiso]').addEventListener('click',function(ev){ev.stopPropagation();bgLoesen();bgSicht('iso');});
+        inhalt.querySelector('[data-bgaus]').addEventListener('click',function(ev){ev.stopPropagation();bgLoesen();bgSicht('aus');});
         inhalt.querySelector('[data-bgall]').addEventListener('click',function(ev){ev.stopPropagation();bgSicht('alle');});
 }
       function bgEnde(){bgLoesen();if(bgPanel){bgPanel.remove();bgPanel=null;}}
@@ -7161,7 +7204,7 @@ var GOKOBA_LAYER_ACI = {
     if(ralMode==='bws'){
       Object.keys(GOKOBA_BWS_DEKORE).forEach(function(id){
         dekorKarte(strip,bwsTextur(id).image,['MBN '+id,GOKOBA_BWS_NAMEN[id]],function(){
-          var t=bwsTextur(id);dekorMats.bws.forEach(function(m){m.map=t;m.color.setHex(0xffffff);triplanarAn(m,2.6);m.userData._savedMap=undefined;m.userData._display=0xffffff;m.needsUpdate=true;});
+          var t=bwsTextur(id);dekorMats.bws.forEach(function(m){m.map=t;m.color.setHex(0xffffff);triplanarAn(m,2.6,true);m.userData._savedMap=undefined;m.userData._display=0xffffff;m.needsUpdate=true;});
         });
       });
     }else if(ralMode==='min'){
@@ -7177,8 +7220,8 @@ var GOKOBA_LAYER_ACI = {
         b.addEventListener('click',function(){
           var t=e[0]?gitterTextur(e[0]):null;
           gitterMats.forEach(function(m){m.map=t;m.userData._savedMap=undefined;
-            if(t){m.color.setHex(0xffffff);triplanarAn(m,5.7);} /* \u2605 ohne UVs braucht die Textur Triplanar */
-            else{m.color.setHex(0x9AA0A3);} /* \u2605 ohne Textur grau bleiben, nicht weiss */
+            m.color.setHex(0xB8BDC0); /* \u2605 EIN Grauton - mit und ohne Textur derselbe */
+            if(t)triplanarAn(m,5.7,true);
             m.userData._display=m.color.getHex();m.needsUpdate=true;});
           Array.prototype.forEach.call(strip.querySelectorAll('.dktr,.dkcard'),function(x){x.classList.toggle('active',x===b);});
         });
@@ -7290,7 +7333,7 @@ var GOKOBA_LAYER_ACI = {
   window.addEventListener('resize',resize);
   if(window.ResizeObserver){new ResizeObserver(resize).observe(panel);}
   resize();
-  function tick(){requestAnimationFrame(tick);controls.update();if(!((window.__gkKf=((window.__gkKf||0)+1)%45))&&window.gkKantenSync)window.gkKantenSync();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
+  function tick(){requestAnimationFrame(tick);controls.update();if(!((window.__gkKf=((window.__gkKf||0)+1)%180))&&window.gkKantenSync)window.gkKantenSync();if(window.gkAchsTick)window.gkAchsTick();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
   tick();
 })();
 </script>
