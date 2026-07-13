@@ -5232,12 +5232,12 @@ var GOKOBA_LAYER_ACI = {
       sh.uniforms.uGkSkal=uGkSkal; sh.uniforms.uGkFein=uFein;
       sh.vertexShader=sh.vertexShader
         .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor;')
-        .replace('#include <fog_vertex>','#include <fog_vertex>\n vGkPos=(modelMatrix*vec4(transformed,1.0)).xyz; vGkNor=normalize(mat3(modelMatrix)*objectNormal);');
+        .replace('#include <fog_vertex>','#include <fog_vertex>\n vGkPos=(modelMatrix*vec4(transformed,1.0)).xyz; vGkNor=mat3(modelMatrix)*objectNormal;');
       sh.fragmentShader=sh.fragmentShader
         .replace('#include <common>','#include <common>\nvarying vec3 vGkPos; varying vec3 vGkNor; uniform float uGkSkal; uniform float uGkFein;')
         .replace('#include <map_fragment>',
           '#ifdef USE_MAP\n'+
-          ' vec3 gkW=abs(normalize(vGkNor)); gkW=pow(gkW,vec3(4.0)); gkW/=(gkW.x+gkW.y+gkW.z);\n'+
+          ' vec3 gkW=abs(vGkNor); float gkS=gkW.x+gkW.y+gkW.z; gkW=(gkS>1e-5)?pow(gkW/gkS,vec3(4.0)):vec3(0.0,1.0,0.0); gkW/=max(gkW.x+gkW.y+gkW.z,1e-5);\n'+
           ' vec3 gkP=vGkPos*uGkSkal*uGkFein;\n'+
           ' vec4 gkT=texture2D(map,gkP.yz)*gkW.x+texture2D(map,gkP.zx)*gkW.y+texture2D(map,gkP.xy)*gkW.z;\n'+
           ' gkT=mapTexelToLinear(gkT);\n'+
@@ -5412,7 +5412,7 @@ var GOKOBA_LAYER_ACI = {
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
               }
-              if(reg.alpha!==undefined){m.transparent=true;m.opacity=reg.alpha;m.depthWrite=false;m.needsUpdate=true;}
+              if(reg.alpha!==undefined){m.transparent=true;m.opacity=reg.alpha;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;} /* \u2605 DoubleSide: auch bei gedrehten AS-Flaechennormalen kein Durchblick */
             }
             else{m.userData._display=GOKOBA_STAHL;m.userData._stahlbau=true;m.metalness=0.28;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=0.55;m.needsUpdate=true;} /* ★ Standard: dunkles Blau, glaenzend */
             m.color.setHex(m.userData._display);
@@ -5563,7 +5563,7 @@ var GOKOBA_LAYER_ACI = {
       }
 
       /* ── Info-Kaertchen ── */
-      var karte=el('div',glasBox('display:none;max-width:280px;padding:13px 15px;z-index:30;'));
+      var karte=el('div',glasBox('display:none;max-width:390px;padding:13px 15px;z-index:30;'));
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
@@ -5716,7 +5716,7 @@ var GOKOBA_LAYER_ACI = {
       /* Flyout-Panels oeffnen direkt links neben der Palette */
       function flyLegen(p){
         var pr=palette.getBoundingClientRect(), pp=panel.getBoundingClientRect();
-        p.style.right=(pp.right-pr.left+12)+'px';
+        p.style.right=(pp.right-pr.left+104)+'px'; /* \u2605 Luft fuer die Werkzeugnamen links der Leiste */
         if(mobil()){
           p.style.bottom=(pp.bottom-pr.top+12)+'px';p.style.top='';p.style.transform='';p.style.right='10px';
           /* ★ nie oben aus dem Bild wachsen: Hoehe auf den Platz ueber der Palette begrenzen */
@@ -6042,6 +6042,31 @@ var GOKOBA_LAYER_ACI = {
          Zeichenprogramm - Farben und Flaechen, aber ohne Perspektive).
          Zoomen und Verschieben bleiben 2D; erst manuelles DREHEN wechselt
          nahtlos zurueck in die freie perspektivische Ansicht. ── */
+      /* \u2605 Pruefinstanz im Viewer: faengt Render-/Shaderfehler und zeigt sie an -
+         damit Stoerungen nicht als 'wird halt weiss' unsichtbar bleiben. */
+      (function(){
+        var meld=[], badge=null;
+        function zeig(){
+          if(!badge){
+            badge=el('div','position:absolute;left:10px;bottom:34px;z-index:40;background:#7a1230;color:#fff;'+
+              'font:600 11px var(--ui);padding:6px 10px;border-radius:9px;cursor:pointer;max-width:340px;');
+            badge.addEventListener('click',function(){
+              try{navigator.clipboard.writeText(meld.join('\\n\\n'));badge.textContent='Kopiert - bitte an Gokoba senden.';}catch(e){}
+            });
+            panel.appendChild(badge);
+          }
+          badge.textContent='Render-St\u00f6rung erkannt ('+meld.length+') - antippen zum Kopieren';
+        }
+        var alt1=console.error.bind(console);
+        console.error=function(){
+          var t=Array.prototype.map.call(arguments,function(a){return String(a);}).join(' ');
+          if(t.indexOf('THREE')>=0&&meld.length<8){meld.push(t.slice(0,900));zeig();}
+          alt1.apply(null,arguments);
+        };
+        window.addEventListener('error',function(ev){
+          if(meld.length<8){meld.push('JS: '+(ev.message||'')+' @'+(ev.lineno||''));zeig();}
+        });
+      })();
       window.gk2d=null;
       var gkOrtho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,1000000);
       var gkFestDir=null, gkFestUp=null;
@@ -6050,9 +6075,11 @@ var GOKOBA_LAYER_ACI = {
         var hh=d*Math.tan(camera.fov*Math.PI/360), hw=hh*camera.aspect;
         gkOrtho.left=-hw; gkOrtho.right=hw; gkOrtho.top=hh; gkOrtho.bottom=-hh;
         gkOrtho.near=camera.near; gkOrtho.far=camera.far;
-        if(gkFestDir){ /* \u2605 exakt frontale Pose - OrbitControls klemmt am Pol, wir nicht */
+        if(gkFestDir){ /* \u2605 exakt frontale Pose - Kamera WEIT aussen fixiert, der Zoom
+             laeuft rein ueber die Rahmengroesse: beim Heranzoomen verschwinden keine Teile mehr */
+          var wf=gkModellMitte().r*4+d;
           gkOrtho.up.copy(gkFestUp);
-          gkOrtho.position.copy(controls.target).addScaledVector(gkFestDir,d);
+          gkOrtho.position.copy(controls.target).addScaledVector(gkFestDir,wf);
           gkOrtho.lookAt(controls.target);
         } else {
           gkOrtho.position.copy(camera.position); gkOrtho.quaternion.copy(camera.quaternion);
@@ -6151,7 +6178,7 @@ var GOKOBA_LAYER_ACI = {
         schnittCapNetz=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),
           new THREE.MeshBasicMaterial({color:0xffffff,map:tx,side:THREE.DoubleSide,
             stencilWrite:true,stencilRef:0,stencilFunc:THREE.NotEqualStencilFunc,
-            stencilFail:THREE.ReplaceStencilOp,stencilZFail:THREE.ReplaceStencilOp,stencilZPass:THREE.ReplaceStencilOp}));
+            stencilFail:THREE.ReplaceStencilOp,stencilZFail:THREE.ReplaceStencilOp,stencilZPass:THREE.ReplaceStencilOp,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
         schnittCapNetz.renderOrder=2;
         schnittCapNetz.onAfterRender=function(r){r.clearStencil();};
         scene.add(schnittCapNetz);
@@ -6160,7 +6187,11 @@ var GOKOBA_LAYER_ACI = {
       function schnittCapLege(){
         if(!schnittCapNetz)return;
         var n=schnittEbene.normal;
-        schnittCapNetz.position.copy(n).multiplyScalar(-schnittEbene.constant);
+        /* \u2605 Mittelpunkt des MODELLS auf die Ebene projizieren - nicht den Ursprung!
+           Sonst deckt der Deckel bei hohen/versetzten Modellen nur einen Teil ab. */
+        var mi=schnittBox.getCenter(new THREE.Vector3());
+        var ab=n.dot(mi)+schnittEbene.constant;
+        schnittCapNetz.position.copy(mi).addScaledVector(n,-ab);
         schnittCapNetz.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
       }
       function schnittCapsWeg(){
@@ -6642,7 +6673,28 @@ var GOKOBA_LAYER_ACI = {
           (d.bgname?('<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span>Bezeichnung</span><strong style="color:var(--gktx);text-align:right;">'+d.bgname+'</strong></div>'):'')+
           '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Teile</span><strong style="color:var(--gktx);">'+teilN+'</strong></div>'+
           '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Gewicht</span><strong style="color:var(--gktx);">'+fmtKg(gew)+'</strong></div>';
-      }
+      
+        /* \u2605 ganze Baugruppe isolieren oder ausblenden - unabhaengig vom Einzelteil-Werkzeug */
+        inhalt.insertAdjacentHTML('beforeend',
+          '<div style="display:flex;gap:6px;margin-top:9px;">'+
+          '<button data-bgiso style="all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;border:1px solid var(--gkln);font:600 11px var(--ui);color:var(--gktx);">Isolieren</button>'+
+          '<button data-bgaus style="all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;border:1px solid var(--gkln);font:600 11px var(--ui);color:var(--gktx);">Ausblenden</button>'+
+          '<button data-bgall style="all:unset;cursor:pointer;padding:4px 10px;border-radius:8px;border:1px solid var(--gkln);font:600 11px var(--ui);color:var(--gktx2);">Alles zeigen</button></div>');
+        function bgSicht(modus){
+          var nk=netzKarte();
+          Object.keys(GOKOBA_TEILE).forEach(function(kn){
+            var drin=(GOKOBA_TEILE[kn].bg===d.bg);
+            (nk[kn]||[]).forEach(function(oo){
+              if(modus==='iso')oo.visible=drin;
+              else if(modus==='aus'){if(drin)oo.visible=false;}
+              else oo.visible=true;
+            });
+          });
+        }
+        inhalt.querySelector('[data-bgiso]').addEventListener('click',function(ev){ev.stopPropagation();bgSicht('iso');});
+        inhalt.querySelector('[data-bgaus]').addEventListener('click',function(ev){ev.stopPropagation();bgSicht('aus');});
+        inhalt.querySelector('[data-bgall]').addEventListener('click',function(ev){ev.stopPropagation();bgSicht('alle');});
+}
       function bgEnde(){bgLoesen();if(bgPanel){bgPanel.remove();bgPanel=null;}}
 
       /* ── Notizen: Pfeil vom Modellpunkt zur Textbox, kamerafest nachgefuehrt ── */
