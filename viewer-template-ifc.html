@@ -5475,13 +5475,9 @@ var GOKOBA_LAYER_ACI = {
         'body.hell .ralbtn,body.hell .ralbtn .ralcv{color:#22303B!important;}';
       document.head.appendChild(st);
       var ACHSEN=GOKOBA_TEILE['__achsen__']||null; delete GOKOBA_TEILE['__achsen__'];
-      /* ★ Startzustand: Stahlbau RAL 7016 + Gelaender RAL 3005 (Farbmodus),
-         dann Graustufen AN und Schatten AUS */
+      /* ★ Startzustand: FARBIG mit den nativen Layerfarben (keine RAL-Simulation,
+         keine Graustufen) - nur die Schatten bleiben aus Tempogruenden aus. */
       try{
-        function klick(sel){var b=document.querySelector(sel);if(b)b.click();return !!b;}
-        klick('.ralmode[data-grp="gelaender"]'); klick('.ralc[data-h="#5E2028"]');
-        klick('.ralmode[data-grp="stahlbau"]');  klick('.ralc[data-h="#383E42"]');
-        var g=document.querySelector('.tbtn[data-mode="gray"]'); if(g&&!g.classList.contains('active'))g.click();
         var so=document.querySelector('.tbtn[data-shade="off"]'); if(so&&!so.classList.contains('active'))so.click();
       }catch(x){}
       var GLAS='var(--gkbg)';
