@@ -19,14 +19,21 @@ import trimesh
 
 # ★ Farbtabelle: AS-Layername → RGB. AS schreibt Umlaute als '?' in die IFC,
 #   deshalb stehen die Namen hier genauso. Bei Bedarf anpassen/ergaenzen.
+def norm_layer(l):
+    """Direktweg liefert Layer mit ECHTEN Umlauten (AS_Traeger mit ae-Umlaut),
+    die Tabellen-Schluessel stehen in AS-Exportschreibweise mit '?' -
+    fuer den Abgleich werden Umlaute/ss auf '?' gefaltet."""
+    import re as _re
+    return _re.sub(u'[\u00e4\u00f6\u00fc\u00c4\u00d6\u00dc\u00df]', '?', l or '')
+
 LAYER_FARBE = {
     # ★ Verbindliche Gokoba-Layerfarben (aus dem AS-Layermanager, ACI -> RGB).
     #   AS schreibt Umlaute als '?' in die IFC - Namen deshalb genauso.
-    'AS_Tr?ger':      (0x7F,0x7F,0xFF),  # ACI 171
-    'AS_St?tze':      (0x7F,0x7F,0xFF),  # ACI 171
-    'AS_Stuetzen':    (0x7F,0x7F,0xFF),  # ACI 171
-    'AS_Treppe':      (0x7F,0x7F,0xFF),  # ACI 171
-    'AS_Kanttr?ger':  (0x7F,0x7F,0xFF),  # ACI 171
+    'AS_Tr?ger':      (0x3C,0x55,0xA8),  # kraeftiges dunkleres Blau (Pauls Wunsch)
+    'AS_St?tze':      (0x3C,0x55,0xA8),
+    'AS_Stuetzen':    (0x3C,0x55,0xA8),
+    'AS_Treppe':      (0x3C,0x55,0xA8),
+    'AS_Kanttr?ger':  (0x3C,0x55,0xA8),
     'AS_Bleche':      (0x00,0x3F,0x7F),  # ACI 154
     'AS_Fachwerk':    (0x00,0x3F,0x7F),  # ACI 154
     'AS_Gelaender':   (0xFF,0xBF,0x7F),  # ACI 31
@@ -106,7 +113,7 @@ ART_LAYER = {
     'AS_Betondecken':'beton','AS_Betonw?nde':'beton','AS_Betonfundament':'beton','AS_Betontr?ger':'beton',
 }
 def art_von(layer, typ):
-    a = ART_LAYER.get(layer)
+    a = ART_LAYER.get(norm_layer(layer))
     if a: return a
     if typ == 'IfcPlate': return 'blech'
     if typ == 'IfcMechanicalFastener': return 'schraube'
@@ -422,11 +429,11 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
         if layer in material_cache: return material_cache[layer]
-        col = LAYER_FARBE.get(layer, STANDARD_FARBE)
+        col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
         mat = trimesh.visual.material.PBRMaterial(
             baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
             metallicFactor=0.15, roughnessFactor=0.7)
-        aci = LAYER_ACI.get(layer, 0)
+        aci = LAYER_ACI.get(norm_layer(layer), 0)
         mat.name = 'GOKOBA_ACI_%d_%s' % (aci, re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
         material_cache[layer] = mat
         return mat
@@ -687,11 +694,11 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
         if layer in material_cache: return material_cache[layer]
-        col = LAYER_FARBE.get(layer, STANDARD_FARBE)
+        col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
         mat = trimesh.visual.material.PBRMaterial(
             baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
             metallicFactor=0.15, roughnessFactor=0.7)
-        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(layer, 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
+        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(norm_layer(layer), 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
         material_cache[layer] = mat
         return mat
 
@@ -722,7 +729,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 pass
             d0 = info.get(kn, {}) or {}
             L = d0.get('layer')
-            art = ART_LAYER.get(L) or klasse_art(d0.get('klasse')) or 'sonstiges'
+            art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'): return
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
@@ -870,11 +877,11 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
         if layer in material_cache: return material_cache[layer]
-        col = LAYER_FARBE.get(layer, STANDARD_FARBE)
+        col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
         mat = trimesh.visual.material.PBRMaterial(
             baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
             metallicFactor=0.15, roughnessFactor=0.7)
-        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(layer, 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
+        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(norm_layer(layer), 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
         material_cache[layer] = mat
         return mat
 
@@ -887,7 +894,7 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             m = trimesh.Trimesh(vertices=v, faces=np.asarray(m.faces), process=False)
             d0 = info.get(kn, {}) or {}
             L = d0.get('layer')
-            art = ART_LAYER.get(L) or klasse_art(d0.get('klasse')) or 'sonstiges'
+            art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'):
                 continue
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))

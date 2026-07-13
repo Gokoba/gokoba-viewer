@@ -5985,108 +5985,64 @@ var GOKOBA_LAYER_ACI = {
       }
       function listeEnde(){ sucheLeeren(); if(listePanel){listePanel.remove();listePanel=null;} }
 
-      /* ── Ansichtswuerfel oben links + flache 2D-Ansicht ── */
-      var FLACH={an:false,fovN:camera.fov,maxAlt:null,minAlt:null};
-      function flachSetze(an){
-        /* ★ Tele-Trick: Blickwinkel 3 Grad + exakt passende Rueckfahrt = ansichtsgleiche
-           "2D"-Projektion ohne Kamerawechsel - alle Werkzeuge laufen unveraendert weiter. */
-        if(an===FLACH.an)return;
-        var t=controls.target, d=camera.position.distanceTo(t);
-        var zielFov=an?3:FLACH.fovN;
-        var h=2*d*Math.tan(camera.fov*Math.PI/360);
-        var dNeu=h/(2*Math.tan(zielFov*Math.PI/360));
-        var richt=camera.position.clone().sub(t).normalize();
-        camera.position.copy(t).add(richt.multiplyScalar(dNeu));
-        camera.fov=zielFov; camera.updateProjectionMatrix();
-        if(an){FLACH.maxAlt=controls.maxDistance;FLACH.minAlt=controls.minDistance;
-               controls.maxDistance=dist*90;controls.minDistance=dist*0.5;}
-        else{if(FLACH.maxAlt!=null)controls.maxDistance=FLACH.maxAlt;
-             if(FLACH.minAlt!=null)controls.minDistance=FLACH.minAlt;}
-        FLACH.an=an;
+      /* ── Schnellansichten oben links: Vorne/Hinten/Links/Rechts/Oben/Unten.
+         Gewaehlte Ansicht = ECHTE 2D-Sicht (orthografische Kamera, wie im
+         Zeichenprogramm - Farben und Flaechen, aber ohne Perspektive).
+         Zoomen und Verschieben bleiben 2D; erst manuelles DREHEN wechselt
+         nahtlos zurueck in die freie perspektivische Ansicht. ── */
+      window.gk2d=null;
+      var gkOrtho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,1000000);
+      window.gk2dSync=function(){
+        var d=camera.position.distanceTo(controls.target);
+        var hh=d*Math.tan(camera.fov*Math.PI/360), hw=hh*camera.aspect;
+        gkOrtho.left=-hw; gkOrtho.right=hw; gkOrtho.top=hh; gkOrtho.bottom=-hh;
+        gkOrtho.near=camera.near; gkOrtho.far=camera.far;
+        gkOrtho.position.copy(camera.position); gkOrtho.quaternion.copy(camera.quaternion);
+        gkOrtho.updateProjectionMatrix();
+        return gkOrtho;
+      };
+      var gkBox=null, gkMerkAz=0, gkMerkPo=0;
+      function gkModellMitte(){
+        if(!gkBox){ gkBox=new THREE.Box3().setFromObject(scene); }
+        var m=new THREE.Vector3(), g=new THREE.Vector3();
+        gkBox.getCenter(m); gkBox.getSize(g);
+        return {m:m, r:Math.max(g.x,g.y,g.z)||10};
       }
-      controls.addEventListener('start',function(){ if(FLACH.an&&!window.__gkWfahrt)flachSetze(false); });
-
+      function gkAnsicht(dx,dy,dz,ux,uy,uz){
+        var mr=gkModellMitte(), d=mr.r*1.9;
+        camera.up.set(ux,uy,uz);
+        camera.position.set(mr.m.x+dx*d, mr.m.y+dy*d, mr.m.z+dz*d);
+        controls.target.copy(mr.m);
+        controls.update();
+        gkMerkAz=controls.getAzimuthalAngle(); gkMerkPo=controls.getPolarAngle();
+        window.gk2d=gkOrtho;
+      }
+      controls.addEventListener('change',function(){
+        if(!window.gk2d)return;
+        if(Math.abs(controls.getAzimuthalAngle()-gkMerkAz)>0.01 ||
+           Math.abs(controls.getPolarAngle()-gkMerkPo)>0.01){
+          window.gk2d=null; camera.up.set(0,1,0);   /* zurueck in die Perspektive */
+        }
+      });
       (function(){
-        var wGr=mobil()?72:92, wPad=12;
-        var wScene=new THREE.Scene();
-        wScene.add(new THREE.AmbientLight(0xffffff,1));
-        var wCam=new THREE.OrthographicCamera(-1.5,1.5,1.5,-1.5,0.1,10);
-        function wFl(txt,dreh){
-          var c=document.createElement('canvas');c.width=c.height=128;var g=c.getContext('2d');
-          g.fillStyle='#39434D';g.fillRect(0,0,128,128);
-          g.strokeStyle='rgba(220,229,235,.5)';g.lineWidth=3;g.strokeRect(2,2,124,124);
-          g.save();g.translate(64,64);if(dreh)g.rotate(dreh);
-          g.fillStyle='#DCE5EB';g.font='700 25px system-ui';g.textAlign='center';g.textBaseline='middle';
-          g.fillText(txt,0,1);g.restore();
-          var tx=new THREE.CanvasTexture(c);tx.encoding=THREE.sRGBEncoding;
-          return new THREE.MeshBasicMaterial({map:tx});
-        }
-        var wMats=[wFl('RECHTS'),wFl('LINKS'),wFl('OBEN',Math.PI),wFl('UNTEN'),wFl('VORN'),wFl('HINTEN')];
-        var wBox=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,1.6),wMats);
-        wScene.add(wBox);
-        wScene.add(new THREE.LineSegments(new THREE.EdgesGeometry(wBox.geometry),
-          new THREE.LineBasicMaterial({color:0x9FB3C0,transparent:true,opacity:0.9})));
-        var wDiv=el('div','position:absolute;left:'+wPad+'px;top:'+wPad+'px;width:'+wGr+'px;height:'+wGr+'px;z-index:25;touch-action:none;');
-        wDiv.title='Ansicht w\u00e4hlen';
-        panel.appendChild(wDiv);
-        var wRay=new THREE.Raycaster();
-        function wRegion(ev){
-          var r=wDiv.getBoundingClientRect();
-          var nd=new THREE.Vector2(((ev.clientX-r.left)/r.width)*2-1,-((ev.clientY-r.top)/r.height)*2+1);
-          wRay.setFromCamera(nd,wCam);
-          var h=wRay.intersectObject(wBox,false);
-          if(!h.length)return null;
-          var p=h[0].point, hal=0.8, sw=0.55; /* Ecken und Kanten griffig gross */
-          var a=[p.x/hal,p.y/hal,p.z/hal], dir=new THREE.Vector3(), n=0;
-          for(var i=0;i<3;i++){ if(Math.abs(a[i])>sw){ dir.setComponent(i,Math.sign(a[i])); n++; } }
-          if(!n)return null;
-          dir.normalize();
-          return {dir:dir,art:n};
-        }
-        function wLicht(reg){
-          wMats.forEach(function(m){m.color.setHex(0xffffff);});
-          if(reg){
-            var d=reg.dir, ix=[];
-            if(d.x>0.2)ix.push(0); if(d.x<-0.2)ix.push(1);
-            if(d.y>0.2)ix.push(2); if(d.y<-0.2)ix.push(3);
-            if(d.z>0.2)ix.push(4); if(d.z<-0.2)ix.push(5);
-            ix.forEach(function(i){wMats[i].color.setHex(0x9fd8f2);});
-          }
-        }
-        wDiv.addEventListener('pointermove',function(ev){
-          var reg=wRegion(ev); wLicht(reg);
-          wDiv.style.cursor=reg?'pointer':'default';
+        var w=el('div','position:absolute;left:10px;top:10px;z-index:7;background:'+GLAS+
+                 ';border:'+RAND+';border-radius:10px;padding:7px 8px 8px;backdrop-filter:blur(6px);'+
+                 '-webkit-backdrop-filter:blur(6px);user-select:none;');
+        w.innerHTML='<div style="font-size:10.5px;letter-spacing:.04em;color:var(--gktx2);margin:0 2px 5px;">SCHNELLANSICHTEN</div>';
+        var g=el('div','display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;');
+        var bs='padding:4px 7px;font-size:11.5px;border:'+RAND+';border-radius:7px;background:transparent;'+
+               'color:var(--gktx);cursor:pointer;font-family:inherit;';
+        [['Vorne',  0,0, 1, 0,1,0],
+         ['Hinten', 0,0,-1, 0,1,0],
+         ['Links', -1,0,0,  0,1,0],
+         ['Rechts', 1,0,0,  0,1,0],
+         ['Oben',   0,1,0,  0,0,-1],
+         ['Unten',  0,-1,0, 0,0,1]].forEach(function(k){
+          var b=el('button',bs,k[0]);
+          b.addEventListener('click',function(){ gkAnsicht(k[1],k[2],k[3],k[4],k[5],k[6]); });
+          g.appendChild(b);
         });
-        wDiv.addEventListener('pointerleave',function(){wLicht(null);wDiv.style.cursor='default';});
-        wDiv.addEventListener('pointerdown',function(ev){
-          ev.preventDefault(); ev.stopPropagation();
-          var reg=wRegion(ev); if(!reg)return;
-          window.__gkWfahrt=true;
-          try{
-            var d=camera.position.distanceTo(controls.target);
-            var up=(Math.abs(reg.dir.y)>0.9)?new THREE.Vector3(0,0,reg.dir.y>0?-1:1):new THREE.Vector3(0,1,0);
-            camera.up.copy(up);
-            camera.position.copy(controls.target).add(reg.dir.clone().multiplyScalar(d));
-            controls.update();
-            flachSetze(reg.art<=2);
-          } finally { window.__gkWfahrt=false; }
-        });
-        function malWuerfel(){
-          var r=cv.getBoundingClientRect();
-          wCam.position.copy(camera.position).sub(controls.target).normalize().multiplyScalar(4);
-          wCam.up.copy(camera.up); wCam.lookAt(0,0,0);
-          var alt=renderer.autoClear;
-          renderer.autoClear=false;
-          renderer.setScissorTest(true);
-          renderer.setScissor(wPad,r.height-wPad-wGr,wGr,wGr);
-          renderer.setViewport(wPad,r.height-wPad-wGr,wGr,wGr);
-          renderer.clearDepth();
-          renderer.render(wScene,wCam);
-          renderer.setScissorTest(false);
-          renderer.setViewport(0,0,r.width,r.height);
-          renderer.autoClear=alt;
-        }
-        window.__gkWuerfel=malWuerfel;
+        w.appendChild(g); panel.appendChild(w);
       })();
 
       /* ── Schnitt: Scheibe je Achse, frei durchs Modell ziehbar (GPU-Clipping) ── */
@@ -6167,7 +6123,7 @@ var GOKOBA_LAYER_ACI = {
         function zeiger(e){
           var r=cv.getBoundingClientRect();
           greifPtr.x=((e.clientX-r.left)/r.width)*2-1; greifPtr.y=-((e.clientY-r.top)/r.height)*2+1;
-          greifRay.setFromCamera(greifPtr,camera);
+          greifRay.setFromCamera(greifPtr,window.gk2d||camera);
         }
         /* \u2605 Erst waehlen, dann ziehen: ein Tipp auf die Scheibe waehlt sie (leuchtet),
            erst dann laesst sie sich ziehen. Tipp ins Leere oder Escape waehlt ab -
@@ -6823,7 +6779,7 @@ var GOKOBA_LAYER_ACI = {
         var b=Math.abs(x1-x0), h=Math.abs(y1-y0);
         if(b<24||h<24){sagHinweis('Bereich war zu klein, bitte gr\u00f6\u00dfer aufziehen.');return;}
         /* ★ Aufnahme direkt aus dem frischen Bild - robust auf jeder Grafikkarte */
-        renderer.render(scene,camera);
+        renderer.render(scene,window.gk2d?window.gk2dSync():camera);
         var sx=renderer.domElement.width/r.width, sy=renderer.domElement.height/r.height;
         var ax=Math.min(x0,x1)-r.left, ay=Math.min(y0,y1)-r.top;
         var c=document.createElement('canvas');c.width=Math.round(b*sx);c.height=Math.round(h*sy);
@@ -6906,7 +6862,7 @@ var GOKOBA_LAYER_ACI = {
       function triff(e){
         var r=cv.getBoundingClientRect();
         ptr.x=((e.clientX-r.left)/r.width)*2-1;ptr.y=-((e.clientY-r.top)/r.height)*2+1;
-        ray.setFromCamera(ptr,camera);
+        ray.setFromCamera(ptr,window.gk2d||camera);
         var hits=ray.intersectObjects(meshes,false);
         for(var i=0;i<hits.length;i++){
           if(hits[i].object.visible===false)continue;   /* ★ Ausgeblendetes nicht treffen */
@@ -7142,7 +7098,7 @@ var GOKOBA_LAYER_ACI = {
   window.addEventListener('resize',resize);
   if(window.ResizeObserver){new ResizeObserver(resize).observe(panel);}
   resize();
-  function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera);if(window.__gkWuerfel)window.__gkWuerfel();}
+  function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
   tick();
 })();
 </script>
