@@ -5444,7 +5444,7 @@ var GOKOBA_LAYER_ACI = {
         meshes.forEach(function(o){
           if(!o.geometry)return;
           try{
-            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,42),kmDunkel);
+            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,55),kmDunkel);
             ls.userData._kanten=true; ls.raycast=function(){};
             o.add(ls); kListe.push(ls);
           }catch(e){}
