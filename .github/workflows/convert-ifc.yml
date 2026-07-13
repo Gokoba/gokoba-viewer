@@ -131,7 +131,10 @@ jobs:
             if ! git diff --cached --quiet; then
               git commit -m "IFC-Viewer $id" >/dev/null
               for i in 1 2 3 4 5; do
-                git pull --rebase origin main && git push && break
+                # ★ -X theirs: bei Inhaltskonflikt (Viewer gegen frische Warteseite)
+                #   gewinnt UNSERE Fassung - der Viewer ersetzt die Warteseite ja gerade.
+                git pull --rebase -X theirs origin main && git push && break
+                git rebase --abort >/dev/null 2>&1 || true
                 echo "Push-Versuch $i abgeprallt - neuer Anlauf..."
                 sleep $((i * 3))
               done
@@ -152,7 +155,10 @@ jobs:
             # ★ Der Zweig bewegt sich waehrend des Laufs (Warteseiten, neue Uploads).
             #   Deshalb: vor jedem Push aktualisieren und bis zu fuenfmal erneut versuchen.
             for i in 1 2 3 4 5; do
-              git pull --rebase origin main && git push && break
+              # ★ -X theirs: bei Inhaltskonflikt (Viewer gegen frische Warteseite)
+              #   gewinnt UNSERE Fassung - der Viewer ersetzt die Warteseite ja gerade.
+              git pull --rebase -X theirs origin main && git push && break
+              git rebase --abort >/dev/null 2>&1 || true
               echo "Push-Versuch $i abgeprallt - neuer Anlauf..."
               sleep $((i * 3))
             done
