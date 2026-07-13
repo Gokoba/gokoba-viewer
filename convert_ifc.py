@@ -110,11 +110,56 @@ def art_von(layer, typ):
     if a: return a
     if typ == 'IfcPlate': return 'blech'
     if typ == 'IfcMechanicalFastener': return 'schraube'
+    if typ == 'IfcDiscreteAccessory': return 'schraube'   # Muttern/Scheiben (EM.11)
     if typ == 'IfcFastener': return 'schraube'
     if typ == 'IfcBuildingElementProxy': return 'sonderteil'
     if typ in ('IfcWall','IfcSlab'): return 'beton'
     if typ in ('IfcBeam','IfcColumn','IfcMember'): return 'profil'
     return 'sonstiges'
+
+def schraube_aus_symbol(f, prod):
+    """EM.11-Schraube: Strichsymbol + Attribute -> einfacher Schaft mit Sechskantkopf."""
+    try:
+        import ifcopenshell.util.placement as _pl
+        import ifcopenshell.util.unit as _un
+        skal = _un.calculate_unit_scale(f)
+        dm = float(getattr(prod, 'NominalDiameter', 0) or 0) * skal
+        ln = float(getattr(prod, 'NominalLength', 0) or 0) * skal
+        if dm <= 0: dm = 0.012
+        if ln <= 0: ln = dm * 3.0
+        M = _pl.get_local_placement(prod.ObjectPlacement)
+        pA = pB = None
+        for rep in (prod.Representation.Representations if prod.Representation else []):
+            for it in rep.Items:
+                if it.is_a('IfcPolyline') and len(it.Points) >= 2:
+                    a = np.array(list(it.Points[0].Coordinates) + [0.0])[:3] * skal
+                    b = np.array(list(it.Points[-1].Coordinates) + [0.0])[:3] * skal
+                    pA = (M @ np.append(a, 1.0))[:3]
+                    pB = (M @ np.append(b, 1.0))[:3]
+                    break
+            if pA is not None: break
+        if pA is None:
+            pA = M[:3, 3]
+            pB = pA + M[:3, 2] * ln
+        achse = pB - pA
+        al = np.linalg.norm(achse)
+        achse = achse / al if al > 1e-9 else M[:3, 2]
+        def zyl(radius, hoehe, mitte):
+            T = np.eye(4)
+            z = np.array([0.0, 0.0, 1.0])
+            v = np.cross(z, achse); c = float(np.dot(z, achse))
+            if np.linalg.norm(v) > 1e-9:
+                vx = np.array([[0,-v[2],v[1]],[v[2],0,-v[0]],[-v[1],v[0],0]])
+                T[:3,:3] = np.eye(3) + vx + vx @ vx * (1.0/(1.0+c))
+            elif c < 0:
+                T[:3,:3] = np.diag([1.0,-1.0,-1.0])
+            T[:3,3] = mitte
+            return trimesh.creation.cylinder(radius=radius, height=hoehe, sections=6, transform=T)
+        schaft = zyl(dm*0.5, ln, pA + achse*(ln*0.5))
+        kopf = zyl(dm*0.95, dm*0.64, pA - achse*(dm*0.32))
+        return trimesh.util.concatenate([kopf, schaft])
+    except Exception:
+        return None
 
 def masse_aus_obb(m):
     """Orientierte Box: liefert (a, b, dicke) in mm, absteigend sortiert, oder None."""
@@ -368,7 +413,14 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
     teile = {}
     n = 0; fehler = 0
 
-    def material_fuer(layer):
+    ART_ERSATZ = {'profil': 'AS_Tr?ger', 'kantprofil': 'AS_Kanttr?ger', 'blech': 'AS_Bleche',
+                  'schraube': 'AS_Schrauben', 'anker': 'AS_Ankerk?fige',
+                  'gitterrost': 'AS_Gitterroste', 'gitterroststufe': 'AS_Stufen',
+                  'sonderteil': 'AS_Sonderteile', 'beton': 'AS_Betondecken'}
+    def material_fuer(layer, art=None):
+        # ★ EM.11 kennt keine AS-Layer: dann bekommt das Teil die Farbe seiner Bauteilart
+        if layer not in LAYER_FARBE and art in ART_ERSATZ:
+            layer = ART_ERSATZ[art]
         if layer in material_cache: return material_cache[layer]
         col = LAYER_FARBE.get(layer, STANDARD_FARBE)
         mat = trimesh.visual.material.PBRMaterial(
@@ -395,7 +447,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                     v = np.array(g.verts).reshape(-1, 3)
                     fc = np.array(g.faces).reshape(-1, 3)
                     m = trimesh.Trimesh(vertices=v, faces=fc, process=False)
-                    m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L))
+                    m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art_von(L, typ)))
                     kn = 'E%d' % shp.id
                     szene.add_geometry(m, node_name=kn, geom_name=kn)
                     d = daten_von(prod)
@@ -477,10 +529,389 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
             fehler += 1
         if not it.next():
             break
+
+    # ★ Nachfass-Durchgang: der Iterator laesst manche Typen still aus (in der EM.11
+    #   z.B. alle IfcMechanicalFastener). Jedes Produkt mit Geometrie, das noch fehlt,
+    #   wird hier einzeln vermascht - Schweissmuster (IfcFastener) bleiben bewusst weg.
+    nachgeholt = 0; nachfehler = 0
+    for prod in f.by_type('IfcProduct'):
+        typ = prod.is_a()
+        if typ in ('IfcOpeningElement', 'IfcFastener', 'IfcSite', 'IfcBuilding',
+                   'IfcBuildingStorey', 'IfcElementAssembly', 'IfcGrid'):
+            continue
+        if not getattr(prod, 'Representation', None):
+            continue
+        kn = 'E%d' % prod.id()
+        if kn in teile: continue
+        if ohne_schrauben and typ in SCHRAUBEN_TYPEN: continue
+        L = layer_von(prod)
+        if ohne_beton and L in BETON_LAYER: continue
+        try:
+            m3 = None
+            if typ == 'IfcMechanicalFastener':
+                # ★ EM.11-Schrauben sind nur STRICHSYMBOLE (IfcPolyline) - wir bauen den
+                #   Koerper selbst: Symbol-Linie = Achse, NominalDiameter/-Length = Masse.
+                m3 = schraube_aus_symbol(f, prod)
+            if m3 is None:
+                shp3 = ifcopenshell.geom.create_shape(s, prod)
+                g3 = shp3.geometry
+                v = np.array(g3.verts).reshape(-1, 3)
+                fc = np.array(g3.faces).reshape(-1, 3)
+                if len(fc) == 0: continue
+                m3 = trimesh.Trimesh(vertices=v, faces=fc, process=False)
+            v = np.asarray(m3.vertices)
+            art0 = art_von(L, typ)
+            m3.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art0))
+            szene.add_geometry(m3, node_name=kn, geom_name=kn)
+            d = daten_von(prod)
+            d['typ'] = typ
+            d['layer'] = L
+            d['art'] = art0
+            if typ == 'IfcMechanicalFastener':
+                try:
+                    dm = getattr(prod, 'NominalDiameter', None)
+                    ln = getattr(prod, 'NominalLength', None)
+                    ot = (getattr(prod, 'ObjectType', '') or '')
+                    if 'Anchor' in ot or L == 'AS_Ankerk?fige':
+                        d['art'] = 'anker'
+                    if dm and ln:
+                        fmt = lambda x: ('%g' % round(float(x), 1))
+                        vor = '\u00f8' if d['art'] == 'anker' else 'M'
+                        d['groesse'] = vor + fmt(dm) + ' x ' + fmt(ln)
+                except Exception:
+                    pass
+                if em_bolzen is not None:
+                    k = bolzen_index.get(prod.id(), -1)
+                    if 0 <= k < len(em_bolzen):
+                        dm2, ln2, din2, g2 = em_bolzen[k]
+                        if getattr(prod, 'NominalDiameter', None) == dm2 and getattr(prod, 'NominalLength', None) == ln2:
+                            if din2: d['din'] = din2
+                            if g2 and not d.get('material'): d['material'] = str(g2)
+            if d['art'] in ('blech', 'kantblech'):
+                mm = masse_aus_obb(m3)
+                if mm: d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+            if d['art'] in ('profil', 'kantprofil') and not d.get('laenge'):
+                mm = masse_aus_obb(m3)
+                if mm: d['laenge'] = round(mm[0], 1)
+            if em_baugruppen is not None:
+                z = v.mean(axis=0)
+                dist = np.linalg.norm(em_baugruppen[0] - z, axis=1)
+                k = int(dist.argmin())
+                if dist[k] < 0.005:
+                    d['bg'] = em_baugruppen[1][k][0]
+                    d['bgnr'] = em_baugruppen[1][k][1]
+            if d['ref'] is None and em_zentren is not None:
+                z = v.mean(axis=0)
+                dist = np.linalg.norm(em_zentren[0] - z, axis=1)
+                k = int(dist.argmin())
+                if dist[k] < 0.005:
+                    d['ref'] = em_zentren[1][k]
+            d['zentrum'] = [round(float(x), 4) for x in v.mean(axis=0)]
+            teile[kn] = d
+            n += 1; nachgeholt += 1
+        except Exception:
+            nachfehler += 1
+    if nachgeholt or nachfehler:
+        print('* Nachfass-Durchgang: %d Teile nachvermascht (%d nicht wandelbar)' % (nachgeholt, nachfehler))
     print('* Vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, time.time() - t0))
     if n == 0:
         raise SystemExit('Keine Bauteile in der IFC.')
     glb = basisname + '.glb'
+    szene.export(glb)
+    if achsen:
+        teile['__achsen__'] = achsen
+    return glb, teile
+
+def _flaeche_zerlegen(aussen, loecher):
+    """Eine Brep-Flaeche (Aussenkontur + Lochkonturen, Nx3) -> Dreiecke (M,3,3).
+    Projektion in die Flaechenebene (Newell-Normale), Earcut mit Loechern."""
+    import mapbox_earcut
+    ringe = [np.asarray(aussen, dtype=float)] + [np.asarray(h, dtype=float) for h in (loecher or [])]
+    ringe = [r for r in ringe if len(r) >= 3]
+    if not ringe: return None
+    a = ringe[0]
+    # Newell-Normale
+    n = np.zeros(3)
+    for i in range(len(a)):
+        p, q = a[i], a[(i + 1) % len(a)]
+        n += np.cross(p, q)
+    ln = np.linalg.norm(n)
+    if ln < 1e-12: return None
+    n /= ln
+    u = np.cross(n, [0.0, 0.0, 1.0])
+    if np.linalg.norm(u) < 1e-6: u = np.cross(n, [0.0, 1.0, 0.0])
+    u /= np.linalg.norm(u); v = np.cross(n, u)
+    alle = np.vstack(ringe)
+    zwei = np.column_stack([alle @ u, alle @ v])
+    enden = np.cumsum([len(r) for r in ringe]).astype(np.uint32)
+    try:
+        tri = mapbox_earcut.triangulate_float64(zwei, enden)
+    except Exception:
+        return None
+    if len(tri) == 0: return None
+    return alle[np.asarray(tri, dtype=np.int64)].reshape(-1, 3, 3)
+
+def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
+    """★ DIREKT-Rohformat: T E<id> / L x y z ... (Aussenkontur) / H x y z ... (Loch,
+    gehoert zur letzten L-Zeile). Millimeter. Zerlegung hier in der Cloud - das
+    Plugin bleibt dumm und robust."""
+    import json as _js, time as _t
+    t0 = _t.time()
+    meta = {}
+    if json_pfad and os.path.exists(json_pfad):
+        with open(json_pfad, encoding='utf-8') as fh:
+            meta = _js.load(fh)
+    skal = 0.001 if str(meta.get('einheit', 'mm')).lower().startswith('mm') else 1.0
+    info = meta.get('teile', {}) or {}
+
+    ART_ERSATZ = {'profil': 'AS_Tr?ger', 'kantprofil': 'AS_Kanttr?ger', 'blech': 'AS_Bleche',
+                  'schraube': 'AS_Schrauben', 'anker': 'AS_Ankerk?fige', 'kopfbolzen': 'AS_Kopfbolzen',
+                  'gitterrost': 'AS_Gitterroste', 'gitterroststufe': 'AS_Stufen',
+                  'sonderteil': 'AS_Sonderteile', 'beton': 'AS_Betondecken'}
+    KLASSE_ART = [('foldedbeam', 'kantprofil'), ('foldedplate', 'kantblech'), ('bentbeam', 'kantprofil'),
+                  ('polybeam', 'profil'), ('compoundbeam', 'profil'), ('unfolded', 'kantblech'),
+                  ('grating', 'gitterrost'), ('specialpart', 'sonderteil'), ('anchor', 'anker'),
+                  ('shearstud', 'kopfbolzen'), ('connector', 'kopfbolzen'), ('bolt', 'schraube'),
+                  ('screw', 'schraube'), ('plate', 'blech'), ('beam', 'profil'),
+                  ('wall', 'beton'), ('slab', 'beton'), ('concrete', 'beton')]
+    def klasse_art(k):
+        k = (k or '').lower()
+        for schl, art in KLASSE_ART:
+            if schl in k: return art
+        return None
+    material_cache = {}
+    def material_fuer(layer, art):
+        if layer not in LAYER_FARBE and art in ART_ERSATZ:
+            layer = ART_ERSATZ[art]
+        if layer in material_cache: return material_cache[layer]
+        col = LAYER_FARBE.get(layer, STANDARD_FARBE)
+        mat = trimesh.visual.material.PBRMaterial(
+            baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
+            metallicFactor=0.15, roughnessFactor=0.7)
+        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(layer, 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
+        material_cache[layer] = mat
+        return mat
+
+    szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
+    kn = None; dreiecke = []; aussen = None; loecher = []
+
+    def _fl_ab():
+        if aussen is not None:
+            t3 = _flaeche_zerlegen(aussen, loecher)
+            if t3 is not None: dreiecke.append(t3)
+
+    def _teil_ab():
+        nonlocal n, fehler
+        if kn is None: return
+        try:
+            if not dreiecke: return
+            t3 = np.vstack(dreiecke) * skal
+            va = t3.reshape(-1, 3)
+            fa = np.arange(len(va), dtype=np.int64).reshape(-1, 3)
+            m = trimesh.Trimesh(vertices=va, faces=fa, process=False)
+            m.merge_vertices()
+            try:
+                m.fix_normals()
+                if m.is_watertight and m.volume < 0: m.invert()
+            except Exception:
+                pass
+            d0 = info.get(kn, {}) or {}
+            L = d0.get('layer')
+            art = ART_LAYER.get(L) or klasse_art(d0.get('klasse')) or 'sonstiges'
+            if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'): return
+            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
+            szene.add_geometry(m, node_name=kn, geom_name=kn)
+            d = {'ref': d0.get('pos'), 'profil': d0.get('profil'), 'familie': d0.get('familie'),
+                 'material': d0.get('material'), 'laenge': d0.get('laenge'),
+                 'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
+                 'art': art, 'roh': d0.get('name')}
+            if d0.get('name'): d['name'] = str(d0['name'])
+            a0 = d0.get('attrs')
+            if a0: d['attrs'] = [str(x) for x in a0]
+            if d0.get('bgnr'): d['bg'] = str(d0['bgnr']); d['bgnr'] = str(d0['bgnr'])
+            if d0.get('bgname'): d['bgname'] = str(d0['bgname'])
+            for feld in ('din', 'groesse', 'hersteller', 'masche', 'tragstab'):
+                if d0.get(feld): d[feld] = str(d0[feld])
+            if d0.get('bestand'): d['bestand'] = True
+            if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
+                mm = masse_aus_obb(m)
+                if mm: d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+            if art in ('profil', 'kantprofil') and not d.get('laenge'):
+                mm = masse_aus_obb(m)
+                if mm: d['laenge'] = round(mm[0], 1)
+            if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
+                try:
+                    if m.is_watertight:
+                        vol = float(abs(m.volume))
+                        if vol > 0: d['gewicht'] = round(vol * DICHTE_STAHL, 1)
+                except Exception:
+                    pass
+            d['zentrum'] = [round(float(x), 4) for x in va.mean(axis=0)]
+            teile[kn] = d
+            n += 1
+        except Exception:
+            fehler += 1
+
+    def _tripel(z):
+        w = z.split()[1:]
+        k = np.asarray([float(x) for x in w], dtype=float)
+        return k.reshape(-1, 3)
+
+    with open(geo_pfad, encoding='utf-8', errors='replace') as fh:
+        for zeile in fh:
+            z = zeile.strip()
+            if not z: continue
+            if z[0] == 'T':
+                _fl_ab(); _teil_ab()
+                kn = z.split()[1] if len(z.split()) > 1 else None
+                dreiecke = []; aussen = None; loecher = []
+            elif z[0] == 'L':
+                _fl_ab()
+                aussen = _tripel(z); loecher = []
+            elif z[0] == 'H':
+                if aussen is not None: loecher.append(_tripel(z))
+    _fl_ab(); _teil_ab()
+
+    print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
+    if n == 0:
+        raise SystemExit('Direkt-Geo-Paket enthaelt keine Bauteile.')
+    achsen = []
+    for a in (meta.get('achsen') or []):
+        try:
+            achsen.append({'tag': str(a.get('tag', '?')), 'p': [float(x) * skal for x in (a.get('p') or [])][:6]})
+        except Exception:
+            pass
+    glb = os.path.splitext(geo_pfad)[0] + '.glb'
+    szene.export(glb)
+    if achsen:
+        teile['__achsen__'] = achsen
+    return glb, teile
+
+def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
+    """★ DIREKT-EXPORTER-Paket: direkt.obj (Gruppen 'o E<handle>', Millimeter) +
+    direkt.json (Steckbrief je Teil). Das Plugin vernetzt selbst - hier wird nur
+    verpackt und mit denselben Kaertchen-Daten versorgt wie auf dem IFC-Weg."""
+    import json as _js, time as _t
+    t0 = _t.time()
+    meta = {}
+    if json_pfad and os.path.exists(json_pfad):
+        with open(json_pfad, encoding='utf-8') as fh:
+            meta = _js.load(fh)
+    skal = 0.001 if str(meta.get('einheit', 'mm')).lower().startswith('mm') else 1.0
+    info = meta.get('teile', {}) or {}
+    geo_pfad = os.path.join(os.path.dirname(obj_pfad), 'direkt.geo')
+    if os.path.exists(geo_pfad):
+        return _wandle_geo(geo_pfad, json_pfad, ohne_schrauben)
+    # ★ Eigener Mini-Parser statt trimesh.load: unser Format (o/v/f), damit die
+    #   Objekt-Trennung nie von Bibliotheksversionen abhaengt.
+    paare = []
+    _vs = []; _fs = []; _name = None
+    def _abschluss():
+        if _name is not None and _fs:
+            va = np.asarray(_vs, dtype=float)
+            fa = np.asarray(_fs, dtype=np.int64) - 1
+            # ★ nur die Punkte dieses Teils mitnehmen (OBJ-Indizes sind global)
+            uq, inv = np.unique(fa.reshape(-1), return_inverse=True)
+            paare.append((_name, trimesh.Trimesh(vertices=va[uq],
+                                                 faces=inv.reshape(-1, 3), process=False)))
+    with open(obj_pfad, encoding='utf-8', errors='replace') as fh:
+        for zeile in fh:
+            z = zeile.strip()
+            if z.startswith('o ') or z.startswith('g '):
+                _abschluss(); _name = z[2:].strip(); _fs = []
+            elif z.startswith('v '):
+                p = z.split()
+                _vs.append((float(p[1]), float(p[2]), float(p[3])))
+            elif z.startswith('f '):
+                ix = [int(w.split('/')[0]) for w in z.split()[1:]]
+                for k in range(1, len(ix) - 1):
+                    _fs.append((ix[0], ix[k], ix[k + 1]))
+    _abschluss()
+    if not paare and _fs:
+        _name = 'E0'; _abschluss()
+
+    ART_ERSATZ = {'profil': 'AS_Tr?ger', 'kantprofil': 'AS_Kanttr?ger', 'blech': 'AS_Bleche',
+                  'schraube': 'AS_Schrauben', 'anker': 'AS_Ankerk?fige', 'kopfbolzen': 'AS_Kopfbolzen',
+                  'gitterrost': 'AS_Gitterroste', 'gitterroststufe': 'AS_Stufen',
+                  'sonderteil': 'AS_Sonderteile', 'beton': 'AS_Betondecken'}
+    KLASSE_ART = [('foldedbeam', 'kantprofil'), ('foldedplate', 'kantblech'), ('bentbeam', 'kantprofil'),
+                  ('grating', 'gitterrost'), ('specialpart', 'sonderteil'), ('anchor', 'anker'),
+                  ('shearstud', 'kopfbolzen'), ('connector', 'kopfbolzen'), ('bolt', 'schraube'),
+                  ('screw', 'schraube'), ('plate', 'blech'), ('beam', 'profil'),
+                  ('wall', 'beton'), ('slab', 'beton')]
+    def klasse_art(k):
+        k = (k or '').lower()
+        for schl, art in KLASSE_ART:
+            if schl in k: return art
+        return None
+    material_cache = {}
+    def material_fuer(layer, art):
+        if layer not in LAYER_FARBE and art in ART_ERSATZ:
+            layer = ART_ERSATZ[art]
+        if layer in material_cache: return material_cache[layer]
+        col = LAYER_FARBE.get(layer, STANDARD_FARBE)
+        mat = trimesh.visual.material.PBRMaterial(
+            baseColorFactor=[col[0]/255.0, col[1]/255.0, col[2]/255.0, 1.0],
+            metallicFactor=0.15, roughnessFactor=0.7)
+        mat.name = 'GOKOBA_ACI_%d_%s' % (LAYER_ACI.get(layer, 0), re.sub(r'[^A-Za-z0-9_]', '_', str(layer)))
+        material_cache[layer] = mat
+        return mat
+
+    szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
+    for kn, m in paare:
+        try:
+            if not str(kn).startswith('E'):
+                kn = 'E%s' % kn
+            v = np.asarray(m.vertices, dtype=float) * skal
+            m = trimesh.Trimesh(vertices=v, faces=np.asarray(m.faces), process=False)
+            d0 = info.get(kn, {}) or {}
+            L = d0.get('layer')
+            art = ART_LAYER.get(L) or klasse_art(d0.get('klasse')) or 'sonstiges'
+            if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'):
+                continue
+            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
+            szene.add_geometry(m, node_name=kn, geom_name=kn)
+            d = {'ref': d0.get('pos'), 'profil': d0.get('profil'), 'familie': d0.get('familie'),
+                 'material': d0.get('material'), 'laenge': d0.get('laenge'),
+                 'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
+                 'art': art, 'roh': d0.get('name')}
+            if d0.get('name'): d['name'] = str(d0['name'])
+            a = d0.get('attrs')
+            if a: d['attrs'] = [str(x) for x in a]
+            if d0.get('bgnr'):
+                d['bg'] = str(d0['bgnr']); d['bgnr'] = str(d0['bgnr'])
+            if d0.get('bgname'): d['bgname'] = str(d0['bgname'])
+            for feld in ('din', 'groesse', 'hersteller', 'masche', 'tragstab'):
+                if d0.get(feld): d[feld] = str(d0[feld])
+            if d0.get('bestand'): d['bestand'] = True
+            if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
+                mm = masse_aus_obb(m)
+                if mm: d['masse'] = [round(mm[0]), round(mm[1]), round(mm[2], 1)]
+            if art in ('profil', 'kantprofil') and not d.get('laenge'):
+                mm = masse_aus_obb(m)
+                if mm: d['laenge'] = round(mm[0], 1)
+            if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech'):
+                try:
+                    if m.is_watertight:
+                        vol = float(m.volume)
+                        if vol > 0: d['gewicht'] = round(vol * DICHTE_STAHL, 1)
+                except Exception:
+                    pass
+            d['zentrum'] = [round(float(x), 4) for x in v.mean(axis=0)]
+            teile[kn] = d
+            n += 1
+        except Exception:
+            fehler += 1
+    print('* DIREKT vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
+    if n == 0:
+        raise SystemExit('Direkt-Paket enthaelt keine Bauteile.')
+    achsen = []
+    for a in (meta.get('achsen') or []):
+        try:
+            achsen.append({'tag': str(a.get('tag', '?')), 'p': [float(x) * skal for x in (a.get('p') or [])][:6]})
+        except Exception:
+            pass
+    glb = os.path.splitext(obj_pfad)[0] + '.glb'
     szene.export(glb)
     if achsen:
         teile['__achsen__'] = achsen
@@ -500,19 +931,27 @@ def main():
     ap.add_argument('--ohne-beton', action='store_true')
     args = ap.parse_args()
 
+    # ★ DIREKT-EXPORTER-Paket hat Vorrang: eigene Geometrie, null AS-Exportbefehle.
+    direkt_glb = None
+    dobj = os.path.join(args.input_dir, 'direkt.obj')
+    if os.path.exists(os.path.join(args.input_dir, 'direkt.geo')) and not os.path.exists(dobj):
+        dobj = os.path.join(args.input_dir, 'direkt.geo').replace('direkt.geo', 'direkt.obj')  # Pfadbasis fuer wandle_direkt
+    if os.path.exists(dobj) or os.path.exists(os.path.join(args.input_dir, 'direkt.geo')):
+        print('* DIREKT: eigenes Exportpaket erkannt - Geometrie kommt vom Plugin selbst.')
+        direkt_glb = wandle_direkt(dobj, os.path.join(args.input_dir, 'direkt.json'), args.ohne_schrauben)
     ifcs = sorted(glob.glob(os.path.join(args.input_dir, '*.ifc')))
     haupt = [p for p in ifcs if not ist_em11(p)]
     em11 = [p for p in ifcs if ist_em11(p)]
-    if not haupt and em11:
+    if direkt_glb is None and not haupt and em11:
         # ★ EM.11-Notweg: der AS-IFC2x3-Export haengt an manchen Modellen (Kanttraeger).
         #   Dann baut der Viewer die Geometrie direkt aus der EM.11-Datei. Bauteilarten
         #   kommen ueber den Entity-Rueckfall in art_von(); der Positionsabgleich laeuft
         #   gegen dieselbe Datei und trifft damit jedes Teil.
         print('* NOTWEG: keine IFC2x3-Datei - Viewer wird komplett aus der EM.11 gebaut.')
         haupt = em11
-    if not haupt:
+    if not haupt and direkt_glb is None:
         raise SystemExit('Keine IFC-Datei im Ordner gefunden.')
-    ifc = haupt[0]
+    ifc = haupt[0] if haupt else None
     em = em11[0] if em11 else None
     if not em:
         print('Hinweis: keine EM.11-Datei dabei - Gelaenderteile bekommen keine Positionsnummern.')
@@ -521,7 +960,10 @@ def main():
     if namen_pos or namen_ort or namen_bg:
         print('* Namensliste: %d Positionen, %d mit Koordinate, %d Baugruppen-Bezeichnungen'
               % (len(namen_pos), len(namen_ort), len(namen_bg)))
-    glb, teile = wandle(ifc, em, args.ohne_schrauben, args.ohne_beton)
+    if direkt_glb is not None:
+        glb, teile = direkt_glb
+    else:
+        glb, teile = wandle(ifc, em, args.ohne_schrauben, args.ohne_beton)
     # ── Namensliste verheiraten: erst Position, dann Schwerpunkt (Sonderteile) ──
     if namen_pos or namen_ort:
         ort_pkt = np.array([o[0] for o in namen_ort]) if namen_ort else None
