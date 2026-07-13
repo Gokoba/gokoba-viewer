@@ -1,0 +1,9 @@
+2026-07-13T10:16:25Z (Code 1)
+---
+* DIREKT: eigenes Exportpaket erkannt - Geometrie kommt vom Plugin selbst.
+* DIREKT (geo) vermascht: 0 Bauteile | Fehler: 0 | 24s
+* DIREKT-Diagnose: T=2544 L=187554 H=75 | Flaechen ohne Zerlegung: 187554 | unlesbare Zeilen: 0
+* Probezeile: L 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+* Probezeile: L 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+* Probezeile: L 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+Direkt-Geo-Paket enthaelt keine Bauteile - siehe Diagnosezeilen daruber.
