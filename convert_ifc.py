@@ -750,12 +750,6 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             m = trimesh.Trimesh(vertices=va, faces=fa, process=False)
             m.merge_vertices()
             try:
-                # ★ weiche Normalen mit Faltkante 34 Grad: Rohre und Bolzen wirken rund,
-                #   Profilkanten bleiben scharf (gltfpack -kn behaelt die Normalen)
-                m = trimesh.graph.smooth_shade(m, angle=0.5934)
-            except Exception:
-                pass
-            try:
                 m.fix_normals()
                 if m.is_watertight and m.volume < 0: m.invert()
             except Exception:

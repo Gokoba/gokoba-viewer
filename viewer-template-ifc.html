@@ -5201,11 +5201,11 @@ var GOKOBA_LAYER_ACI = {
   /* ★ dezente Verzinkungs-Struktur (leichte Zink-Blumen-Fleckung) als Rauigkeits-Karte */
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
-    g.fillStyle='#b7bcc0';g.fillRect(0,0,n,n);
+    g.fillStyle='#a4abb0';g.fillRect(0,0,n,n);
     for(var i=0;i<200;i++){var x=Math.random()*n,y=Math.random()*n,sz=9+Math.random()*22,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
-      g.closePath();g.fillStyle=li?'rgba(236,239,241,0.55)':'rgba(146,152,157,0.50)';g.fill();}
-    g.strokeStyle='rgba(118,124,129,0.35)';g.lineWidth=1;
+      g.closePath();g.fillStyle=li?'rgba(240,243,245,0.75)':'rgba(118,125,131,0.70)';g.fill();}
+    g.strokeStyle='rgba(100,107,113,0.55)';g.lineWidth=1;
     for(var k9=0;k9<70;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
@@ -5213,8 +5213,8 @@ var GOKOBA_LAYER_ACI = {
   /* ★ Gitterrost-Textur (Draufsicht), Maschenweite aus dem Dialog */
   function gitterTextur(mw){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
-    g.fillStyle='#86898b';g.fillRect(0,0,n,n);
-    g.fillStyle='#a7aaad';var bw=6,sx=(mw==='3010')?18:44,sy=44,i;
+    g.fillStyle='#4a4f53';g.fillRect(0,0,n,n);
+    g.fillStyle='#a9adb0';var bw=6,sx=(mw==='3010')?18:44,sy=44,i;
     for(i=0;i<=n;i+=sx)g.fillRect(i,0,bw,n);
     for(i=0;i<=n;i+=sy)g.fillRect(0,i,n,bw);
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
@@ -5328,13 +5328,7 @@ var GOKOBA_LAYER_ACI = {
     _dekorTexCache[key]=t;return t;
   }
   /* ★ Gitter-Textur nur auf waagerechten Flaechen zeigen; senkrechte Flaechen (Wand/Kante) glatt grau */
-  function gitterFlach(m){
-    m.onBeforeCompile=function(sh){
-      sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWNg;').replace('#include <beginnormal_vertex>','#include <beginnormal_vertex>\n  vWNg = mat3(modelMatrix) * objectNormal;');
-      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWNg;').replace('#include <map_fragment>','#ifdef USE_MAP\n vec4 texelColor = texture2D( map, vUv );\n texelColor = mapTexelToLinear( texelColor );\n float upG = abs(normalize(vWNg).y);\n float gm = smoothstep(0.45,0.75,upG);\n texelColor.rgb = mix(vec3(0.305,0.323,0.342), texelColor.rgb, gm);\n diffuseColor *= texelColor;\n#endif');
-    };
-    m.needsUpdate=true;
-  }
+  function gitterFlach(m){ /* \u2605 stillgelegt: ueberschrieb den Triplanar-Haken - Schraffur war dadurch kaputt */ }
   /* ★ Riffelblech-Textur (Traenen), von allen Seiten (Box-Projektion) */
   function traenTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
@@ -5360,7 +5354,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.46;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.5);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5412,8 +5406,8 @@ var GOKOBA_LAYER_ACI = {
                 m.metalness=0.10;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.40;m.needsUpdate=true;
               }
               else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
-              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;} /* ★ Riffelblech */
-              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(gitterTex?0xffffff:0x9AA0A3);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7);gitterFlach(m);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
+              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.55;m.roughness=0.3;m.envMap=gokobaEnv;m.envMapIntensity=0.8;triplanarAn(m,2.4);m.needsUpdate=true;} /* ★ Riffelblech */
+              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(gitterTex?0xffffff:0x9AA0A3);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
@@ -5574,7 +5568,9 @@ var GOKOBA_LAYER_ACI = {
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
       function heben(o,farbe,staerke){
-        var hi=(Array.isArray(o.material)?o.material[0]:o.material).clone();
+        var urm=(Array.isArray(o.material)?o.material[0]:o.material);
+        var hi=urm.clone();
+        if(urm.onBeforeCompile){hi.onBeforeCompile=urm.onBeforeCompile;hi.customProgramCacheKey=urm.customProgramCacheKey;}
         hi.emissive=new THREE.Color(farbe===undefined?0x2E86AD:farbe);hi.emissiveIntensity=(staerke===undefined?0.55:staerke);
         return hi;
       }
@@ -5678,7 +5674,7 @@ var GOKOBA_LAYER_ACI = {
                mass:'Punkte antippen - Eckpunkte werden gefangen.',
                schnitt:'Achse w\u00e4hlen, dann die Scheibe greifen und durchs Modell ziehen.'};
       var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe',mass:'Messen',schnitt:'Schnitt'};
-      var palette=el('div','display:flex;flex-direction:column;gap:5px;padding:6px 5px;align-items:center;user-select:none;');
+      var palette=el('div','position:absolute;z-index:8;display:flex;flex-direction:column;gap:5px;padding:6px 5px;align-items:center;user-select:none;');
       palette.id='gkpalette'; panel.appendChild(palette);
       /* ★ Mobil: Palette startet eingeklappt; ein Griffstrich am rechten Rand zeigt das Menue.
          Antippen oder Daruberziehen holt sie rein; aktives Drehen im Modell blendet sie aus
@@ -7165,7 +7161,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.46;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.5);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
