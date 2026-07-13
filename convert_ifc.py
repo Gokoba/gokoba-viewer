@@ -19,7 +19,10 @@ import trimesh
 
 # ★ Farbtabelle: AS-Layername → RGB. AS schreibt Umlaute als '?' in die IFC,
 #   deshalb stehen die Namen hier genauso. Bei Bedarf anpassen/ergaenzen.
+KONFIG = {}
+
 def saniere_profil(p):
+    if p and ('Autodesk' in str(p) or 'ProfileType' in str(p)): return None
     """AS-Profilname wie 'HEB DIN18800-1#@§@#HEB140' -> 'HEB 140'; 'FL60X10' -> 'FL 60x10'."""
     if not p: return p
     import re as _re
@@ -682,6 +685,11 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             print('! direkt.json unlesbar (%s) - baue ohne Steckbriefe weiter.' % ex)
     skal = 0.001 if str(meta.get('einheit', 'mm')).lower().startswith('mm') else 1.0
     info = meta.get('teile', {}) or {}
+    try:
+        KONFIG.update({k: v for k, v in (meta.get('konfig') or {}).items() if v})
+        if KONFIG: print('* Dialog-Konfig uebernommen: %s' % ', '.join(sorted(KONFIG)))
+    except Exception:
+        pass
 
     ART_ERSATZ = {'profil': 'AS_Tr?ger', 'kantprofil': 'AS_Kanttr?ger', 'blech': 'AS_Bleche',
                   'schraube': 'AS_Schrauben', 'anker': 'AS_Ankerk?fige', 'kopfbolzen': 'AS_Kopfbolzen',
@@ -743,7 +751,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
             d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'familie': d0.get('familie'),
-                 'material': d0.get('material'), 'laenge': d0.get('laenge'),
+                 'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
             if d0.get('name'): d['name'] = str(d0['name'])
@@ -773,7 +781,9 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 try:
                     if m.is_watertight:
                         vol = float(abs(m.volume))
-                        if vol > 0: d['gewicht'] = round(vol * DICHTE_STAHL, 1)
+                        mat_u = (d.get('material') or '').strip().lower()
+                        dichte = 2700.0 if mat_u in ('al', 'alu', 'aluminium') or mat_u.startswith('almg') or mat_u.startswith('en aw') else DICHTE_STAHL
+                        if vol > 0: d['gewicht'] = round(vol * dichte, 1)
                 except Exception:
                     pass
             d['zentrum'] = [round(float(x), 4) for x in va.mean(axis=0)]
@@ -845,6 +855,11 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             meta = _js.load(fh)
     skal = 0.001 if str(meta.get('einheit', 'mm')).lower().startswith('mm') else 1.0
     info = meta.get('teile', {}) or {}
+    try:
+        KONFIG.update({k: v for k, v in (meta.get('konfig') or {}).items() if v})
+        if KONFIG: print('* Dialog-Konfig uebernommen: %s' % ', '.join(sorted(KONFIG)))
+    except Exception:
+        pass
     geo_pfad = os.path.join(os.path.dirname(obj_pfad), 'direkt.geo')
     if os.path.exists(geo_pfad):
         return _wandle_geo(geo_pfad, json_pfad, ohne_schrauben)
@@ -918,7 +933,7 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
             d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'familie': d0.get('familie'),
-                 'material': d0.get('material'), 'laenge': d0.get('laenge'),
+                 'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
             if d0.get('name'): d['name'] = str(d0['name'])
@@ -1087,6 +1102,12 @@ def main():
     html = html.replace('__GLB_B64__', g64)
     html = html.replace('__TEILE_B64__', t64)
     html = html.replace('__PROJ_NAME__', args.model_name)
+    # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
+    html = html.replace('__DEF_STAHL__', KONFIG.get('stahl') or '__DEF_STAHL__')
+    html = html.replace('__DEF_GEL__', KONFIG.get('gelaender') or '__DEF_GEL__')
+    html = html.replace('__GITTER_TEX__', KONFIG.get('gitter') or '__GITTER_TEX__')
+    _dk = ';'.join('%s=%s' % (k, KONFIG[k]) for k in ('bws', 'min', 't1', 't2', 't3', 't4') if KONFIG.get(k))
+    html = html.replace('__DEKOR__', _dk or '__DEKOR__')
     html = html.replace('__EXPIRY__', expiry)
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     open(args.output, 'w', encoding='utf-8').write(html)

@@ -5201,10 +5201,12 @@ var GOKOBA_LAYER_ACI = {
   /* ★ dezente Verzinkungs-Struktur (leichte Zink-Blumen-Fleckung) als Rauigkeits-Karte */
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
-    g.fillStyle='#c3c7ca';g.fillRect(0,0,n,n);
-    for(var i=0;i<240;i++){var x=Math.random()*n,y=Math.random()*n,sz=6+Math.random()*13,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
+    g.fillStyle='#b7bcc0';g.fillRect(0,0,n,n);
+    for(var i=0;i<200;i++){var x=Math.random()*n,y=Math.random()*n,sz=9+Math.random()*22,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
-      g.closePath();g.fillStyle=li?'rgba(230,233,236,0.40)':'rgba(186,190,194,0.38)';g.fill();}
+      g.closePath();g.fillStyle=li?'rgba(236,239,241,0.55)':'rgba(146,152,157,0.50)';g.fill();}
+    g.strokeStyle='rgba(118,124,129,0.35)';g.lineWidth=1;
+    for(var k9=0;k9<70;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var verzinktTex=verzinktTextur();
@@ -5217,7 +5219,7 @@ var GOKOBA_LAYER_ACI = {
     for(i=0;i<=n;i+=sy)g.fillRect(0,i,n,bw);
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
-  var gitterTex=gitterTextur(GOKOBA_GITTER_TEX.indexOf('3010')>=0?'3010':'3030');
+  var gitterTex=GOKOBA_GITTER_TEX.indexOf('keine')>=0?null:gitterTextur(GOKOBA_GITTER_TEX.indexOf('3010')>=0?'3010':'3030');
   /* ★ Triplanar: Textur aus Weltkoordinaten auf JEDE Flaeche projizieren (von oben,
      vorn und der Seite, weich nach Flaechenrichtung gemischt). Ohne UV-Koordinaten aus
      der Cloud waere die Textur sonst unsichtbar bzw. nur von oben gestrahlt. */
@@ -5411,7 +5413,7 @@ var GOKOBA_LAYER_ACI = {
               }
               else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
               else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;} /* ★ Riffelblech */
-              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xffffff);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7);gitterFlach(m);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
+              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(gitterTex?0xffffff:0x9AA0A3);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7);gitterFlach(m);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
@@ -5432,6 +5434,21 @@ var GOKOBA_LAYER_ACI = {
       }
     });
     rm.forEach(function(o){if(o.parent)o.parent.remove(o);});
+    /* \u2605 Kanten: dezente dunklere Objektkanten - Profile, Bleche und Schrauben
+       bleiben auch bei gleicher Flaechenfarbe unterscheidbar (hilft auch dem Fangen) */
+    setTimeout(function(){
+      try{
+        var km=new THREE.LineBasicMaterial({color:0x10151b,transparent:true,opacity:0.26});
+        meshes.forEach(function(o){
+          if(!o.geometry)return;
+          try{
+            var ls=new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry,26),km);
+            ls.userData._kanten=true; ls.raycast=function(){};
+            o.add(ls);
+          }catch(e){}
+        });
+      }catch(e){}
+    },60);
     var box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),ctr=new THREE.Vector3();
     box.getSize(size);var maxd=Math.max(size.x,size.y,size.z)||1;var s=2.7/maxd;
     model.scale.setScalar(s); uGkSkal.value=1/(s||1); /* ★ Weltmass -> Modellmeter fuer die Triplanar-Kachelung */
@@ -5493,35 +5510,46 @@ var GOKOBA_LAYER_ACI = {
       function fmtKg(kg){if(kg==null)return null;return (kg>=100?Math.round(kg).toLocaleString('de-DE'):kg.toFixed(1).replace('.',','))+' kg';}
       function rund(x){return Math.abs(x-Math.round(x))<0.05?String(Math.round(x)):String(x).replace('.',',');}
       function fmtMass(ma){if(!ma)return null;return Math.round(ma[0])+' \u00d7 '+Math.round(ma[1])+' \u00d7 '+rund(ma[2])+' mm';}
-      var ART_TITEL={profil:'Profil',kantprofil:'Kantprofil',blech:'Blech',kantblech:'Kantblech',
+      var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
       function kopfVon(d){
-        var art=d.art||'sonstiges', name=null;
+        var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
-        else if((art==='blech'||art==='kantblech')&&d.masse)name='BL '+rund(d.masse[2]);
+        else if((art==='blech'||art==='kantblech')&&d.masse){
+          if(ly.indexOf('glas')>=0)name='Glas t='+(Math.round(d.masse[2]*100)/100).toFixed(2).replace('.',',');
+          else if(ly.indexOf('mineralit')>=0)name='Mineralit t='+rund(d.masse[2]);
+          else if((ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0)&&(d.bgname||(d.attrs&&d.attrs[0])))name=d.bgname||d.attrs[0];
+          else name='BL '+rund(d.masse[2]);
+        }
         else if(art==='sonderteil'&&d.name)name=d.name;
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
         return t||'Bauteil';
       }
       function zeilenVon(d){
-        var art=d.art||'sonstiges', z=[];
+        var art=d.art||'sonstiges', z=[], ly=(d.layer||'').toLowerCase();
         function zeile(k,v){if(v)z.push([k,v]);}
+        var glas=ly.indexOf('glas')>=0, mine=ly.indexOf('mineralit')>=0,
+            riff=(ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0);
         if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
-        else if(art==='blech'||art==='kantblech'){zeile('Material',d.material);zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='blech'||art==='kantblech'){
+          if(!glas&&!mine)zeile('Material',d.material);
+          zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);
+          zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Maschenweite',d.masche);zeile('Tragstab',d.tragstab);zeile('Hersteller',d.hersteller);zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
-        /* \u2605 Benutzerattribute 1-5: nur gefuellte Zeilen, leere komplett weg */
-        var atl=d.attrs||(d.bezeichnung?[d.bezeichnung]:null);
+        /* \u2605 Benutzerattribute 2-5: Attribut 1 ist der Baugruppenname und steht nur in der Baugruppen-Zeile */
+        var atl=d.attrs;
         if(atl){
-          var AN=['Baugruppenname','Attribut 2','Attribut 3','Attribut 4','Attribut 5'];
-          atl.forEach(function(w,i){ if(w)zeile(AN[i]||('Attribut '+(i+1)),w); });
+          atl.forEach(function(w,i){ if(i>0&&w)zeile('Attribut '+(i+1),w); });
         }
-        /* \u2605 Baugruppe: ueberall ausser an Rost/Stufe (dort stuende Doppeltes) */
-        if(d.bgnr&&art!=='gitterrost'&&art!=='gitterroststufe')
-          zeile('Baugruppe',d.bgname?(d.bgnr+' \u00b7 '+d.bgname):d.bgnr);
+        /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt */
+        var bgN=d.bgname||(atl&&atl[0])||null;
+        if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
+        if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
+        else if(bgN)zeile('Baugruppe',bgN);
         return z;
       }
 
@@ -5635,7 +5663,7 @@ var GOKOBA_LAYER_ACI = {
                mass:'Punkte antippen - Eckpunkte werden gefangen.',
                schnitt:'Achse w\u00e4hlen, dann die Scheibe greifen und durchs Modell ziehen.'};
       var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe',mass:'Messen',schnitt:'Schnitt'};
-      var palette=el('div',glasBox('display:flex;flex-direction:column;gap:8px;padding:9px;border-radius:16px;'));
+      var palette=el('div','display:flex;flex-direction:column;gap:2px;padding:4px 2px;align-items:flex-end;user-select:none;');
       palette.id='gkpalette'; panel.appendChild(palette);
       /* ★ Mobil: Palette startet eingeklappt; ein Griffstrich am rechten Rand zeigt das Menue.
          Antippen oder Daruberziehen holt sie rein; aktives Drehen im Modell blendet sie aus
@@ -5695,24 +5723,19 @@ var GOKOBA_LAYER_ACI = {
       var knoepfe={};
       ['mass','schnitt','|','liste','summe','bg','|','farbe','iso','|','notiz','foto'].forEach(function(w){
         if(w==='|'){
-          palette.appendChild(el('div','width:26px;height:1px;background:var(--gkln);margin:1px auto;'));
+          palette.appendChild(el('div','height:7px;'));
           return;
         }
-        var b=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
-          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
+        var b=el('button','text-align:right;',NAME[w]); b.className='gkfv';
         b.id='gk_'+w; b.title=NAME[w]+' \u2013 '+TIP[w];
-        b.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24">'+IK[w]+'</svg>';
         b.addEventListener('click',function(ev){ev.stopPropagation();schalte(aktiv===w?null:w);});
         palette.appendChild(b); knoepfe[w]=b;
       });
       if(achsGruppe){
-        var ab=el('button','width:42px;height:42px;border-radius:12px;border:'+RAND+';cursor:pointer;'+
-          'display:flex;align-items:center;justify-content:center;background:transparent;color:var(--gktx2);transition:all .18s;');
+        var ab=el('button','text-align:right;','Achsen'); ab.className='gkfv';
         ab.id='gk_achsen'; ab.title='Achsen ein- / ausblenden';
-        ab.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24">'+IK.achsen+'</svg>';
         function malAchsKnopf(){
-          ab.style.color=achsGruppe.visible?'#0d1216':'var(--gktx2)';
-          ab.style.background=achsGruppe.visible?AKZENT:'transparent';
+          ab.classList.toggle('on',!!achsGruppe.visible);
         }
         ab.addEventListener('click',function(ev){ev.stopPropagation();achsGruppe.visible=!achsGruppe.visible;malAchsKnopf();});
         var vorNotiz=document.getElementById('gk_notiz');
@@ -5722,10 +5745,7 @@ var GOKOBA_LAYER_ACI = {
       }
       function malKnopf(){
         Object.keys(knoepfe).forEach(function(w){
-          var an=aktiv===w;
-          knoepfe[w].style.color=an?'#0d1216':'var(--gktx2)';
-          knoepfe[w].style.background=an?AKZENT:'transparent';
-          knoepfe[w].style.borderColor=an?AKZENT:'';
+          knoepfe[w].classList.toggle('on',aktiv===w);
         });
       }
       function schalte(neu){
@@ -6025,20 +6045,25 @@ var GOKOBA_LAYER_ACI = {
         }
       });
       (function(){
-        var w=el('div','position:absolute;left:10px;top:10px;z-index:7;background:'+GLAS+
-                 ';border:'+RAND+';border-radius:10px;padding:7px 8px 8px;backdrop-filter:blur(6px);'+
-                 '-webkit-backdrop-filter:blur(6px);user-select:none;');
-        w.innerHTML='<div style="font-size:10.5px;letter-spacing:.04em;color:var(--gktx2);margin:0 2px 5px;">SCHNELLANSICHTEN</div>';
-        var g=el('div','display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;');
-        var bs='padding:4px 7px;font-size:11.5px;border:'+RAND+';border-radius:7px;background:transparent;'+
-               'color:var(--gktx);cursor:pointer;font-family:inherit;';
+        /* \u2605 futuristisch: schwacher Text, erst beim Darueberfahren erscheint eine Glas-Pille */
+        var stl=document.createElement('style');
+        stl.textContent='.gkfv{all:unset;cursor:pointer;font:500 11.5px var(--ui,sans-serif);color:var(--gktx);'+
+          'opacity:.5;padding:3px 10px;border-radius:8px;text-align:center;'+
+          'transition:opacity .16s ease,background .16s ease,box-shadow .16s ease;}'+
+          '.gkfv:hover{opacity:1;background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.22);}'+
+          '.gkfv.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}';
+        document.head.appendChild(stl);
+        var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;');
+        w.innerHTML='<div style="font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:0 2px 4px;">SCHNELLANSICHTEN</div>';
+        var g=el('div','display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 3px;');
+        var bs='';
         [['Vorne',  0,0, 1, 0,1,0],
          ['Hinten', 0,0,-1, 0,1,0],
          ['Links', -1,0,0,  0,1,0],
          ['Rechts', 1,0,0,  0,1,0],
          ['Oben',   0,1,0,  0,0,-1],
          ['Unten',  0,-1,0, 0,0,1]].forEach(function(k){
-          var b=el('button',bs,k[0]);
+          var b=el('button',bs,k[0]); b.className='gkfv';
           b.addEventListener('click',function(){ gkAnsicht(k[1],k[2],k[3],k[4],k[5],k[6]); });
           g.appendChild(b);
         });
@@ -6049,9 +6074,64 @@ var GOKOBA_LAYER_ACI = {
       var schnittPanel=null, schnittEbene=null, schnittQuad=null, schnittAchse=null,
           schnittZieht=false, schnittMove=null, schnittDown=null, schnittUp=null, schnittBox=null;
       var SCHNITT_N={x:new THREE.Vector3(1,0,0), y:new THREE.Vector3(0,0,-1), z:new THREE.Vector3(0,1,0)};
+      /* \u2605 Schnitt-Deckel: Stencil-Zaehlwerk (Rueckseiten +1, Vorderseiten -1) -
+         wo die Ebene durch volle Koerper laeuft, bleibt ein Rest != 0 stehen, und genau
+         dort malt der Deckel seine dezent schraffierte Schnittflaeche. Kein Blick mehr
+         in hohle Profilhuellen. */
+      var schnittCapNetz=null, schnittCapMats=null;
+      function schraffurTextur(){
+        var n=128,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
+        g.fillStyle='#798087';g.fillRect(0,0,n,n);
+        g.strokeStyle='rgba(34,40,46,0.32)';g.lineWidth=2.2;
+        for(var i=-n;i<2*n;i+=13){g.beginPath();g.moveTo(i,0);g.lineTo(i+n,n);g.stroke();}
+        var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
+      }
+      function schnittCapsBauen(){
+        if(schnittCapNetz)return;
+        var mb=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
+          stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.BackSide,
+          stencilFail:THREE.IncrementWrapStencilOp,stencilZFail:THREE.IncrementWrapStencilOp,stencilZPass:THREE.IncrementWrapStencilOp});
+        var mf=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
+          stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.FrontSide,
+          stencilFail:THREE.DecrementWrapStencilOp,stencilZFail:THREE.DecrementWrapStencilOp,stencilZPass:THREE.DecrementWrapStencilOp});
+        schnittCapMats=[mb,mf];
+        var traeger=[];
+        model.traverse(function(o){ if(o.isMesh&&o.geometry&&!o.userData._capKind&&!o.userData._kanten)traeger.push(o); });
+        traeger.forEach(function(o){
+          [mb,mf].forEach(function(mm){
+            var h=new THREE.Mesh(o.geometry,mm);h.userData._capKind=1;h.renderOrder=1;h.raycast=function(){};
+            o.add(h);
+          });
+        });
+        var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.78;
+        var tx=schraffurTextur();tx.repeat.set(8,8);
+        schnittCapNetz=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),
+          new THREE.MeshBasicMaterial({color:0xffffff,map:tx,side:THREE.DoubleSide,
+            stencilWrite:true,stencilRef:0,stencilFunc:THREE.NotEqualStencilFunc,
+            stencilFail:THREE.ReplaceStencilOp,stencilZFail:THREE.ReplaceStencilOp,stencilZPass:THREE.ReplaceStencilOp}));
+        schnittCapNetz.renderOrder=2;
+        schnittCapNetz.onAfterRender=function(r){r.clearStencil();};
+        scene.add(schnittCapNetz);
+        schnittCapLege();
+      }
+      function schnittCapLege(){
+        if(!schnittCapNetz)return;
+        var n=schnittEbene.normal;
+        schnittCapNetz.position.copy(n).multiplyScalar(-schnittEbene.constant);
+        schnittCapNetz.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+      }
+      function schnittCapsWeg(){
+        if(schnittCapNetz){scene.remove(schnittCapNetz);
+          if(schnittCapNetz.material.map)schnittCapNetz.material.map.dispose();
+          schnittCapNetz.material.dispose();schnittCapNetz=null;}
+        var weg=[];
+        model.traverse(function(o){if(o.userData&&o.userData._capKind)weg.push(o);});
+        weg.forEach(function(o){if(o.parent)o.parent.remove(o);});
+        if(schnittCapMats){schnittCapMats.forEach(function(m){m.dispose();});schnittCapMats=null;}
+      }
       function schnittAnwenden(planes){
         model.traverse(function(o){
-          if(!o.isMesh||!o.material)return;
+          if((!o.isMesh&&!o.isLineSegments)||!o.material)return;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){
             m.clippingPlanes=planes; m.needsUpdate=true;
           });
@@ -6065,6 +6145,7 @@ var GOKOBA_LAYER_ACI = {
         schnittEbene.normal.copy(n);
         schnittEbene.constant=-mitte.dot(n);
         schnittAnwenden([schnittEbene]);
+        schnittCapsBauen(); schnittCapLege();
         /* Scheibe passend zur Achse aufspannen */
         if(schnittQuad){scene.remove(schnittQuad);schnittQuad=null;}
         var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.72;
@@ -6167,7 +6248,7 @@ var GOKOBA_LAYER_ACI = {
           if(greifRay.ray.intersectPlane(ziehEbene,tp)){
             var d=tp.clone().sub(greifStart).dot(schnittEbene.normal);
             schnittEbene.constant=greifKonst-d;
-            schnittQuadLege();
+            schnittQuadLege(); schnittCapLege();
           }
         };
         schnittUp=function(e){
@@ -6192,6 +6273,7 @@ var GOKOBA_LAYER_ACI = {
         if(schnittUp){cv.removeEventListener('pointerup',schnittUp);schnittUp=null;}
         if(schnittQuad){scene.remove(schnittQuad);schnittQuad=null;}
         schnittAnwenden(null);
+        schnittCapsWeg();
         schnittEbene=null; schnittAchse=null; schnittZieht=false; controls.enabled=true; cv.style.cursor='';
         if(schnittPanel){schnittPanel.remove();schnittPanel=null;}
       }
@@ -6246,12 +6328,12 @@ var GOKOBA_LAYER_ACI = {
         var best=null, bestD=1e9;
         [t.f.a,t.f.b,t.f.c].forEach(function(ix){
           var v=new THREE.Vector3().fromBufferAttribute(g,ix); t.o.localToWorld(v);
-          var s=v.clone().project(camera);
+          var s=v.clone().project(window.gk2d||camera);
           var sx=(s.x+1)/2*r.width, sy=(-s.y+1)/2*r.height;
           var d=Math.hypot(sx-t.x,sy-t.y);
           if(d<bestD){bestD=d;best=v;}
         });
-        return (best&&bestD<18)?best:t.p3.clone();
+        return (best&&bestD<26)?best:t.p3.clone();
       }
       function quadratSprite(gefuellt,farbe){
         var c=document.createElement('canvas');c.width=48;c.height=48;
@@ -6268,14 +6350,14 @@ var GOKOBA_LAYER_ACI = {
         return camera.position.distanceTo(pw)*2*Math.tan(camera.fov*Math.PI/360)*px/r.height;
       }
       function massMarker(pw){
-        var k=quadratSprite(true,'#2E86AD');
+        var k=quadratSprite(true,'#D6367F');
         var sk=schirmSkala(pw,9); k.scale.set(sk,sk,1);
         k.position.copy(pw); k.renderOrder=9; messGrafik.add(k); return k;
       }
       function massLinie(p1,p2){
         var len=p1.distanceTo(p2); if(len<0.0005)return;
         var zyl=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.00016,dist*0.00016,len,8),
-          new THREE.MeshBasicMaterial({color:0x2E86AD,depthTest:false,transparent:true,opacity:0.95}));
+          new THREE.MeshBasicMaterial({color:0xD6367F,depthTest:false,transparent:true,opacity:0.95}));
         zyl.position.copy(p1).add(p2).multiplyScalar(0.5);
         zyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p2.clone().sub(p1).normalize());
         zyl.renderOrder=9; messGrafik.add(zyl);
@@ -6292,10 +6374,10 @@ var GOKOBA_LAYER_ACI = {
       function massStart(){
         messGrafik=new THREE.Group(); scene.add(messGrafik);
         /* Fang-Kugel + Flaechen-Vorschau */
-        snapKugel=quadratSprite(false,'#2E86AD');
+        snapKugel=quadratSprite(false,'#D6367F');
         snapKugel.visible=false; snapKugel.renderOrder=10; scene.add(snapKugel);
         flHelfer=new THREE.Mesh(new THREE.BufferGeometry(),
-          new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.4,side:THREE.DoubleSide,
+          new THREE.MeshBasicMaterial({color:0xD6367F,transparent:true,opacity:0.4,side:THREE.DoubleSide,
             polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
         flHelfer.visible=false; flHelfer.renderOrder=8; scene.add(flHelfer);
         /* ★ Achsenkreuz am Modellnullpunkt: Richtungen X/Y/Z + Hoehen-Null */
@@ -6360,7 +6442,11 @@ var GOKOBA_LAYER_ACI = {
               snapKugel.scale.set(sk2,sk2,1);
               snapKugel.position.copy(fp); snapKugel.visible=true;
             }
-            else snapKugel.visible=false;
+            else{ /* \u2605 auch ueber dem Hintergrund am Zeiger haengen bleiben */
+              var fw=ray.ray.at(camera.position.distanceTo(controls.target),new THREE.Vector3());
+              var skH=schirmSkala(fw,11); snapKugel.scale.set(skH,skH,1);
+              snapKugel.position.copy(fw); snapKugel.visible=true;
+            }
           }
         };
         cv.addEventListener('pointermove',massAus);
@@ -6379,7 +6465,7 @@ var GOKOBA_LAYER_ACI = {
           if(!flWahl||messP.length>=2){ massLeeren();
             flWahl={p:t.p3.clone(),n:n}; messP=[t.p3.clone()];
             var d1=new THREE.Mesh(new THREE.BufferGeometry(),
-              new THREE.MeshBasicMaterial({color:0x2E86AD,transparent:true,opacity:0.5,side:THREE.DoubleSide,
+              new THREE.MeshBasicMaterial({color:0xD6367F,transparent:true,opacity:0.5,side:THREE.DoubleSide,
                 polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
             if(!flaecheZeig(d1,t)){
               d1.geometry=new THREE.CircleGeometry(dist*0.02,20);
@@ -6428,13 +6514,13 @@ var GOKOBA_LAYER_ACI = {
       function koteSetzen(pw,lz){
         /* \u2605 flach liegendes, deckendes Quadrat am Klickpunkt + senkrechter Kotenpfeil */
         var m=new THREE.Group();
-        var mat=new THREE.MeshBasicMaterial({color:new THREE.Color('#2E86AD').convertSRGBToLinear()});
-        var q=new THREE.Mesh(new THREE.PlaneGeometry(dist*0.0055,dist*0.0055),mat);
-        m.add(q);
-        var st=new THREE.Mesh(new THREE.CylinderGeometry(dist*0.0006,dist*0.0006,dist*0.016,6),mat);
-        st.rotation.x=Math.PI/2; st.position.z=dist*0.008+dist*0.0035; m.add(st);
-        var sp=new THREE.Mesh(new THREE.ConeGeometry(dist*0.0022,dist*0.007,10),mat);
-        sp.rotation.x=Math.PI/2; sp.position.z=dist*0.0035; m.add(sp);
+        var mat=new THREE.MeshBasicMaterial({color:new THREE.Color('#D6367F').convertSRGBToLinear(),
+          polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+        var q=new THREE.Mesh(new THREE.PlaneGeometry(dist*0.009,dist*0.009),mat);
+        q.position.z=dist*0.0006; q.renderOrder=6; m.add(q);
+        /* \u2605 Kegel steht mit der Spitze auf der Flaeche */
+        var sp=new THREE.Mesh(new THREE.ConeGeometry(dist*0.0038,dist*0.011,14),mat);
+        sp.rotation.x=-Math.PI/2; sp.position.z=dist*0.0055; sp.renderOrder=6; m.add(sp);
         var pl=lokal(pw); m.position.copy(pl);
         model.add(m); m.userData._amModell=true;
         var box=el('div',glasBox('padding:3px 8px 3px 9px;border-radius:9px;display:flex;align-items:center;gap:7px;z-index:33;font:700 11.5px var(--ui);color:var(--gktx);'));
@@ -6452,7 +6538,7 @@ var GOKOBA_LAYER_ACI = {
       function koteMale(){
         var r=cv.getBoundingClientRect(), pp=panel.getBoundingClientRect();
         koten.forEach(function(k){
-          var v=k.p3.clone().project(camera);
+          var v=k.p3.clone().project(window.gk2d||camera);
           var sx=(v.x+1)/2*r.width+(r.left-pp.left), sy=(-v.y+1)/2*r.height+(r.top-pp.top);
           k.box.style.left=Math.round(sx+10)+'px'; k.box.style.top=Math.round(sy-12)+'px';
           k.box.style.display=(v.z<1&&v.z>-1)?'flex':'none';
@@ -6974,13 +7060,13 @@ var GOKOBA_LAYER_ACI = {
     if(ralMode==='bws'){
       Object.keys(GOKOBA_BWS_DEKORE).forEach(function(id){
         dekorKarte(strip,bwsTextur(id).image,['MBN '+id,GOKOBA_BWS_NAMEN[id]],function(){
-          var t=bwsTextur(id);dekorMats.bws.forEach(function(m){m.map=t;m.userData._savedMap=undefined;m.needsUpdate=true;});
+          var t=bwsTextur(id);dekorMats.bws.forEach(function(m){m.map=t;m.color.setHex(0xffffff);triplanarAn(m,2.6);m.userData._savedMap=undefined;m.userData._display=0xffffff;m.needsUpdate=true;});
         });
       });
     }else if(ralMode==='min'){
       Object.keys(GOKOBA_MIN_DEKORE).forEach(function(id){
         dekorKarte(strip,mineralitTextur(id).image,[id],function(){
-          var t=mineralitTextur(id);dekorMats.min.forEach(function(m){m.map=t;m.userData._savedMap=undefined;m.needsUpdate=true;});
+          var t=mineralitTextur(id);dekorMats.min.forEach(function(m){m.map=t;m.color.setHex(0xffffff);triplanarAn(m,2.6);m.userData._savedMap=undefined;m.userData._display=0xffffff;m.needsUpdate=true;});
         });
       });
     }else if(ralMode==='gitter'){
@@ -6989,7 +7075,10 @@ var GOKOBA_LAYER_ACI = {
         var sp=document.createElement('span');sp.textContent=e[1];b.appendChild(sp);
         b.addEventListener('click',function(){
           var t=e[0]?gitterTextur(e[0]):null;
-          gitterMats.forEach(function(m){m.map=t;m.userData._savedMap=undefined;m.needsUpdate=true;});
+          gitterMats.forEach(function(m){m.map=t;m.userData._savedMap=undefined;
+            if(t){m.color.setHex(0xffffff);triplanarAn(m,5.7);} /* \u2605 ohne UVs braucht die Textur Triplanar */
+            else{m.color.setHex(0x9AA0A3);} /* \u2605 ohne Textur grau bleiben, nicht weiss */
+            m.userData._display=m.color.getHex();m.needsUpdate=true;});
           Array.prototype.forEach.call(strip.querySelectorAll('.dktr,.dkcard'),function(x){x.classList.toggle('active',x===b);});
         });
         strip.appendChild(b);
