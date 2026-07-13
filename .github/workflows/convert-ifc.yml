@@ -114,7 +114,9 @@ jobs:
               rc=$?
               cat "$LOGDATEI"
               rm -rf "docs/v/$id"
-              rm -rf "$jobdir"
+              # ★ Bei Fehlschlag das Original-Paket AUFHEBEN (nur Entpacktes loeschen) -
+              #   damit laesst sich der Fall exakt nachstellen.
+              find "$jobdir" -mindepth 1 ! -name "modell.zip*" -delete 2>/dev/null || true
               mkdir -p "jobs-ifc/$id"
               { date -u +"%Y-%m-%dT%H:%M:%SZ (Code $rc)"; echo "---"; tail -n 25 "$LOGDATEI"; } > "jobs-ifc/$id/.failed"
               mkdir -p "docs/v/$id"
