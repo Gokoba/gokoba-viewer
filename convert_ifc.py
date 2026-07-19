@@ -31,6 +31,35 @@ def saniere_profil(p):
     s2 = _re.sub(r'(\d)\s*[xX*]\s*(\d)', r'\1x\2', s2)
     return s2
 
+def _knick_normalen(m, winkel_grad=40.0):
+    """★ STEP-Weg-Standard: je Dreiecksecke die Nachbarflaechen mitteln, deren
+    Winkel unter 40 Grad liegt - Walzradien und Rohre weich, echte Kanten scharf."""
+    try:
+        import collections
+        F = m.faces; V = m.vertices; fn = m.face_normals
+        if len(F) == 0: return m
+        cosw = np.cos(np.radians(winkel_grad))
+        vf = collections.defaultdict(list)
+        for fi in range(len(F)):
+            f = F[fi]
+            vf[f[0]].append(fi); vf[f[1]].append(fi); vf[f[2]].append(fi)
+        NV = np.zeros((len(F) * 3, 3)); PV = np.zeros((len(F) * 3, 3))
+        for fi in range(len(F)):
+            f = F[fi]
+            for ci in range(3):
+                v = f[ci]; n = fn[fi].copy()
+                for gi in vf[v]:
+                    if gi != fi and float(np.dot(fn[fi], fn[gi])) > cosw:
+                        n = n + fn[gi]
+                l = float(np.linalg.norm(n))
+                NV[fi * 3 + ci] = n / l if l > 1e-9 else fn[fi]
+                PV[fi * 3 + ci] = V[v]
+        m2 = trimesh.Trimesh(vertices=PV, faces=np.arange(len(F) * 3).reshape(-1, 3), process=False)
+        m2.vertex_normals = NV
+        return m2
+    except Exception:
+        return m
+
 def norm_layer(l):
     """Direktweg liefert Layer mit ECHTEN Umlauten (AS_Traeger mit ae-Umlaut),
     die Tabellen-Schluessel stehen in AS-Exportschreibweise mit '?' -
@@ -752,6 +781,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             fa = np.arange(len(va), dtype=np.int64).reshape(-1, 3)
             m = trimesh.Trimesh(vertices=va, faces=fa, process=False)
             m.merge_vertices()
+            m = _knick_normalen(m)
             try:
                 m.fix_normals()
                 if m.is_watertight and m.volume < 0: m.invert()

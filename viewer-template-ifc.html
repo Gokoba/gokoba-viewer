@@ -5439,6 +5439,7 @@ var GOKOBA_LAYER_ACI = {
        bleiben auch bei gleicher Flaechenfarbe unterscheidbar (hilft auch dem Fangen) */
     setTimeout(function(){
       try{
+        if(true)return; /* \u2605 Kanten-Overlay AUS: STEP-Standard, Kanten kommen aus dem 40-Grad-Shading */
         var kmDunkel=new THREE.LineBasicMaterial({color:0x0d1217,transparent:true,opacity:0.34});
         var kmHell=new THREE.LineBasicMaterial({color:0xE9EDF0,transparent:true,opacity:0.22});
         var kListe=[];
