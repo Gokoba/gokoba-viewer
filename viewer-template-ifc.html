@@ -5204,8 +5204,8 @@ var GOKOBA_LAYER_ACI = {
     g.fillStyle='#a4abb0';g.fillRect(0,0,n,n);
     for(var i=0;i<200;i++){var x=Math.random()*n,y=Math.random()*n,sz=9+Math.random()*22,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
-      g.closePath();g.fillStyle=li?'rgba(240,243,245,0.75)':'rgba(118,125,131,0.70)';g.fill();}
-    g.strokeStyle='rgba(100,107,113,0.55)';g.lineWidth=1;
+      g.closePath();g.fillStyle=li?'rgba(240,243,245,0.26)':'rgba(118,125,131,0.20)';g.fill();} /* \u2605 Zinkblumen stark gedaempft: Struktur bleibt, Kontrast weich */
+    g.strokeStyle='rgba(100,107,113,0.18)';g.lineWidth=1;
     for(var k9=0;k9<70;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
@@ -5419,7 +5419,8 @@ var GOKOBA_LAYER_ACI = {
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
               }
-              if(reg.alpha!==undefined){m.transparent=true;m.opacity=reg.alpha;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;} /* \u2605 DoubleSide: auch bei gedrehten AS-Flaechennormalen kein Durchblick */
+              if(reg.alpha!==undefined){m.transparent=true;m.opacity=reg.alpha;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;}
+              if((m.name||'').toLowerCase().indexOf('mmung')>=0){m.transparent=true;m.opacity=0.30;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;} /* \u2605 Daemmungs-LAYER: immer transparent, egal welche Farbe zugewiesen ist */ /* \u2605 DoubleSide: auch bei gedrehten AS-Flaechennormalen kein Durchblick */
             }
             else{m.userData._display=GOKOBA_STAHL;m.userData._stahlbau=true;m.metalness=0.28;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=0.55;m.needsUpdate=true;} /* ★ Standard: dunkles Blau, glaenzend */
             m.color.setHex(m.userData._display);
@@ -6083,15 +6084,15 @@ var GOKOBA_LAYER_ACI = {
           if(an&&!box){
             box=el('div','position:absolute;left:14px;bottom:40px;z-index:9;pointer-events:none;opacity:.75;');
             box.innerHTML='<svg width="200" height="200" viewBox="-100 -100 200 200" style="overflow:visible;">'+
-              '<line data-a="x" stroke="currentColor" stroke-width="1.6"/><text data-tx="x" font-size="11" fill="currentColor"></text>'+
-              '<line data-a="y" stroke="currentColor" stroke-width="1.6"/><text data-tx="y" font-size="11" fill="currentColor"></text>'+
-              '<line data-a="z" stroke="currentColor" stroke-width="1.6"/><text data-tx="z" font-size="11" fill="currentColor"></text></svg>';
+              '<line data-a="x" stroke="currentColor" stroke-width="1.6"/><path data-p="x" stroke="currentColor" stroke-width="1.6" fill="none"/><text data-tx="x" font-size="13" fill="currentColor"></text>'+
+              '<line data-a="y" stroke="currentColor" stroke-width="1.6"/><path data-p="y" stroke="currentColor" stroke-width="1.6" fill="none"/><text data-tx="y" font-size="13" fill="currentColor"></text>'+
+              '<line data-a="z" stroke="currentColor" stroke-width="1.6"/><path data-p="z" stroke="currentColor" stroke-width="1.6" fill="none"/><text data-tx="z" font-size="13" fill="currentColor"></text></svg>';
             box.style.color='var(--gktx2)';
             panel.appendChild(box); sv=box.querySelector('svg');
           }
           if(box)box.style.display=an?'block':'none';
         };
-        var A={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,1)};
+        var A={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,-1)}; /* \u2605 Y-Achse zur anderen Seite */
         var N={x:'X',y:'Z',z:'Y'}; /* \u2605 Bau-Beschriftung: Hoehe heisst Z */
         setTimeout(function(){window.gkAchsBild(true);},400); /* \u2605 immer sichtbar */
         window.gkAchsTick=function(){
@@ -6100,9 +6101,15 @@ var GOKOBA_LAYER_ACI = {
           Object.keys(A).forEach(function(k){
             var v=A[k].clone().applyQuaternion(q);
             var l=sv.querySelector('[data-a="'+k+'"]'), t=sv.querySelector('[data-tx="'+k+'"]');
+            var ex=v.x*50, ey=-v.y*50;
             l.setAttribute('x1',0);l.setAttribute('y1',0);
-            l.setAttribute('x2',(v.x*72).toFixed(1));l.setAttribute('y2',(-v.y*72).toFixed(1));
-            t.setAttribute('x',(v.x*84-4).toFixed(1));t.setAttribute('y',(-v.y*84+4).toFixed(1));
+            l.setAttribute('x2',ex.toFixed(1));l.setAttribute('y2',ey.toFixed(1));
+            var p=sv.querySelector('[data-p="'+k+'"]');
+            var ln=Math.sqrt(ex*ex+ey*ey);
+            if(p){if(ln>2){var ux=ex/ln,uy=ey/ln,wx=-uy,wy=ux;
+              p.setAttribute('d','M'+ex.toFixed(1)+','+ey.toFixed(1)+' L'+(ex-7*ux+3.5*wx).toFixed(1)+','+(ey-7*uy+3.5*wy).toFixed(1)+' M'+ex.toFixed(1)+','+ey.toFixed(1)+' L'+(ex-7*ux-3.5*wx).toFixed(1)+','+(ey-7*uy-3.5*wy).toFixed(1));}
+              else p.setAttribute('d','');}
+            t.setAttribute('x',(v.x*62-4).toFixed(1));t.setAttribute('y',(-v.y*62+5).toFixed(1));
             t.textContent=N[k];
           });
         };
