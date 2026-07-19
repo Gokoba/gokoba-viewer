@@ -5414,7 +5414,7 @@ var GOKOBA_LAYER_ACI = {
               }
               else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
               else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.55;m.roughness=0.3;m.envMap=gokobaEnv;m.envMapIntensity=0.8;triplanarAn(m,4.0);m.needsUpdate=true;} /* ★ Riffelblech */
-              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xB8BDC0);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7,true);m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
+              else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xB8BDC0);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7,true);if(!gitterTex){m.color.setHex(0x99A0A6);m.envMapIntensity=0.15;}m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
@@ -6117,10 +6117,11 @@ var GOKOBA_LAYER_ACI = {
         gkOrtho.near=camera.near; gkOrtho.far=camera.far;
         if(gkFestDir){ /* \u2605 exakt frontale Pose - Kamera WEIT aussen fixiert, der Zoom
              laeuft rein ueber die Rahmengroesse: beim Heranzoomen verschwinden keine Teile mehr */
-          var wf=gkModellMitte().r*4+d;
+          var gkR=gkModellMitte().r, wf=gkR*4+d;
           gkOrtho.up.copy(gkFestUp);
           gkOrtho.position.copy(controls.target).addScaledVector(gkFestDir,wf);
           gkOrtho.lookAt(controls.target);
+          gkOrtho.near=0.01; gkOrtho.far=wf+gkR*8; /* \u2605 sonst liegt das Modell hinter der Sichtgrenze */
         } else {
           gkOrtho.position.copy(camera.position); gkOrtho.quaternion.copy(camera.quaternion);
         }
@@ -7223,8 +7224,9 @@ var GOKOBA_LAYER_ACI = {
         b.addEventListener('click',function(){
           var t=e[0]?gitterTextur(e[0]):null;
           gitterMats.forEach(function(m){m.map=t;m.userData._savedMap=undefined;
-            m.color.setHex(0xB8BDC0); /* \u2605 EIN Grauton - mit und ohne Textur derselbe */
+            m.color.setHex(0xB8BDC0);
             if(t)triplanarAn(m,5.7,true);
+            else{m.color.setHex(0x99A0A6);m.envMapIntensity=0.15;} /* \u2605 ohne Textur: sattes Grau statt Weiss-Wirkung */
             m.userData._display=m.color.getHex();m.needsUpdate=true;});
           Array.prototype.forEach.call(strip.querySelectorAll('.dktr,.dkcard'),function(x){x.classList.toggle('active',x===b);});
         });
