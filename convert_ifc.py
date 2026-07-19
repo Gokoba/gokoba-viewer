@@ -636,7 +636,10 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
     if n == 0:
         raise SystemExit('Keine Bauteile in der IFC.')
     glb = basisname + '.glb'
-    szene.export(glb)
+    try:
+        szene.export(glb, include_normals=True)  # ★ weiche Normalen: Radien und Rohre rund
+    except TypeError:
+        szene.export(glb)
     if achsen:
         teile['__achsen__'] = achsen
     return glb, teile
@@ -848,7 +851,10 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         except Exception:
             pass
     glb = os.path.splitext(geo_pfad)[0] + '.glb'
-    szene.export(glb)
+    try:
+        szene.export(glb, include_normals=True)  # ★ weiche Normalen: Radien und Rohre rund
+    except TypeError:
+        szene.export(glb)
     if achsen:
         teile['__achsen__'] = achsen
     return glb, teile
@@ -1002,7 +1008,10 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
         except Exception:
             pass
     glb = os.path.splitext(obj_pfad)[0] + '.glb'
-    szene.export(glb)
+    try:
+        szene.export(glb, include_normals=True)  # ★ weiche Normalen: Radien und Rohre rund
+    except TypeError:
+        szene.export(glb)
     if achsen:
         teile['__achsen__'] = achsen
     return glb, teile

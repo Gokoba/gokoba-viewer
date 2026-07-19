@@ -5241,7 +5241,8 @@ var GOKOBA_LAYER_ACI = {
           ' vec3 gkP=vGkPos*uGkSkal*uGkFein;\n'+
           ' vec4 gkT;\n'+
           ' if(uGkOben>0.5){ /* nur Draufsicht: Stirn- und Seitenflaechen bleiben in der Grundfarbe */\n'+
-          '   float gkOb=clamp((vGkNor.y>0.0?gkW.y:0.0)*1.6,0.0,1.0);\n'+
+          '   vec3 gkFn=normalize(cross(dFdx(vGkPos),dFdy(vGkPos)));\n'+
+          '   float gkOb=smoothstep(0.6,0.8,gkFn.y);\n'+
           '   gkT=mix(vec4(1.0),texture2D(map,gkP.zx),gkOb);\n'+
           ' } else {\n'+
           '   gkT=texture2D(map,gkP.yz)*gkW.x+texture2D(map,gkP.zx)*gkW.y+texture2D(map,gkP.xy)*gkW.z;\n'+
@@ -5360,7 +5361,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -6079,11 +6080,11 @@ var GOKOBA_LAYER_ACI = {
         var box=null,sv=null;
         window.gkAchsBild=function(an){
           if(an&&!box){
-            box=el('div','position:absolute;left:14px;bottom:52px;z-index:9;pointer-events:none;opacity:.75;');
-            box.innerHTML='<svg width="86" height="86" viewBox="-43 -43 86 86" style="overflow:visible;">'+
-              '<line data-a="x" stroke="currentColor" stroke-width="1.6"/><text data-tx="x" font-size="9" fill="currentColor"></text>'+
-              '<line data-a="y" stroke="currentColor" stroke-width="1.6"/><text data-tx="y" font-size="9" fill="currentColor"></text>'+
-              '<line data-a="z" stroke="currentColor" stroke-width="1.6"/><text data-tx="z" font-size="9" fill="currentColor"></text></svg>';
+            box=el('div','position:absolute;left:14px;bottom:40px;z-index:9;pointer-events:none;opacity:.75;');
+            box.innerHTML='<svg width="200" height="200" viewBox="-100 -100 200 200" style="overflow:visible;">'+
+              '<line data-a="x" stroke="currentColor" stroke-width="1.6"/><text data-tx="x" font-size="11" fill="currentColor"></text>'+
+              '<line data-a="y" stroke="currentColor" stroke-width="1.6"/><text data-tx="y" font-size="11" fill="currentColor"></text>'+
+              '<line data-a="z" stroke="currentColor" stroke-width="1.6"/><text data-tx="z" font-size="11" fill="currentColor"></text></svg>';
             box.style.color='var(--gktx2)';
             panel.appendChild(box); sv=box.querySelector('svg');
           }
@@ -6091,6 +6092,7 @@ var GOKOBA_LAYER_ACI = {
         };
         var A={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,1)};
         var N={x:'X',y:'Z',z:'Y'}; /* \u2605 Bau-Beschriftung: Hoehe heisst Z */
+        setTimeout(function(){window.gkAchsBild(true);},400); /* \u2605 immer sichtbar */
         window.gkAchsTick=function(){
           if(!box||box.style.display==='none')return;
           var q=camera.quaternion.clone().invert();
@@ -6098,8 +6100,8 @@ var GOKOBA_LAYER_ACI = {
             var v=A[k].clone().applyQuaternion(q);
             var l=sv.querySelector('[data-a="'+k+'"]'), t=sv.querySelector('[data-tx="'+k+'"]');
             l.setAttribute('x1',0);l.setAttribute('y1',0);
-            l.setAttribute('x2',(v.x*30).toFixed(1));l.setAttribute('y2',(-v.y*30).toFixed(1));
-            t.setAttribute('x',(v.x*38-3).toFixed(1));t.setAttribute('y',(-v.y*38+3).toFixed(1));
+            l.setAttribute('x2',(v.x*72).toFixed(1));l.setAttribute('y2',(-v.y*72).toFixed(1));
+            t.setAttribute('x',(v.x*84-4).toFixed(1));t.setAttribute('y',(-v.y*84+4).toFixed(1));
             t.textContent=N[k];
           });
         };
@@ -6673,7 +6675,7 @@ var GOKOBA_LAYER_ACI = {
         if(messGrafik){scene.remove(messGrafik);messGrafik=null;}
         if(achsKreuz){model.remove(achsKreuz);achsKreuz=null;}
         messP=[]; flWahl=null;
-        if(massPanel){massPanel.remove();cv.style.cursor='';if(window.gkAchsBild)window.gkAchsBild(false);massPanel=null;}
+        if(massPanel){massPanel.remove();cv.style.cursor='';massPanel=null;}
       }
 
       /* ── Baugruppe: Teil antippen -> ganze Schweissbaugruppe leuchtet + Kennzahlen ── */
@@ -7210,7 +7212,7 @@ var GOKOBA_LAYER_ACI = {
     }else if(ralMode==='min'){
       Object.keys(GOKOBA_MIN_DEKORE).forEach(function(id){
         dekorKarte(strip,mineralitTextur(id).image,[id],function(){
-          var t=mineralitTextur(id);dekorMats.min.forEach(function(m){m.map=t;m.color.setHex(0xffffff);triplanarAn(m,2.6);m.userData._savedMap=undefined;m.userData._display=0xffffff;m.needsUpdate=true;});
+          var t=mineralitTextur(id);dekorMats.min.forEach(function(m){m.map=t;m.color.setHex(0xffffff);triplanarAn(m,2.6,true);m.userData._savedMap=undefined;m.userData._display=0xffffff;m.needsUpdate=true;});
         });
       });
     }else if(ralMode==='gitter'){
@@ -7256,7 +7258,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
