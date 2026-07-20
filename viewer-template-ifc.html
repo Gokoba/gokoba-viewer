@@ -5569,7 +5569,8 @@ var GOKOBA_LAYER_ACI = {
           else name='BL t='+rund(d.masse[2])+' mm'; /* v56: Pauls Vorgabe */
         }
         else if(art==='sonderteil')name=null; /* v48: Kopf 'Sonderteil', Blockname steht als Zeile darunter */
-        if(d.attrs&&d.attrs[0])name=String(d.attrs[0]); /* v57: Benutzerattribut 1 = Ueberschrift, universell (Pauls Regel) */
+        var _a1ok=(art==='gitterrost'||art==='gitterroststufe'||ly.indexOf('glas')>=0||ly.indexOf('mineralit')>=0||ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0||(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0));
+        if(_a1ok&&d.attrs&&d.attrs[0])name=String(d.attrs[0]); /* v59: Attribut-1-Ueberschrift NUR Platten-Werkstoffe + Roste (Pauls finale Regel) */
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
         return t||'Bauteil';
       }
@@ -5583,7 +5584,7 @@ var GOKOBA_LAYER_ACI = {
           if(!glas&&!mine)zeile('Material',d.material);
           zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);
           zeile('Gewicht',fmtKg(d.gewicht));}
-        else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Maschenweite',d.masche);zeile('Tragstab',d.tragstab);zeile('Hersteller',d.hersteller);zeile('Gewicht',fmtKg(d.gewicht));}
+        else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);} /* v59: Rost schlank - Pos, Attribut 1, Mass, Attribute, Baugruppe */
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Bezeichnung',d.name);zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
@@ -5592,12 +5593,13 @@ var GOKOBA_LAYER_ACI = {
         var atl=d.attrs;
         /* v56: Attribut 1 entfaellt als Zeile NUR dort, wo es schon als Ueberschrift dient -
            alle anderen behalten ihre ECHTE Nummer aus Advance Steel */
-        var a1Kopf=!!(atl&&atl[0]); /* v57: Attribut 1 steht immer schon in der Ueberschrift */
+        var _plw=(ly.indexOf('glas')>=0||ly.indexOf('mineralit')>=0||ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0||(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0));
+        var a1Kopf=!!(atl&&atl[0]&&(_plw||art==='gitterrost'||art==='gitterroststufe'||riff)); /* v59: nur wo Attribut 1 wirklich als Kopf dient */
         if(atl){
           atl.forEach(function(w,i){ if(w&&!(i===0&&a1Kopf))zeile('Benutzerattribut '+(i+1),w); });
         }
         /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt - Schrauben und Anker haben keine */
-        if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'){
+        if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'&&!_plw){ /* v59: Platten-Werkstoffe ohne Baugruppen-Zeile (Pauls Vorgabe) */
           var bgN=d.bgname||null; /* v48: Attribut 1 laeuft jetzt als Benutzerattribut-Zeile, nicht mehr als Baugruppen-Ersatz */
           if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
           if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
@@ -5611,6 +5613,7 @@ var GOKOBA_LAYER_ACI = {
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
+      window.addEventListener('keydown',function(e){if(e.key==='Escape')abwaehlen();}); /* v59: ESC waehlt ab (Pauls Wunsch) */
       function heben(o,farbe,staerke){
         var urm=(Array.isArray(o.material)?o.material[0]:o.material);
         var hi=urm.clone();
