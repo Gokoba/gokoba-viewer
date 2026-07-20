@@ -5047,7 +5047,7 @@ var GOKOBA_LAYER_ACI = {
   camera.position.set(3,2,4);
   var controls=new THREE.OrbitControls(camera,cv);
   controls.enableDamping=true;controls.dampingFactor=0.08;
-  controls.zoomSpeed=2.2;controls.panSpeed=2.6; /* v50: schneller (Pauls Vorgabe) */
+  controls.zoomSpeed=1.8;controls.panSpeed=2.2; /* v52: Mittelweg (Pauls Feinjustage) */
   controls.autoRotate=false;
   controls.minPolarAngle=Math.PI*0.015;controls.maxPolarAngle=Math.PI*0.985;
   scene.add(new THREE.HemisphereLight(0xffffff,0x35414a,0.62));
