@@ -813,6 +813,10 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 if d0.get(feld): d[feld] = str(d0[feld])
             if d0.get('bestand'): d['bestand'] = True
             if d0.get('beschichtung'): d['beschichtung'] = d0.get('beschichtung')  # v49
+            if d0.get('attrs') and not d.get('attrs'):
+                d['attrs'] = [w if w else '' for w in d0.get('attrs')]  # v50: Attribute direkt aus der json
+            if d0.get('blockname') and not d.get('name'):
+                name_deute(d, d0.get('blockname'))  # v50: Sonderteil-Blockname direkt aus der json
             if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
                 # ★ Masse aus dem AS-Dialog haben Vorrang - die orientierte Box irrt
                 #   bei Kantblechen und angeschweissten Anbauteilen (falsche 'Dicke').
@@ -1010,6 +1014,10 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
                 if d0.get(feld): d[feld] = str(d0[feld])
             if d0.get('bestand'): d['bestand'] = True
             if d0.get('beschichtung'): d['beschichtung'] = d0.get('beschichtung')  # v49
+            if d0.get('attrs') and not d.get('attrs'):
+                d['attrs'] = [w if w else '' for w in d0.get('attrs')]  # v50: Attribute direkt aus der json
+            if d0.get('blockname') and not d.get('name'):
+                name_deute(d, d0.get('blockname'))  # v50: Sonderteil-Blockname direkt aus der json
             if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
                 # ★ Masse aus dem AS-Dialog haben Vorrang - die orientierte Box irrt
                 #   bei Kantblechen und angeschweissten Anbauteilen (falsche 'Dicke').

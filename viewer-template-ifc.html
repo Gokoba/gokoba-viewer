@@ -5047,7 +5047,7 @@ var GOKOBA_LAYER_ACI = {
   camera.position.set(3,2,4);
   var controls=new THREE.OrbitControls(camera,cv);
   controls.enableDamping=true;controls.dampingFactor=0.08;
-  controls.zoomSpeed=1.5;controls.panSpeed=1.9;
+  controls.zoomSpeed=2.2;controls.panSpeed=2.6; /* v50: schneller (Pauls Vorgabe) */
   controls.autoRotate=false;
   controls.minPolarAngle=Math.PI*0.015;controls.maxPolarAngle=Math.PI*0.985;
   scene.add(new THREE.HemisphereLight(0xffffff,0x35414a,0.62));
@@ -5201,14 +5201,12 @@ var GOKOBA_LAYER_ACI = {
   /* ★ dezente Verzinkungs-Struktur (leichte Zink-Blumen-Fleckung) als Rauigkeits-Karte */
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
-    g.fillStyle='#c9cfd3';g.fillRect(0,0,n,n); /* v49: Zinkgrund deutlich heller */
-    try{g.filter='blur(1.2px)';}catch(e){} /* \u2605 v47: Zeichnung verschwommener */
-    for(var i=0;i<200;i++){var x=Math.random()*n,y=Math.random()*n,sz=9+Math.random()*22,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
+    g.fillStyle='#c3c7ca';g.fillRect(0,0,n,n); /* v50: STEP-Original-Grund */
+    try{g.filter='blur(0.6px)';}catch(e){} /* v50: nur ein Hauch verschwommener als das STEP-Original */
+    for(var i=0;i<240;i++){var x=Math.random()*n,y=Math.random()*n,sz=6+Math.random()*13,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
-      g.closePath();g.fillStyle=li?'rgba(250,252,253,0.14)':'rgba(154,160,165,0.09)';g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
-    g.strokeStyle='rgba(138,144,149,0.08)';g.lineWidth=1;
-    for(var k9=0;k9<45;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
-    try{g.filter='none';}catch(e){}
+      g.closePath();g.fillStyle=li?'rgba(232,235,238,0.40)':'rgba(190,194,198,0.30)'; /* v50: kristallin wie STEP, dunkle schwaecher */g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
+        try{g.filter='none';}catch(e){}
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var verzinktTex=verzinktTextur();
@@ -5363,7 +5361,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xE9EDEF);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.6);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.7;triplanarAn(m,4.6);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5461,7 +5459,8 @@ var GOKOBA_LAYER_ACI = {
         if(_schraubHex===null&&nm.indexOf('schraub')>=0&&!/_f[0-9a-f]{6}$/.test(nm))_schraubHex=(m.userData._display!==undefined?m.userData._display:m.color.getHex());});
       mats.forEach(function(m){var nm=(m.name||'').toLowerCase();
         if(/_f[0-9a-f]{6}$/.test(nm))return; /* Eigenfarbe siegt */
-        if(_schraubHex!==null&&(nm.indexOf('sonderteil')>=0||(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0))){m.userData._display=_schraubHex;m.color.setHex(_schraubHex);m.needsUpdate=true;} /* v49: Alu-Wannen wie Schrauben */
+        if(_schraubHex!==null&&nm.indexOf('sonderteil')>=0){m.userData._display=_schraubHex;m.color.setHex(_schraubHex);m.needsUpdate=true;}
+        if(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0){m.userData._display=0xFFFFFF;m.color.setHex(0xFFFFFF);m.metalness=0.0;m.roughness=0.85;m.envMapIntensity=0.2;m.emissive=new THREE.Color(0xFFFFFF).multiplyScalar(0.32);m.needsUpdate=true;} /* v50: richtig weiss + Eigenleuchten, wirkt auch von unten nicht grau */
         
       });
     }catch(e){}
@@ -5507,7 +5506,7 @@ var GOKOBA_LAYER_ACI = {
     box.setFromObject(model);fitBox=box.clone();
     camera.aspect=(panel.clientWidth||1)/(panel.clientHeight||1);
     var dist=fitBoxToView(fitBox,fitDir,1.05);
-    controls.minDistance=dist*0.04;controls.maxDistance=dist*3;
+    controls.minDistance=dist*0.003;controls.maxDistance=dist*3; /* v50: nah ran auch wenn Betonbau das Modell aufblaeht */
     /* ★ ==================================================================
      * ★ BAUTEIL-INFO + WERKZEUGE (IFC-Pipeline): Kaertchen je Bauteilart,
      * ★ Gewichtssummierer, Farbe, Isolieren/Ausblenden, Notizen, Foto.
@@ -5586,7 +5585,7 @@ var GOKOBA_LAYER_ACI = {
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Bezeichnung',d.name);zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
-        zeile('Beschichtung',d.beschichtung); /* v49: Oberflaeche aus den AS-Eigenschaften */
+        if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)zeile('Beschichtung',d.beschichtung); /* v50: NUR Alu-Wannen (Pauls Vorgabe) */
         /* v48: JEDES gefuellte Benutzerattribut erscheint als eigene Zeile (Pauls Vorgabe) */
         var atl=d.attrs;
         if(atl){
@@ -7299,7 +7298,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xE9EDEF);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.6);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xffffff);m.map=verzinktTex;m.metalness=0.5;m.roughness=0.42;m.envMap=gokobaEnv;m.envMapIntensity=0.7;triplanarAn(m,4.6);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
