@@ -5388,7 +5388,7 @@ var GOKOBA_LAYER_ACI = {
         o.castShadow=true;o.receiveShadow=false;
         var arr=Array.isArray(o.material)?o.material:[o.material];
         arr.forEach(function(m){
-          m.side=THREE.FrontSide;
+          m.side=THREE.DoubleSide; /* v57: kMax = offene Flaechensuppen (teile_dicht=0) - Orientierung darf nichts verstecken */
           if(m.userData._orig===undefined && m.color){
             m.userData._orig=m.color.getHex();
             /* ★ Farbe der Gruppe zuordnen (GOKOBA_FARBSCHEMA), sonst Standard dunkles Blau */
@@ -5569,6 +5569,7 @@ var GOKOBA_LAYER_ACI = {
           else name='BL t='+rund(d.masse[2])+' mm'; /* v56: Pauls Vorgabe */
         }
         else if(art==='sonderteil')name=null; /* v48: Kopf 'Sonderteil', Blockname steht als Zeile darunter */
+        if(d.attrs&&d.attrs[0])name=String(d.attrs[0]); /* v57: Benutzerattribut 1 = Ueberschrift, universell (Pauls Regel) */
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
         return t||'Bauteil';
       }
@@ -5591,7 +5592,7 @@ var GOKOBA_LAYER_ACI = {
         var atl=d.attrs;
         /* v56: Attribut 1 entfaellt als Zeile NUR dort, wo es schon als Ueberschrift dient -
            alle anderen behalten ihre ECHTE Nummer aus Advance Steel */
-        var a1Kopf=!!(atl&&atl[0]&&(ly.indexOf('mineralit')>=0||ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0||(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)||riff));
+        var a1Kopf=!!(atl&&atl[0]); /* v57: Attribut 1 steht immer schon in der Ueberschrift */
         if(atl){
           atl.forEach(function(w,i){ if(w&&!(i===0&&a1Kopf))zeile('Benutzerattribut '+(i+1),w); });
         }

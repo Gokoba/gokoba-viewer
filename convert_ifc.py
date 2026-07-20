@@ -848,6 +848,22 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 if m.is_watertight: _FLSTAT['dicht'] = _FLSTAT.get('dicht', 0) + 1
             except Exception:
                 pass
+            try:  # v57: koplanare Doppel-Flaechen je Teil zaehlen (Messung Rest-Flimmern)
+                if fl_id is not None and len(m.faces) == len(fl_id):
+                    fnm = m.face_normals; ctr = m.triangles_center
+                    ebenen = {}
+                    for fid in np.unique(fl_id):
+                        mk = fl_id == fid
+                        nn = fnm[mk].mean(axis=0); ln2 = float(np.linalg.norm(nn))
+                        if ln2 < 1e-9: continue
+                        nn = nn / ln2
+                        if nn[int(np.argmax(np.abs(nn)))] < 0: nn = -nn
+                        dd = float(np.dot(nn, ctr[mk].mean(axis=0)))
+                        key = (round(float(nn[0]), 2), round(float(nn[1]), 2), round(float(nn[2]), 2), round(dd, 4))
+                        ebenen[key] = ebenen.get(key, 0) + 1
+                    _FLSTAT['koplanar'] = _FLSTAT.get('koplanar', 0) + sum(v - 1 for v in ebenen.values() if v > 1)
+            except Exception:
+                pass
             m = _knick_normalen(m, fl_id=fl_id, fl_breit=fl_breit)
             d0 = info.get(kn, {}) or {}
             L = d0.get('layer')
@@ -1251,8 +1267,8 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v56\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\n'
-                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0)))
+            bf.write('konverter=v57\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\n'
+                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
     except Exception:
