@@ -680,7 +680,32 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
         teile['__achsen__'] = achsen
     return glb, teile
 
+_FLSTAT = {'gesamt': 0, 'leer': 0, 'unplanar': 0}  # v55: misst Pauls 'Flaechen fehlen'
+
 def _flaeche_zerlegen(aussen, loecher):
+    _FLSTAT['gesamt'] += 1
+    try:
+        a0 = np.asarray(aussen, dtype=float)
+        if len(a0) >= 3:
+            n = np.zeros(3)
+            for i in range(len(a0)):
+                p, q = a0[i], a0[(i + 1) % len(a0)]
+                n += np.cross(p, q)
+            ln = np.linalg.norm(n)
+            if ln > 1e-12:
+                n2 = n / ln
+                d = np.abs((a0 - a0[0]) @ n2)
+                diag = float(np.linalg.norm(a0.max(axis=0) - a0.min(axis=0))) or 1.0
+                if d.max() > max(1.0, 0.001 * diag):
+                    _FLSTAT['unplanar'] += 1
+    except Exception:
+        pass
+    erg = _flaeche_zerlegen_kern(aussen, loecher)
+    if erg is None or len(erg) == 0:
+        _FLSTAT['leer'] += 1
+    return erg
+
+def _flaeche_zerlegen_kern(aussen, loecher):
     """Eine Brep-Flaeche (Aussenkontur + Lochkonturen, Nx3) -> Dreiecke (M,3,3).
     Projektion in die Flaechenebene (Newell-Normale), Earcut mit Loechern."""
     import mapbox_earcut
@@ -1194,6 +1219,14 @@ def main():
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     open(args.output, 'w', encoding='utf-8').write(html)
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
+    try:
+        with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
+            bf.write('konverter=v55\nknick_winkel=26\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\n'
+                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
+        print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
+              % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
+    except Exception:
+        pass
 
 if __name__ == '__main__':
     main()
