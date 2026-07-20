@@ -5596,7 +5596,7 @@ var GOKOBA_LAYER_ACI = {
         var _plw=(ly.indexOf('glas')>=0||ly.indexOf('mineralit')>=0||ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0||(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0));
         var a1Kopf=!!(atl&&atl[0]&&(_plw||art==='gitterrost'||art==='gitterroststufe'||riff)); /* v59: nur wo Attribut 1 wirklich als Kopf dient */
         if(atl){
-          atl.forEach(function(w,i){ if(w&&!(i===0&&a1Kopf))zeile('Benutzerattribut '+(i+1),w); });
+          atl.forEach(function(w,i){ if(w&&!(i===0&&(a1Kopf||(d.bgname&&String(d.bgname).trim()===String(w).trim()))))zeile('Benutzerattribut '+(i+1),w); }); /* v60: Attribut 1 nie doppelt zur Baugruppen-Zeile */
         }
         /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt - Schrauben und Anker haben keine */
         if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'&&!_plw){ /* v59: Platten-Werkstoffe ohne Baugruppen-Zeile (Pauls Vorgabe) */

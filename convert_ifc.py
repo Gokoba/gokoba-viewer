@@ -929,6 +929,12 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
             if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
+                vAS = d0.get('volumen')  # v60: exaktes AS-Volumen (mm3) - unabhaengig von Wasserdichtheit
+                if isinstance(vAS, (int, float)) and vAS > 0:
+                    mAS = (d.get('material') or '').strip().lower()
+                    dAS = 2700.0 if mAS in ('al', 'alu', 'aluminium') or mAS.startswith('almg') or mAS.startswith('en aw') else DICHTE_STAHL
+                    d['gewicht'] = round(vAS * 1e-9 * dAS, 1)
+            if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
                 try:
                     if m.is_watertight:
                         vol = float(abs(m.volume))
