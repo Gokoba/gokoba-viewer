@@ -808,7 +808,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
-    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []
+    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []
 
     def _fl_ab():
         nonlocal flLeer
@@ -818,6 +818,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 dreiecke.append(t3)
                 fl_ntris.append(len(t3))
                 fl_breitL.append(_FLSTAT.get('letzte_breite', 99.0) > 12.0)  # v56: >12mm = breite Ebene
+                fl_hatLoch.append(bool(loecher))  # v58: Deckel-Erkennung
             else: flLeer += 1
 
     def _teil_ab():
@@ -860,8 +861,32 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         if nn[int(np.argmax(np.abs(nn)))] < 0: nn = -nn
                         dd = float(np.dot(nn, ctr[mk].mean(axis=0)))
                         key = (round(float(nn[0]), 2), round(float(nn[1]), 2), round(float(nn[2]), 2), round(dd, 4))
-                        ebenen[key] = ebenen.get(key, 0) + 1
-                    _FLSTAT['koplanar'] = _FLSTAT.get('koplanar', 0) + sum(v - 1 for v in ebenen.values() if v > 1)
+                        ebenen.setdefault(key, []).append(int(fid))
+                    _FLSTAT['koplanar'] = _FLSTAT.get('koplanar', 0) + sum(len(v) - 1 for v in ebenen.values() if len(v) > 1)
+                    # v58: Stanz-Deckel raus - koplanare, LOCHLOSE, deutlich kleinere Flaechen,
+                    #   die raeumlich in der groessten Flaeche derselben Ebene liegen.
+                    weg = np.zeros(len(m.faces), dtype=bool)
+                    A3 = m.area_faces
+                    hatL = np.array(fl_hatLoch, dtype=bool) if fl_hatLoch else None
+                    for key, fids in ebenen.items():
+                        if len(fids) < 2: continue
+                        fl_area = {fid: float(A3[fl_id == fid].sum()) for fid in fids}
+                        gross = max(fids, key=lambda f: fl_area[f])
+                        mg = fl_id == gross
+                        gmin = m.triangles.reshape(-1, 3)[np.repeat(mg, 3)].min(axis=0) - 0.002
+                        gmax = m.triangles.reshape(-1, 3)[np.repeat(mg, 3)].max(axis=0) + 0.002
+                        for fid in fids:
+                            if fid == gross: continue
+                            if hatL is not None and fid < len(hatL) and hatL[fid]: continue
+                            if fl_area[fid] > 0.6 * fl_area[gross]: continue
+                            mk2 = fl_id == fid
+                            pts2 = m.triangles.reshape(-1, 3)[np.repeat(mk2, 3)]
+                            if np.all(pts2 >= gmin) and np.all(pts2 <= gmax):
+                                weg |= mk2
+                                _FLSTAT['deckel'] = _FLSTAT.get('deckel', 0) + 1
+                    if weg.any():
+                        m.update_faces(~weg)
+                        fl_id = fl_id[~weg]
             except Exception:
                 pass
             m = _knick_normalen(m, fl_id=fl_id, fl_breit=fl_breit)
@@ -934,7 +959,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     nT += 1
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
-                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []
+                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []
                 elif z[0] == 'L':
                     nL += 1
                     if len(probeZeilen) < 3: probeZeilen.append(z[:140])
@@ -1267,8 +1292,8 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v57\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\n'
-                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0)))
+            bf.write('konverter=v58\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\n'
+                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
     except Exception:
