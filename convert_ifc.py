@@ -577,7 +577,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                             d['gewicht'] = round(vol * DICHTE_STAHL, 1)
                     except Exception:
                         pass
-                    d['zentrum'] = [round(float(x), 4) for x in v.mean(axis=0)]
+                    d['zentrum'] = [round(float(x), 4) for x in ((v.min(axis=0) + v.max(axis=0)) / 2.0)]  # v48: Box-Mitte wie Plugin-Extents
                     teile[kn] = d
                     n += 1
         except Exception:
@@ -661,7 +661,7 @@ def wandle(ifc_pfad, em11_pfad, ohne_schrauben=False, ohne_beton=False):
                 k = int(dist.argmin())
                 if dist[k] < 0.005:
                     d['ref'] = em_zentren[1][k]
-            d['zentrum'] = [round(float(x), 4) for x in v.mean(axis=0)]
+            d['zentrum'] = [round(float(x), 4) for x in ((v.min(axis=0) + v.max(axis=0)) / 2.0)]  # v48: Box-Mitte wie Plugin-Extents
             teile[kn] = d
             n += 1; nachgeholt += 1
         except Exception:
@@ -836,7 +836,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         if vol > 0: d['gewicht'] = round(vol * dichte, 1)
                 except Exception:
                     pass
-            d['zentrum'] = [round(float(x), 4) for x in va.mean(axis=0)]
+            d['zentrum'] = [round(float(x), 4) for x in ((va.min(axis=0) + va.max(axis=0)) / 2.0)]  # v48: Box-Mitte wie Plugin-Extents
             teile[kn] = d
             n += 1
         except Exception:
@@ -1030,7 +1030,7 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
                         if vol > 0: d['gewicht'] = round(vol * DICHTE_STAHL, 1)
                 except Exception:
                     pass
-            d['zentrum'] = [round(float(x), 4) for x in v.mean(axis=0)]
+            d['zentrum'] = [round(float(x), 4) for x in ((v.min(axis=0) + v.max(axis=0)) / 2.0)]  # v48: Box-Mitte wie Plugin-Extents
             teile[kn] = d
             n += 1
         except Exception:
@@ -1123,7 +1123,7 @@ def main():
                     while d['attrs'] and not d['attrs'][-1]: d['attrs'].pop()
             if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
                 d['bgname'] = namen_bg[d['bgnr']]
-        print('* Namensliste zugeordnet: %d Bauteile (v47, Pseudo-Positionen gefiltert)' % getroffen)
+        print('* Namensliste zugeordnet: %d Bauteile (v48, Box-Mitte fuer Orts-Abgleich)' % getroffen)
     # ★ Rost oder Stufe: die Rostklasse aus dem Modell entscheidet, nicht die Breite.
     #   Prioritaet: Klasse sagt Grating/Graiting -> Rost; Klasse/Beschreibung sagt Stufe -> Stufe;
     #   sonst Pauls Standard-Stufentiefen 240/270/305; sonst bleibt die bisherige Zuordnung.

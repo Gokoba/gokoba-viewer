@@ -5425,10 +5425,24 @@ var GOKOBA_LAYER_ACI = {
               if((m.name||'').toLowerCase().indexOf('mmung')>=0){m.transparent=true;m.opacity=0.30;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;} /* \u2605 Daemmungs-LAYER: immer transparent, egal welche Farbe zugewiesen ist */ /* \u2605 DoubleSide: auch bei gedrehten AS-Flaechennormalen kein Durchblick */
             }
             else{m.userData._display=GOKOBA_STAHL;m.userData._stahlbau=true;m.metalness=0.28;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=0.55;m.needsUpdate=true;} /* ★ Standard: dunkles Blau, glaenzend */
+            /* v48: Eigenschaften-Farbe aus dem Modell (_F-Suffix am Materialnamen)
+               siegt IMMER - sie verlaesst die Stahlbau/Gelaender-Gruppen, damit weder
+               Dialog-Startfarben noch RAL-Klicks sie ueberschreiben. */
+            if(m.userData._eigen===undefined){
+              var _eigM=(m.name||'').match(/_[fF]([0-9a-fA-F]{6})$/);
+              m.userData._eigen=!!_eigM;
+              if(_eigM){
+                m.userData._display=new THREE.Color('#'+_eigM[1]).convertSRGBToLinear().getHex();
+                m.userData._gelaender=false;m.userData._stahlbau=false;
+                m.metalness=0.25;m.roughness=0.35;m.envMap=gokobaEnv;m.envMapIntensity=0.45;
+              }
+            }
             m.color.setHex(m.userData._display);
             if(m.userData._display===GOKOBA_BESTAND&&!m.userData._gitter&&!m.transparent){m.emissive=m.color.clone().multiplyScalar(0.06);m.needsUpdate=true;} /* ★ 15/Grau matt -> leicht aufhellen, damit weiss statt grau */
           }
           if(mats.indexOf(m)<0)mats.push(m);
+          var _nmR=(m.name||'').toLowerCase(); /* v48: eigene Layer-Regeln raus aus den Gruppen */
+          if(_nmR.indexOf('sonderteil')>=0||(_nmR.indexOf('alu')>=0&&_nmR.indexOf('wann')>=0)){m.userData._gelaender=false;m.userData._stahlbau=false;}
           if(m.userData._gelaender&&gelaenderMats.indexOf(m)<0)gelaenderMats.push(m);
           if(m.userData._stahlbau&&stahlbauMats.indexOf(m)<0)stahlbauMats.push(m);
           if(m.userData._gitter&&gitterMats.indexOf(m)<0)gitterMats.push(m);
@@ -5448,7 +5462,7 @@ var GOKOBA_LAYER_ACI = {
       mats.forEach(function(m){var nm=(m.name||'').toLowerCase();
         if(/_f[0-9a-f]{6}$/.test(nm))return; /* Eigenfarbe siegt */
         if(_schraubHex!==null&&nm.indexOf('sonderteil')>=0){m.userData._display=_schraubHex;m.color.setHex(_schraubHex);m.needsUpdate=true;}
-        if(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0){m.userData._display=0xF2F2EF;m.color.setHex(0xF2F2EF);m.needsUpdate=true;}
+        if(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0){m.userData._display=0xF2F2EF;m.color.setHex(0xF2F2EF);m.metalness=0.06;m.roughness=0.55;m.needsUpdate=true;}
       });
     }catch(e){}
     /* \u2605 Kanten: dezente dunklere Objektkanten - Profile, Bleche und Schrauben
@@ -5537,7 +5551,7 @@ var GOKOBA_LAYER_ACI = {
         'box-shadow:0 12px 34px rgba(0,0,0,.22);'+(extra||'');}
 
       /* ── Formatierer ── */
-      function fmtLaenge(mm){if(mm==null)return null;return mm>=1000?(mm/1000).toFixed(2).replace('.',',')+' m':Math.round(mm)+' mm';}
+      function fmtLaenge(mm){if(mm==null)return null;return Math.round(mm).toLocaleString('de-DE')+' mm';} /* v48: alle Laengen in mm, nie Meter */
       function fmtKg(kg){if(kg==null)return null;return (kg>=100?Math.round(kg).toLocaleString('de-DE'):kg.toFixed(1).replace('.',','))+' kg';}
       function rund(x){return Math.abs(x-Math.round(x))<0.05?String(Math.round(x)):String(x).replace('.',',');}
       function fmtMass(ma){if(!ma)return null;return Math.round(ma[0])+' \u00d7 '+Math.round(ma[1])+' \u00d7 '+rund(ma[2])+' mm';}
@@ -5553,7 +5567,7 @@ var GOKOBA_LAYER_ACI = {
           else if((ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0)&&(d.bgname||(d.attrs&&d.attrs[0])))name=d.bgname||d.attrs[0];
           else name='BL '+rund(d.masse[2]);
         }
-        else if(art==='sonderteil'&&d.name)name=d.name;
+        else if(art==='sonderteil')name=null; /* v48: Kopf 'Sonderteil', Blockname steht als Zeile darunter */
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
         return t||'Bauteil';
       }
@@ -5569,16 +5583,16 @@ var GOKOBA_LAYER_ACI = {
           zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);zeile('Maschenweite',d.masche);zeile('Tragstab',d.tragstab);zeile('Hersteller',d.hersteller);zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
-        else if(art==='sonderteil'){zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
+        else if(art==='sonderteil'){zeile('Bezeichnung',d.name);zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
-        /* \u2605 Benutzerattribute 2-5: Attribut 1 ist der Baugruppenname und steht nur in der Baugruppen-Zeile */
+        /* v48: JEDES gefuellte Benutzerattribut erscheint als eigene Zeile (Pauls Vorgabe) */
         var atl=d.attrs;
         if(atl){
-          atl.forEach(function(w,i){ if(i>0&&w)zeile('Attribut '+(i+1),w); });
+          atl.forEach(function(w,i){ if(w)zeile('Benutzerattribut '+(i+1),w); });
         }
         /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt - Schrauben und Anker haben keine */
         if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'){
-          var bgN=d.bgname||(atl&&atl[0])||null;
+          var bgN=d.bgname||null; /* v48: Attribut 1 laeuft jetzt als Benutzerattribut-Zeile, nicht mehr als Baugruppen-Ersatz */
           if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
           if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
           else if(bgN)zeile('Baugruppe',bgN);
