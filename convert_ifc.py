@@ -221,6 +221,12 @@ def masse_aus_obb(m):
         except Exception:
             return None
 
+def _pseudo(w):
+    """AS-Platzhalter ('nicht definiert' u.ae.) als leer behandeln (v47)."""
+    if not w: return None
+    if str(w).strip().lower() in ('nicht definiert', 'not defined', '-', '?'): return None
+    return w
+
 def lese_namen(input_dir):
     """namen.txt aus dem Plugin: pos|klasse|x|y|z|name (Koordinaten in mm)."""
     import glob as _g
@@ -232,6 +238,7 @@ def lese_namen(input_dir):
             t = zeile.rstrip('\n').split('|')
             if len(t) < 6: continue
             pos, klasse, x, y, z, name = t[0], t[1], t[2], t[3], t[4], t[5]
+            pos = _pseudo(pos) or ''
             attrs = [w.strip() for w in t[6:11]]
             while len(attrs) < 5: attrs.append('')
             if klasse == 'Baugruppe':
@@ -793,7 +800,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'): return
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art, d0.get('farbe')))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
-            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
+            d = {'ref': _pseudo(d0.get('pos')), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
                  'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
@@ -988,7 +995,7 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
                 continue
             m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art, d0.get('farbe')))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
-            d = {'ref': d0.get('pos'), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
+            d = {'ref': _pseudo(d0.get('pos')), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
                  'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
                  'gewicht': d0.get('gewicht'), 'typ': d0.get('klasse'), 'layer': L,
                  'art': art, 'roh': d0.get('name')}
@@ -1116,7 +1123,7 @@ def main():
                     while d['attrs'] and not d['attrs'][-1]: d['attrs'].pop()
             if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
                 d['bgname'] = namen_bg[d['bgnr']]
-        print('* Namensliste zugeordnet: %d Bauteile' % getroffen)
+        print('* Namensliste zugeordnet: %d Bauteile (v47, Pseudo-Positionen gefiltert)' % getroffen)
     # ★ Rost oder Stufe: die Rostklasse aus dem Modell entscheidet, nicht die Breite.
     #   Prioritaet: Klasse sagt Grating/Graiting -> Rost; Klasse/Beschreibung sagt Stufe -> Stufe;
     #   sonst Pauls Standard-Stufentiefen 240/270/305; sonst bleibt die bisherige Zuordnung.

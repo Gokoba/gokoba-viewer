@@ -5202,11 +5202,13 @@ var GOKOBA_LAYER_ACI = {
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
     g.fillStyle='#a4abb0';g.fillRect(0,0,n,n);
+    try{g.filter='blur(1.2px)';}catch(e){} /* \u2605 v47: Zeichnung verschwommener */
     for(var i=0;i<200;i++){var x=Math.random()*n,y=Math.random()*n,sz=9+Math.random()*22,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
-      g.closePath();g.fillStyle=li?'rgba(240,243,245,0.26)':'rgba(118,125,131,0.20)';g.fill();} /* \u2605 Zinkblumen stark gedaempft: Struktur bleibt, Kontrast weich */
-    g.strokeStyle='rgba(100,107,113,0.18)';g.lineWidth=1;
-    for(var k9=0;k9<70;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
+      g.closePath();g.fillStyle=li?'rgba(240,243,245,0.13)':'rgba(118,125,131,0.10)';g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
+    g.strokeStyle='rgba(100,107,113,0.10)';g.lineWidth=1;
+    for(var k9=0;k9<45;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
+    try{g.filter='none';}catch(e){}
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var verzinktTex=verzinktTextur();
@@ -5361,7 +5363,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,4.6);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5436,6 +5438,19 @@ var GOKOBA_LAYER_ACI = {
       }
     });
     rm.forEach(function(o){if(o.parent)o.parent.remove(o);});
+    /* \u2605 v47: Sonderteile-LAYER startet in der Schraubenfarbe (getrennte Materialien,
+       gleicher Wert); A_Alu-Wannen-LAYER startet weiss; individuelle Eigenfarbe
+       (_f-Suffix aus dem Eigenschaften-Menue) siegt IMMER und bleibt unangetastet. */
+    try{
+      var _schraubHex=null;
+      mats.forEach(function(m){var nm=(m.name||'').toLowerCase();
+        if(_schraubHex===null&&nm.indexOf('schraub')>=0&&!/_f[0-9a-f]{6}$/.test(nm))_schraubHex=(m.userData._display!==undefined?m.userData._display:m.color.getHex());});
+      mats.forEach(function(m){var nm=(m.name||'').toLowerCase();
+        if(/_f[0-9a-f]{6}$/.test(nm))return; /* Eigenfarbe siegt */
+        if(_schraubHex!==null&&nm.indexOf('sonderteil')>=0){m.userData._display=_schraubHex;m.color.setHex(_schraubHex);m.needsUpdate=true;}
+        if(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0){m.userData._display=0xF2F2EF;m.color.setHex(0xF2F2EF);m.needsUpdate=true;}
+      });
+    }catch(e){}
     /* \u2605 Kanten: dezente dunklere Objektkanten - Profile, Bleche und Schrauben
        bleiben auch bei gleicher Flaechenfarbe unterscheidbar (hilft auch dem Fangen) */
     setTimeout(function(){
@@ -7268,7 +7283,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,7.0);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,4.6);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);
