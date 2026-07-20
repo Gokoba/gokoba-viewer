@@ -860,7 +860,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         nn = nn / ln2
                         if nn[int(np.argmax(np.abs(nn)))] < 0: nn = -nn
                         dd = float(np.dot(nn, ctr[mk].mean(axis=0)))
-                        key = (round(float(nn[0]), 2), round(float(nn[1]), 2), round(float(nn[2]), 2), round(dd, 4))
+                        key = (round(float(nn[0]), 2), round(float(nn[1]), 2), round(float(nn[2]), 2), round(dd, 3))  # v61: 1mm-Toleranz
                         ebenen.setdefault(key, []).append(int(fid))
                     _FLSTAT['koplanar'] = _FLSTAT.get('koplanar', 0) + sum(len(v) - 1 for v in ebenen.values() if len(v) > 1)
                     # v58: Stanz-Deckel raus - koplanare, LOCHLOSE, deutlich kleinere Flaechen,
@@ -877,11 +877,14 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         gmax = m.triangles.reshape(-1, 3)[np.repeat(mg, 3)].max(axis=0) + 0.002
                         for fid in fids:
                             if fid == gross: continue
-                            if hatL is not None and fid < len(hatL) and hatL[fid]: continue
-                            if fl_area[fid] > 0.6 * fl_area[gross]: continue
                             mk2 = fl_id == fid
                             pts2 = m.triangles.reshape(-1, 3)[np.repeat(mk2, 3)]
-                            if np.all(pts2 >= gmin) and np.all(pts2 <= gmax):
+                            innen = bool(np.all(pts2 >= gmin) and np.all(pts2 <= gmax))
+                            if not innen: continue
+                            kopie = fl_area[fid] >= 0.99 * fl_area[gross]  # v61: exakte Doppel-Kopie (auch mit Loechern) = Z-Fighting
+                            lochlos = not (hatL is not None and fid < len(hatL) and hatL[fid])
+                            deckel = lochlos and fl_area[fid] <= 0.6 * fl_area[gross]
+                            if kopie or deckel:
                                 weg |= mk2
                                 _FLSTAT['deckel'] = _FLSTAT.get('deckel', 0) + 1
                     if weg.any():
@@ -928,6 +931,22 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if art in ('profil', 'kantprofil') and not d.get('laenge'):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
+            if art in ('anker', 'kopfbolzen'):
+                d['gewicht'] = None  # v62: Anker ohne Gewicht (Pauls Vorgabe)
+            if d.get('gewicht') is None and art not in ('anker', 'kopfbolzen'):
+                _bwsT = ((d.get('material') or '') + ' ' + (str(L or ''))).lower()
+                if 'bws' in _bwsT or 'werkstein' in _bwsT:
+                    gB = d0.get('gewicht_as')
+                    if isinstance(gB, (int, float)) and gB > 0:
+                        d['gewicht'] = round(gB, 2)  # v63: BWS direkt aus den AS-Eigenschaften (Pauls Entscheid, 400x400x40 -> 16 kg)
+                    else:
+                        vB = d0.get('volumen')
+                        if isinstance(vB, (int, float)) and vB > 0:
+                            d['gewicht'] = round(vB * 1e-9 * 2500.0, 1)  # Rueckfall: Pauls AS-Dichte 2,5 kg/dm3
+            if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
+                gAS = d0.get('gewicht_as')  # v61: AS-eigenes Gewicht = exakt wie Pauls AS-Liste
+                if isinstance(gAS, (int, float)) and gAS > 0:
+                    d['gewicht'] = round(gAS, 2)
             if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
                 vAS = d0.get('volumen')  # v60: exaktes AS-Volumen (mm3) - unabhaengig von Wasserdichtheit
                 if isinstance(vAS, (int, float)) and vAS > 0:
@@ -1251,17 +1270,26 @@ def main():
         # ★ NUR der eigene Rohname zaehlt: Baugruppenname/Attribute wuerden das
         #   'Stufe'-Wort auf angeschweisste Laschen vererben (305x70-Bleche als Stufen!).
         quelle = (d.get('roh') or '').lower()
+        a1t = ''
+        try:
+            a1t = ((d.get('attrs') or [None])[0] or '').lower()
+        except Exception:
+            a1t = ''
+        qt = quelle + ' ' + a1t  # v62: Rohname + Benutzerattribut 1 des Teils SELBST (nie bgname - Laschen-Falle!)
+        typ_l = ((d.get('typ') or '')).lower()
         alt_art = d['art']
         m = d.get('masse') or []
         tiefe = m[1] if len(m) > 1 else 0
-        if 'graiting' in quelle or 'grating' in quelle:
+        if 'stufe' in qt or 'step' in qt or 'tread' in qt:
+            d['art'] = 'gitterroststufe'  # v62: Modell-Text schlaegt ALLES (auch GratingClass)
+        elif 'graiting' in qt or 'grating' in qt or 'rost' in qt:
             d['art'] = 'gitterrost'
-        elif 'stufe' in quelle or 'step' in quelle or 'tread' in quelle:
-            d['art'] = 'gitterroststufe'
-        elif tiefe and any(abs(tiefe - st) <= 3 for st in (240, 270, 305)) and (m[0] if m else 0) <= 1700:
-            d['art'] = 'gitterroststufe'
-        elif 'grating' in ((d.get('typ') or '')).lower() or 'graiting' in ((d.get('typ') or '')).lower():
-            d['art'] = 'gitterrost'
+        elif 'grating' in typ_l or 'graiting' in typ_l:
+            # v62: grating-Klasse OHNE Text - Standard-Stufentiefen nur als Gegencheck (Pauls Regel)
+            if tiefe and any(abs(tiefe - st) <= 3 for st in (240, 270, 305)) and (m[0] if m else 0) <= 1700:
+                d['art'] = 'gitterroststufe'
+            else:
+                d['art'] = 'gitterrost'
         if d['art'] != alt_art:
             umsortiert += 1
     # ★ Stufenbreite = ZUKAUFMASS: Rostbreite + 2x 3-mm-Lasche - fuer JEDE Stufe genau einmal,
@@ -1298,7 +1326,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v58\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\n'
+            bf.write('konverter=v63\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))

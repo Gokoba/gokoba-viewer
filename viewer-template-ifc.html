@@ -5609,7 +5609,7 @@ var GOKOBA_LAYER_ACI = {
       }
 
       /* ── Info-Kaertchen ── */
-      var karte=el('div',glasBox('display:none;max-width:390px;padding:13px 15px;z-index:30;'));
+      var karte=el('div',glasBox('display:none;max-width:620px;padding:13px 15px;z-index:30;'));
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
@@ -5628,7 +5628,7 @@ var GOKOBA_LAYER_ACI = {
         karte.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+
           '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);">'+kopfVon(d)+'</strong>'+
           '<span data-zu style="cursor:pointer;color:var(--gktx2);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span></div>'+
-          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;'+(p[0]==='Baugruppe'?'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
+          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;white-space:nowrap;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;' /* v61: einzeilig */+(p[0]==='Baugruppe'?'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
@@ -6265,9 +6265,10 @@ var GOKOBA_LAYER_ACI = {
           });
         });
         var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.78;
-        var tx=schraffurTextur();tx.repeat.set(8,8);
+        var fbC=0x2E414E; try{ if(typeof stahlbauMats!=='undefined'&&stahlbauMats.length&&stahlbauMats[0].color)fbC=stahlbauMats[0].color.getHex(); }catch(e){}
+        /* v62: Schnittflaeche in Koerperfarbe, OHNE Schraffur (Pauls Vorgabe; echte je-Teil-Farbe = eigenes Gewerk) */
         schnittCapNetz=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),
-          new THREE.MeshBasicMaterial({color:0xffffff,map:tx,side:THREE.DoubleSide,
+          new THREE.MeshBasicMaterial({color:fbC,side:THREE.DoubleSide,
             stencilWrite:true,stencilRef:0,stencilFunc:THREE.NotEqualStencilFunc,
             stencilFail:THREE.ReplaceStencilOp,stencilZFail:THREE.ReplaceStencilOp,stencilZPass:THREE.ReplaceStencilOp,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
         schnittCapNetz.renderOrder=2;
