@@ -5201,12 +5201,12 @@ var GOKOBA_LAYER_ACI = {
   /* ★ dezente Verzinkungs-Struktur (leichte Zink-Blumen-Fleckung) als Rauigkeits-Karte */
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
-    g.fillStyle='#a4abb0';g.fillRect(0,0,n,n);
+    g.fillStyle='#c9cfd3';g.fillRect(0,0,n,n); /* v49: Zinkgrund deutlich heller */
     try{g.filter='blur(1.2px)';}catch(e){} /* \u2605 v47: Zeichnung verschwommener */
     for(var i=0;i<200;i++){var x=Math.random()*n,y=Math.random()*n,sz=9+Math.random()*22,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
-      g.closePath();g.fillStyle=li?'rgba(240,243,245,0.13)':'rgba(118,125,131,0.10)';g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
-    g.strokeStyle='rgba(100,107,113,0.10)';g.lineWidth=1;
+      g.closePath();g.fillStyle=li?'rgba(250,252,253,0.14)':'rgba(154,160,165,0.09)';g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
+    g.strokeStyle='rgba(138,144,149,0.08)';g.lineWidth=1;
     for(var k9=0;k9<45;k9++){g.beginPath();var ax=Math.random()*n,ay=Math.random()*n;g.moveTo(ax,ay);g.lineTo(ax+(Math.random()-0.5)*36,ay+(Math.random()-0.5)*36);g.stroke();}
     try{g.filter='none';}catch(e){}
     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
@@ -5363,7 +5363,7 @@ var GOKOBA_LAYER_ACI = {
     var _al=document.getElementById("ablauf");if(_al)_al.textContent="Ansicht g\u00fcltig bis "+_ed.toLocaleDateString("de-DE");}}
   /* ★ Startfarbe einer Gruppe setzen (aus Dialog): Hex, oder verzinkt/edelstahl/grau */
   function gokobaSetDefault(arr,spec){if(!spec||spec.indexOf("__")===0)return;
-    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,4.6);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
+    if(spec==="verzinkt"){arr.forEach(function(m){m.color.setHex(0xE9EDEF);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.6);m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="edelstahl"){arr.forEach(function(m){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else if(spec==="grau"){var g=new THREE.Color(0x383E42).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(g);m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
@@ -5461,8 +5461,8 @@ var GOKOBA_LAYER_ACI = {
         if(_schraubHex===null&&nm.indexOf('schraub')>=0&&!/_f[0-9a-f]{6}$/.test(nm))_schraubHex=(m.userData._display!==undefined?m.userData._display:m.color.getHex());});
       mats.forEach(function(m){var nm=(m.name||'').toLowerCase();
         if(/_f[0-9a-f]{6}$/.test(nm))return; /* Eigenfarbe siegt */
-        if(_schraubHex!==null&&nm.indexOf('sonderteil')>=0){m.userData._display=_schraubHex;m.color.setHex(_schraubHex);m.needsUpdate=true;}
-        if(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0){m.userData._display=0xF2F2EF;m.color.setHex(0xF2F2EF);m.metalness=0.06;m.roughness=0.55;m.needsUpdate=true;}
+        if(_schraubHex!==null&&(nm.indexOf('sonderteil')>=0||(nm.indexOf('alu')>=0&&nm.indexOf('wann')>=0))){m.userData._display=_schraubHex;m.color.setHex(_schraubHex);m.needsUpdate=true;} /* v49: Alu-Wannen wie Schrauben */
+        
       });
     }catch(e){}
     /* \u2605 Kanten: dezente dunklere Objektkanten - Profile, Bleche und Schrauben
@@ -5551,7 +5551,7 @@ var GOKOBA_LAYER_ACI = {
         'box-shadow:0 12px 34px rgba(0,0,0,.22);'+(extra||'');}
 
       /* ── Formatierer ── */
-      function fmtLaenge(mm){if(mm==null)return null;return Math.round(mm).toLocaleString('de-DE')+' mm';} /* v48: alle Laengen in mm, nie Meter */
+      function fmtLaenge(mm){if(mm==null)return null;return Math.round(mm)+' mm';} /* v49: mm ohne Tausenderpunkt (Pauls Vorgabe) */
       function fmtKg(kg){if(kg==null)return null;return (kg>=100?Math.round(kg).toLocaleString('de-DE'):kg.toFixed(1).replace('.',','))+' kg';}
       function rund(x){return Math.abs(x-Math.round(x))<0.05?String(Math.round(x)):String(x).replace('.',',');}
       function fmtMass(ma){if(!ma)return null;return Math.round(ma[0])+' \u00d7 '+Math.round(ma[1])+' \u00d7 '+rund(ma[2])+' mm';}
@@ -5562,8 +5562,9 @@ var GOKOBA_LAYER_ACI = {
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
         else if((art==='blech'||art==='kantblech')&&d.masse){
-          if(ly.indexOf('glas')>=0)name='Glas t='+(Math.round(d.masse[2]*100)/100).toFixed(2).replace('.',',');
+          if(ly.indexOf('glas')>=0)name=(d.material||'Glas')+' t='+String(Math.round(d.masse[2]*100)/100).replace('.',','); /* v49: AS-Material + exakte Dicke */
           else if(ly.indexOf('mineralit')>=0)name='Mineralit t='+rund(d.masse[2]);
+          else if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)name='Alu-Wanne'; /* v49: Layer-Ueberschrift (Pauls Vorgabe) */
           else if((ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0)&&(d.bgname||(d.attrs&&d.attrs[0])))name=d.bgname||d.attrs[0];
           else name='BL '+rund(d.masse[2]);
         }
@@ -5585,6 +5586,7 @@ var GOKOBA_LAYER_ACI = {
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Bezeichnung',d.name);zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
+        zeile('Beschichtung',d.beschichtung); /* v49: Oberflaeche aus den AS-Eigenschaften */
         /* v48: JEDES gefuellte Benutzerattribut erscheint als eigene Zeile (Pauls Vorgabe) */
         var atl=d.attrs;
         if(atl){
@@ -7297,7 +7299,7 @@ var GOKOBA_LAYER_ACI = {
   function applyFinish(t){if(ralTexturFest())return; /* ★ Textur-Gruppen behalten ihr Dekor */
     ralZielMats().forEach(function(m){
     if(t==='edelstahl'){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.map=null;m.roughnessMap=null;}
-    else{m.color.setHex(0xDDE2E4);m.map=verzinktTex;m.metalness=0.12;m.roughness=0.5;m.envMap=gokobaEnv;m.envMapIntensity=0.35;triplanarAn(m,4.6);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
+    else{m.color.setHex(0xE9EDEF);m.map=verzinktTex;m.metalness=0.32;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.6;triplanarAn(m,4.6);m.roughnessMap=null;} /* ★ Verzinkt: sichtbare Zink-Fleckung */
     m.userData._display=m.color.getHex();m.needsUpdate=true;});}
   function applyGelaender(hex){var l=new THREE.Color(hex).convertSRGBToLinear();gelaenderMats.forEach(function(m){m.color.copy(l);m.userData._display=m.color.getHex();});}
   if(raltab)raltab.addEventListener('click',ralToggle);

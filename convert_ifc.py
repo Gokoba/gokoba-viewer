@@ -812,18 +812,19 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             for feld in ('din', 'groesse', 'hersteller', 'masche', 'tragstab'):
                 if d0.get(feld): d[feld] = str(d0[feld])
             if d0.get('bestand'): d['bestand'] = True
+            if d0.get('beschichtung'): d['beschichtung'] = d0.get('beschichtung')  # v49
             if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
                 # ★ Masse aus dem AS-Dialog haben Vorrang - die orientierte Box irrt
                 #   bei Kantblechen und angeschweissten Anbauteilen (falsche 'Dicke').
                 gl = [d0.get('blechlaenge'), d0.get('blechbreite'), d0.get('dicke')]
                 if all(isinstance(x, (int, float)) and x > 0 for x in gl):
-                    d['masse'] = [round(gl[0]), round(gl[1]), round(gl[2], 1)]
+                    d['masse'] = [round(gl[0]), round(gl[1]), round(gl[2], 2)]  # v49: Dicke exakt (8.76 blieb sonst nicht 8.76)
                 else:
                     mm = masse_aus_obb(m)
                     di = d0.get('dicke')
                     if mm:
                         d['masse'] = [round(mm[0]), round(mm[1]),
-                                      round(di if isinstance(di, (int, float)) and di > 0 else mm[2], 1)]
+                                      round(di if isinstance(di, (int, float)) and di > 0 else mm[2], 2)]
             if art in ('profil', 'kantprofil') and not d.get('laenge'):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
@@ -1008,18 +1009,19 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             for feld in ('din', 'groesse', 'hersteller', 'masche', 'tragstab'):
                 if d0.get(feld): d[feld] = str(d0[feld])
             if d0.get('bestand'): d['bestand'] = True
+            if d0.get('beschichtung'): d['beschichtung'] = d0.get('beschichtung')  # v49
             if art in ('blech', 'kantblech', 'gitterrost', 'gitterroststufe'):
                 # ★ Masse aus dem AS-Dialog haben Vorrang - die orientierte Box irrt
                 #   bei Kantblechen und angeschweissten Anbauteilen (falsche 'Dicke').
                 gl = [d0.get('blechlaenge'), d0.get('blechbreite'), d0.get('dicke')]
                 if all(isinstance(x, (int, float)) and x > 0 for x in gl):
-                    d['masse'] = [round(gl[0]), round(gl[1]), round(gl[2], 1)]
+                    d['masse'] = [round(gl[0]), round(gl[1]), round(gl[2], 2)]  # v49: Dicke exakt (8.76 blieb sonst nicht 8.76)
                 else:
                     mm = masse_aus_obb(m)
                     di = d0.get('dicke')
                     if mm:
                         d['masse'] = [round(mm[0]), round(mm[1]),
-                                      round(di if isinstance(di, (int, float)) and di > 0 else mm[2], 1)]
+                                      round(di if isinstance(di, (int, float)) and di > 0 else mm[2], 2)]
             if art in ('profil', 'kantprofil') and not d.get('laenge'):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
@@ -1104,6 +1106,7 @@ def main():
     if namen_pos or namen_ort:
         ort_pkt = np.array([o[0] for o in namen_ort]) if namen_ort else None
         getroffen = 0
+        fehl_dist = []  # v49: Diagnose fuer Orts-Abgleich
         for kn, d in teile.items():
             if not isinstance(d, dict): continue
             e = None
@@ -1114,6 +1117,8 @@ def main():
                 k = int(dist.argmin())
                 if dist[k] < 0.01:
                     e = namen_ort[k][1]
+                else:
+                    fehl_dist.append(round(float(dist[k]) * 1000.0, 1))  # v49: naechste Distanz in mm
             if e:
                 if e.get('klasse') != 'Attr':
                     name_deute(d, e['name']); getroffen += 1
@@ -1123,7 +1128,9 @@ def main():
                     while d['attrs'] and not d['attrs'][-1]: d['attrs'].pop()
             if namen_bg and d.get('bgnr') and d['bgnr'] in namen_bg:
                 d['bgname'] = namen_bg[d['bgnr']]
-        print('* Namensliste zugeordnet: %d Bauteile (v48, Box-Mitte fuer Orts-Abgleich)' % getroffen)
+        print('* Namensliste zugeordnet: %d Bauteile (v49, Box-Mitte + Fehl-Distanz-Diagnose)' % getroffen)
+        if fehl_dist:
+            print('* Orts-Abgleich OHNE Treffer: %d Teile, naechste Distanz [mm]: %s' % (len(fehl_dist), sorted(fehl_dist)[:8]))
     # ★ Rost oder Stufe: die Rostklasse aus dem Modell entscheidet, nicht die Breite.
     #   Prioritaet: Klasse sagt Grating/Graiting -> Rost; Klasse/Beschreibung sagt Stufe -> Stufe;
     #   sonst Pauls Standard-Stufentiefen 240/270/305; sonst bleibt die bisherige Zuordnung.
