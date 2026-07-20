@@ -1,0 +1,5 @@
+konverter=v55
+knick_winkel=26
+flaechen_gesamt=71724
+flaechen_leer=0
+flaechen_unplanar_1mm=0
