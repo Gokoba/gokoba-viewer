@@ -31,7 +31,7 @@ def saniere_profil(p):
     s2 = _re.sub(r'(\d)\s*[xX*]\s*(\d)', r'\1x\2', s2)
     return s2
 
-def _knick_normalen(m, winkel_grad=40.0):
+def _knick_normalen(m, winkel_grad=26.0):  # v54: 26 statt 40 - kMax-Radienfacetten bleiben weich, ebene Seiten flach
     """★ STEP-Weg-Standard: je Dreiecksecke die Nachbarflaechen mitteln, deren
     Winkel unter 40 Grad liegt - Walzradien und Rohre weich, echte Kanten scharf."""
     try:
