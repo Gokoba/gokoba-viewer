@@ -5562,10 +5562,11 @@ var GOKOBA_LAYER_ACI = {
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
         else if((art==='blech'||art==='kantblech')&&d.masse){
           if(ly.indexOf('glas')>=0)name=(d.material||'Glas')+' t='+String(Math.round(d.masse[2]*100)/100).replace('.',','); /* v49: AS-Material + exakte Dicke */
-          else if(ly.indexOf('mineralit')>=0)name='Mineralit t='+rund(d.masse[2]);
-          else if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)name='Alu-Wanne'; /* v49: Layer-Ueberschrift (Pauls Vorgabe) */
+          else if(ly.indexOf('mineralit')>=0)name=(d.attrs&&d.attrs[0])||('Mineralit t='+rund(d.masse[2])); /* v56: Attribut 1 als Ueberschrift */
+          else if((ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0)&&d.attrs&&d.attrs[0])name=d.attrs[0];
+          else if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)name=(d.attrs&&d.attrs[0])||'Alu-Wanne'; /* v56: Attribut 1 als Ueberschrift */
           else if((ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0)&&(d.bgname||(d.attrs&&d.attrs[0])))name=d.bgname||d.attrs[0];
-          else name='BL '+rund(d.masse[2]);
+          else name='BL t='+rund(d.masse[2])+' mm'; /* v56: Pauls Vorgabe */
         }
         else if(art==='sonderteil')name=null; /* v48: Kopf 'Sonderteil', Blockname steht als Zeile darunter */
         var t=(d.ref?('Pos '+d.ref):'')+((d.ref&&(name||ART_TITEL[art]))?' \u00b7 ':'')+(name||ART_TITEL[art]||'');
@@ -5588,8 +5589,11 @@ var GOKOBA_LAYER_ACI = {
         if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)zeile('Beschichtung',d.beschichtung); /* v50: NUR Alu-Wannen (Pauls Vorgabe) */
         /* v48: JEDES gefuellte Benutzerattribut erscheint als eigene Zeile (Pauls Vorgabe) */
         var atl=d.attrs;
+        /* v56: Attribut 1 entfaellt als Zeile NUR dort, wo es schon als Ueberschrift dient -
+           alle anderen behalten ihre ECHTE Nummer aus Advance Steel */
+        var a1Kopf=!!(atl&&atl[0]&&(ly.indexOf('mineralit')>=0||ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0||(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)||riff));
         if(atl){
-          atl.forEach(function(w,i){ if(w)zeile('Benutzerattribut '+(i+1),w); });
+          atl.forEach(function(w,i){ if(w&&!(i===0&&a1Kopf))zeile('Benutzerattribut '+(i+1),w); });
         }
         /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt - Schrauben und Anker haben keine */
         if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'){

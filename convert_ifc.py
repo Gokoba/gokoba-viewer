@@ -31,14 +31,18 @@ def saniere_profil(p):
     s2 = _re.sub(r'(\d)\s*[xX*]\s*(\d)', r'\1x\2', s2)
     return s2
 
-def _knick_normalen(m, winkel_grad=26.0):  # v54: 26 statt 40 - kMax-Radienfacetten bleiben weich, ebene Seiten flach
-    """★ STEP-Weg-Standard: je Dreiecksecke die Nachbarflaechen mitteln, deren
-    Winkel unter 40 Grad liegt - Walzradien und Rohre weich, echte Kanten scharf."""
+def _knick_normalen(m, winkel_grad=26.0, fl_id=None, fl_breit=None):
+    """v56: Mitteln nur schmal<->schmal (Radienstreifen, Rohrsegmente, bis winkel_grad)
+    und fast-koplanare Naehte (<8 Grad). Breite Ebenen (>12mm Streifenbreite) bleiben
+    STRIKT flach - Winkel allein kann Radius<->Ebene (~11 Grad) nie von Rohrsegmenten
+    (~15 Grad) trennen, die Flaechenbreite kann es."""
     try:
         import collections
         F = m.faces; V = m.vertices; fn = m.face_normals
         if len(F) == 0: return m
         cosw = np.cos(np.radians(winkel_grad))
+        cos8 = np.cos(np.radians(8.0))
+        hatB = fl_id is not None and fl_breit is not None and len(fl_id) == len(F)
         vf = collections.defaultdict(list)
         for fi in range(len(F)):
             f = F[fi]
@@ -49,7 +53,14 @@ def _knick_normalen(m, winkel_grad=26.0):  # v54: 26 statt 40 - kMax-Radienfacet
             for ci in range(3):
                 v = f[ci]; n = fn[fi].copy()
                 for gi in vf[v]:
-                    if gi != fi and float(np.dot(fn[fi], fn[gi])) > cosw:
+                    if gi == fi: continue
+                    dv = float(np.dot(fn[fi], fn[gi]))
+                    if hatB:
+                        bi = bool(fl_breit[fl_id[fi]]); bj = bool(fl_breit[fl_id[gi]])
+                        grenze = cosw if (not bi and not bj) else cos8
+                    else:
+                        grenze = cosw
+                    if dv > grenze:
                         n = n + fn[gi]
                 l = float(np.linalg.norm(n))
                 NV[fi * 3 + ci] = n / l if l > 1e-9 else fn[fi]
@@ -684,6 +695,7 @@ _FLSTAT = {'gesamt': 0, 'leer': 0, 'unplanar': 0}  # v55: misst Pauls 'Flaechen 
 
 def _flaeche_zerlegen(aussen, loecher):
     _FLSTAT['gesamt'] += 1
+    _FLSTAT['letzte_breite'] = 99.0
     try:
         a0 = np.asarray(aussen, dtype=float)
         if len(a0) >= 3:
@@ -693,6 +705,8 @@ def _flaeche_zerlegen(aussen, loecher):
                 n += np.cross(p, q)
             ln = np.linalg.norm(n)
             if ln > 1e-12:
+                P = float(np.sum(np.linalg.norm(np.roll(a0, -1, axis=0) - a0, axis=1)))
+                _FLSTAT['letzte_breite'] = ln / max(P, 1e-9)  # v56: 2*Flaeche/Umfang = Streifenbreite
                 n2 = n / ln
                 d = np.abs((a0 - a0[0]) @ n2)
                 diag = float(np.linalg.norm(a0.max(axis=0) - a0.min(axis=0))) or 1.0
@@ -794,13 +808,16 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
-    kn = None; dreiecke = []; aussen = None; loecher = []
+    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []
 
     def _fl_ab():
         nonlocal flLeer
         if aussen is not None:
             t3 = _flaeche_zerlegen(aussen, loecher)
-            if t3 is not None: dreiecke.append(t3)
+            if t3 is not None:
+                dreiecke.append(t3)
+                fl_ntris.append(len(t3))
+                fl_breitL.append(_FLSTAT.get('letzte_breite', 99.0) > 12.0)  # v56: >12mm = breite Ebene
             else: flLeer += 1
 
     def _teil_ab():
@@ -813,12 +830,25 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             fa = np.arange(len(va), dtype=np.int64).reshape(-1, 3)
             m = trimesh.Trimesh(vertices=va, faces=fa, process=False)
             m.merge_vertices()
-            m = _knick_normalen(m)
-            try:
-                m.fix_normals()
-                if m.is_watertight and m.volume < 0: m.invert()
+            fl_id = np.repeat(np.arange(len(fl_ntris)), fl_ntris) if fl_ntris else None
+            fl_breit = np.array(fl_breitL, dtype=bool) if fl_breitL else None
+            try:  # v56: exakte Doppel-Dreiecke raus (Flimmer-Fragmente)
+                srt = np.sort(m.faces, axis=1)
+                _, uidx = np.unique(srt, axis=0, return_index=True)
+                if len(uidx) < len(m.faces):
+                    maske = np.zeros(len(m.faces), dtype=bool); maske[uidx] = True
+                    _FLSTAT['doppel'] = _FLSTAT.get('doppel', 0) + int(len(m.faces) - len(uidx))
+                    m.update_faces(maske)
+                    if fl_id is not None: fl_id = fl_id[maske]
             except Exception:
                 pass
+            try:  # v56: Orientierung VOR den Knick-Normalen richten (vorher andersrum!)
+                m.fix_normals()
+                if m.is_watertight and m.volume < 0: m.invert()
+                if m.is_watertight: _FLSTAT['dicht'] = _FLSTAT.get('dicht', 0) + 1
+            except Exception:
+                pass
+            m = _knick_normalen(m, fl_id=fl_id, fl_breit=fl_breit)
             d0 = info.get(kn, {}) or {}
             L = d0.get('layer')
             art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
@@ -888,7 +918,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     nT += 1
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
-                    dreiecke = []; aussen = None; loecher = []
+                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []
                 elif z[0] == 'L':
                     nL += 1
                     if len(probeZeilen) < 3: probeZeilen.append(z[:140])
@@ -1221,8 +1251,8 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v55\nknick_winkel=26\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\n'
-                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
+            bf.write('konverter=v56\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\n'
+                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
     except Exception:
