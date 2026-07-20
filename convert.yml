@@ -1,0 +1,139 @@
+name: STEP zu 3D-Viewer
+
+# Läuft automatisch, sobald das Plugin eine STEP-Datei in jobs/ hochlädt
+on:
+  push:
+    paths:
+      - 'jobs/**'
+  workflow_dispatch:
+  # ★ Besenwagen wie beim IFC-Weg: faengt liegengebliebene Jobs auf, wenn der
+  #   push-Ausloeser (GitHub-seitig) mal nicht feuert - 3. Vorfall dieser Art.
+  schedule:
+    - cron: '*/30 * * * *'
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: gokoba-convert
+  cancel-in-progress: false
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    # ★ Sicherheitslimit für den ganzen Lauf, damit nie stundenlang Minuten verbraucht werden.
+    timeout-minutes: 45
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install cascadio trimesh
+          # ★ gltfpack fest auf 1.1.0 (die getestete, funktionierende Version).
+          #   Version 1.2.0 vom 30.06.2026 bleibt beim Komprimieren hängen.
+          #   Diese Nummer NICHT entfernen, sonst zieht npm wieder die neueste.
+          npm install -g gltfpack@1.1.0
+
+      - name: Offene Jobs verarbeiten
+        run: |
+          # ★ Kein "set -e" mehr: ein einzelner fehlerhafter Job darf NICHT den
+          #   ganzen Lauf abbrechen und damit alle anderen Jobs mitblockieren.
+          shopt -s nullglob
+          PROBLEME=0
+          for jobdir in jobs/*/; do
+            id=$(basename "$jobdir")
+            # Schon fertig konvertiert? -> überspringen
+            if [ -f "docs/v/$id/index.html" ]; then
+              continue
+            fi
+            # Erfolgs- oder Fehler-Marker vorhanden? -> überspringen
+            if [ -f "$jobdir/.done" ] || [ -f "$jobdir/.failed" ]; then
+              continue
+            fi
+            echo "::group::Job $id"
+            # Stückweise hochgeladene Teile wieder zusammenfügen
+            if ls "$jobdir"model.stp.gz.part* >/dev/null 2>&1; then
+              cat "$jobdir"model.stp.gz.part* > "$jobdir/model.stp.gz"
+              rm -f "$jobdir"model.stp.gz.part*
+            fi
+            # STEP entpacken falls als GZip hochgeladen
+            if [ -f "$jobdir/model.stp.gz" ]; then
+              gunzip -f "$jobdir/model.stp.gz"
+            fi
+            step=$(ls "$jobdir"*.stp "$jobdir"*.step 2>/dev/null | head -1 || true)
+            if [ -z "$step" ]; then
+              echo "Keine STEP-Datei in $jobdir gefunden, überspringe."
+              echo "::endgroup::"
+              continue
+            fi
+            # Projektname (optional)
+            name="Modell"
+            if [ -f "$jobdir/name.txt" ]; then
+              name=$(cat "$jobdir/name.txt")
+            fi
+            mkdir -p "docs/v/$id"
+            # ★ Einzel-Konvertierung mit 8-Minuten-Zeitlimit. Hängt ein Modell,
+            #   wird NUR dieses abgebrochen (timeout liefert dann Code 124),
+            #   der Lauf macht mit den übrigen Jobs weiter.
+            if timeout 480 python convert.py \
+                 --input "$step" \
+                 --output "docs/v/$id/index.html" \
+                 --assets-dir assets \
+                 --model-name "$name" \
+                 --expiry-days 40 \
+                 --no-dialog \
+                 --gltfpack gltfpack; then
+              # Erfolg: STEP entfernen (Speicher/Datenschutz), Erfolgs-Marker setzen
+              rm -rf "$jobdir"
+              mkdir -p "jobs/$id"
+              date -u +"%Y-%m-%dT%H:%M:%SZ" > "jobs/$id/.done"
+              echo "Job $id fertig."
+            else
+              rc=$?
+              # ★ Fehler oder Zeitlimit: unfertige Ausgabe verwerfen und Fehler-Marker
+              #   setzen, damit dieser Job künftige Läufe nicht mehr blockiert.
+              rm -rf "docs/v/$id"
+              rm -rf "$jobdir"
+              mkdir -p "jobs/$id"
+              date -u +"%Y-%m-%dT%H:%M:%SZ (Code $rc)" > "jobs/$id/.failed"
+              PROBLEME=$((PROBLEME + 1))
+              echo "Job $id FEHLGESCHLAGEN (Code $rc) - übersprungen."
+            fi
+            echo "::endgroup::"
+          done
+          echo "Durchlauf beendet. Fehlgeschlagene Jobs in diesem Lauf: $PROBLEME"
+
+      - name: Ergebnisse committen
+        run: |
+          git config user.name "gokoba-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen."
+          else
+            git commit -m "Viewer erstellt/aktualisiert"
+            git push
+          fi
+
+      - name: GitHub Pages veroeffentlichen
+        if: always()
+        run: |
+          echo "Stosse GitHub-Pages-Veroeffentlichung an..."
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || true
+          echo "Fertig."
