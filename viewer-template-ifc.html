@@ -5413,7 +5413,7 @@ var GOKOBA_LAYER_ACI = {
                 m.metalness=0.10;m.roughness=0.32;m.envMap=gokobaEnv;m.envMapIntensity=0.40;m.needsUpdate=true;
               }
               else if(reg.chrom){m.color.setHex(0x888E92);m.metalness=0.8;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=1.05;m.needsUpdate=true;}
-              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.55;m.roughness=0.3;m.envMap=gokobaEnv;m.envMapIntensity=0.8;triplanarAn(m,4.0);m.needsUpdate=true;} /* ★ Riffelblech */
+              else if(reg.riffel){m.color.setHex(0xffffff);m.map=traenTex;m.metalness=0.55;m.roughness=0.3;m.envMap=gokobaEnv;m.envMapIntensity=0.8;triplanarAn(m,3.4);m.needsUpdate=true;} /* ★ Riffelblech */
               else if(reg.gitter){m.userData._gitter=true;m.map=gitterTex;m.color.setHex(0xB8BDC0);m.metalness=0.3;m.roughness=0.6;m.envMap=gokobaEnv;m.envMapIntensity=0.4;m.transparent=true;m.opacity=0.85;triplanarAn(m,5.7,true);if(!gitterTex){m.color.setHex(0x99A0A6);m.envMapIntensity=0.15;}m.needsUpdate=true;} /* ★ leicht durchsichtig wie echte Roste */ /* ★ Gitterrost: immer verzinkt + Textur */
               else{
                 m.metalness=(reg.met!==undefined?reg.met:0.12);m.roughness=(reg.rau!==undefined?reg.rau:0.30);
