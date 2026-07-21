@@ -5403,6 +5403,12 @@ var GOKOBA_LAYER_ACI = {
                 if(!o.isMesh||!o.material||(o.userData&&o.userData._capKind))return;
                 var d=GOKOBA_TEILE[o.name]; if(!d)return;
                 var _ly82=(''+(d.layer||'')).toLowerCase();
+                if((_ly82.indexOf('alu')>=0&&_ly82.indexOf('wann')>=0)||_ly82.indexOf('abdeck')>=0){
+                  var mA=Array.isArray(o.material)?o.material[0]:o.material; /* v85: Auflieger-Bleche (Alu-Wannen,
+                    Abdeckbleche) liegen konstruktiv OBEN auf - gleicher Mini-Vorzug wie die Roste,
+                    sonst scheinen die Kanten des Profils darunter durch */
+                  if(mA&&!mA.polygonOffset){mA.polygonOffset=true;mA.polygonOffsetFactor=0;mA.polygonOffsetUnits=-2;}
+                }
                 if(_ly82.indexOf('beton')>=0||_ly82.indexOf('mauerwerk')>=0||_ly82.indexOf('bestand')>=0){
                   var mB=Array.isArray(o.material)?o.material[0]:o.material; /* v82: Bestand tritt hauchduenn zurueck -
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
@@ -5463,7 +5469,7 @@ var GOKOBA_LAYER_ACI = {
           if(_nmR.indexOf('sonderteil')>=0||(_nmR.indexOf('alu')>=0&&_nmR.indexOf('wann')>=0)){m.userData._gelaender=false;m.userData._stahlbau=false;}
           if(m.userData._gelaender&&gelaenderMats.indexOf(m)<0)gelaenderMats.push(m);
           if(m.userData._stahlbau&&stahlbauMats.indexOf(m)<0)stahlbauMats.push(m);
-          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=true;m.polygonOffsetFactor=-1;m.polygonOffsetUnits=-1;} /* v80: Rost minimal vorziehen - exakt buendige Zargen flimmern sonst */
+          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=true;m.polygonOffsetFactor=0;m.polygonOffsetUnits=-2;} /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
           if(m.userData._dekor&&dekorMats[m.userData._dekor]&&dekorMats[m.userData._dekor].indexOf(m)<0)dekorMats[m.userData._dekor].push(m);
         });
         meshes.push(o);
@@ -6422,9 +6428,10 @@ var GOKOBA_LAYER_ACI = {
             var e1=new THREE.Vector3().crossVectors(n,u).normalize(),e2=new THREE.Vector3().crossVectors(n,e1);
             function wk(p){return Math.atan2((p[0]-cx)*e2.x+(p[1]-cy)*e2.y+(p[2]-cz)*e2.z,(p[0]-cx)*e1.x+(p[1]-cy)*e1.y+(p[2]-cz)*e1.z);}
             P.sort(function(p,q){return wk(p)-wk(q);});
-            var k=0;
+            var k=0, off=0.012; /* v84: Deckel 12mm INS Wandmaterial zurueck - eingebettete Teile
+              ragen ab Ebenenkontakt sofort sauber davor, kein Kampf an der Schnittebene */
             for(var i=1;i<P.length-1&&k<=pos.count-3;i++){
-              [P[0],P[i],P[i+1]].forEach(function(p){pos.setXYZ(k++,p[0],p[1],p[2]);});
+              [P[0],P[i],P[i+1]].forEach(function(p){pos.setXYZ(k++,p[0]+n.x*off,p[1]+n.y*off,p[2]+n.z*off);});
             }
             d.geometry.setDrawRange(0,k);pos.needsUpdate=true;d.geometry.computeBoundingSphere();
           });
@@ -6703,7 +6710,7 @@ var GOKOBA_LAYER_ACI = {
           sp.scale.set(dist*0.045,dist*0.045,1); sp.renderOrder=10;
           achsKreuz.add(sp);
         });
-        model.add(achsKreuz);
+        /* v87: Mess-Kreuz gar nicht mehr einhaengen - auch die farbigen X/Y/Z-Buchstaben verschwinden damit; das dauerhafte einfarbige Symbol reicht */
         /* Panel */
         massPanel=el('div',glasBox('width:min(252px,72vw);'));
         massPanel.id='gkmass';
