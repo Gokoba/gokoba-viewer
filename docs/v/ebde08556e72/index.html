@@ -5041,7 +5041,7 @@ var GOKOBA_LAYER_ACI = {
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   var scene=new THREE.Scene();
-  var GOKOBA_DEF_STAHL="#2E414E",GOKOBA_DEF_GEL="#7A9AAA",GOKOBA_EXPIRY="2026-08-30T14:05:51Z",GOKOBA_GITTER_TEX="3010",GOKOBA_DEKOR="__DEKOR__";
+  var GOKOBA_DEF_STAHL="#2E414E",GOKOBA_DEF_GEL="#7A9AAA",GOKOBA_EXPIRY="2026-08-30T14:07:49Z",GOKOBA_GITTER_TEX="3010",GOKOBA_DEKOR="__DEKOR__";
   if(GOKOBA_EXPIRY.indexOf('__')<0){var _ed=new Date(GOKOBA_EXPIRY);if(!isNaN(_ed.getTime())){if(new Date()>_ed){document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#444;text-align:center;padding:32px;font-size:15px;">Diese 3D-Ansicht ist abgelaufen.<br>Bitte fordern Sie einen aktuellen Link an.</div>';throw new Error('abgelaufen');}var _ab=document.getElementById('ablauf');if(_ab)_ab.textContent='Ansicht gueltig bis '+_ed.toLocaleDateString('de-DE')+' \u00b7 ';}}
   var camera=new THREE.PerspectiveCamera(42,1,0.01,200);
   camera.position.set(3,2,4);
@@ -5115,7 +5115,7 @@ var GOKOBA_LAYER_ACI = {
    * ★   51  Glas                            -> weiss, 50% transparent
    * ★   alle anderen                        -> dunkles Blau
    * ★ ========================================================================== */
-  var GOKOBA_DEF_STAHL="#2E414E",GOKOBA_DEF_GEL="#7A9AAA",GOKOBA_EXPIRY="2026-08-30T14:05:51Z";
+  var GOKOBA_DEF_STAHL="#2E414E",GOKOBA_DEF_GEL="#7A9AAA",GOKOBA_EXPIRY="2026-08-30T14:07:49Z";
   var GOKOBA_STAHL=0x2E414E,      /* ★ Standard fuer alle nicht gelisteten Nummern */
       GOKOBA_GELAENDER=0x7A9AAA,  /* ★ 145, 31, 23 -> Kupfer/Bronze, glaenzend (Komplement zum Blau, passt zum Logo-Kupfer) */
       GOKOBA_GITTER=0xE7E5DF,     /* ★ 75 Gitterroste, weiss */
