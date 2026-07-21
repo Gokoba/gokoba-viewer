@@ -6348,25 +6348,8 @@ var GOKOBA_LAYER_ACI = {
           var mm=Array.isArray(o.material)?o.material[0]:o.material; if(!mm)return;
           (gruppen[mm.uuid]=gruppen[mm.uuid]||{mat:mm,meshes:[]}).meshes.push(o); } });
         var gr76=schnittBox.getSize(new THREE.Vector3()).length()*0.78, gi76=0;
-        try{ /* v82: BESTANDS-DECKEL als echte Geometrie: Schnittpolygon Ebene x Teilbox -
-           Wand blickdicht, aber alles VOR der Ebene (angeschnittenes Rohr!) bleibt sichtbar */
-          model.traverse(function(o){
-            if(!o.isMesh||!o.geometry||(o.userData&&o.userData._capKind)||(o.userData&&o.userData._kanten))return;
-            var dd=(typeof GOKOBA_TEILE!=='undefined'&&GOKOBA_TEILE)?GOKOBA_TEILE[o.name]:null; if(!dd)return;
-            var ly=((dd.layer||'')+'').toLowerCase();
-            if(!(ly.indexOf('beton')>=0||ly.indexOf('mauerwerk')>=0||ly.indexOf('bestand')>=0))return;
-            var bx=new THREE.Box3().setFromObject(o);
-            var mm2=Array.isArray(o.material)?o.material[0]:o.material;
-            var dm=new THREE.MeshBasicMaterial({side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
-            try{dm.color.copy(mm2.color).multiplyScalar(0.9);}catch(e){}
-            var g=new THREE.BufferGeometry();
-            g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(54),3));
-            g.setDrawRange(0,0);
-            var dk=new THREE.Mesh(g,dm); dk.renderOrder=1; dk.raycast=function(){}; dk.frustumCulled=false;
-            dk.userData._capBox=bx; scene.add(dk);
-            schnittCapNetz.push(dk); schnittCapMats.push(dm);
-          });
-        }catch(e){}
+        /* v90: Bestands-Deckel auf Pauls Wunsch KOMPLETT zurueckgebaut - Wand-Schnittflaeche
+           wieder offen wie in der reinen Innenansicht */
         Object.keys(gruppen).forEach(function(u){
           var G=gruppen[u];
           var massiv=false; /* v80: Stencil endgueltig aus; v82 ersetzt ihn durch ECHTE Deckel-Geometrie unten */
@@ -6410,32 +6393,7 @@ var GOKOBA_LAYER_ACI = {
       function schnittCapLege(){
         if(!schnittCapMats)return;
         schnittCapMats.forEach(function(m){ try{ if(m.userData&&m.userData._quellMat)m.color.copy(m.userData._quellMat.color).multiplyScalar(0.72); }catch(e){} });
-        if(schnittCapNetz&&schnittCapNetz.length){ /* v82: Schnittpolygon je Bestandsteil neu rechnen */
-          var n=schnittEbene.normal, c=-schnittEbene.constant;
-          var E=[[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[3,7],[2,6]];
-          schnittCapNetz.forEach(function(d){
-            var b=d.userData._capBox; if(!b)return;
-            var mn=b.min,mx=b.max;
-            var V=[[mn.x,mn.y,mn.z],[mx.x,mn.y,mn.z],[mn.x,mx.y,mn.z],[mx.x,mx.y,mn.z],[mn.x,mn.y,mx.z],[mx.x,mn.y,mx.z],[mn.x,mx.y,mx.z],[mx.x,mx.y,mx.z]];
-            var P=[];
-            E.forEach(function(e){var a=V[e[0]],q=V[e[1]];
-              var da=a[0]*n.x+a[1]*n.y+a[2]*n.z-c, dq=q[0]*n.x+q[1]*n.y+q[2]*n.z-c;
-              if((da<0&&dq>=0)||(da>=0&&dq<0)){var t2=da/(da-dq);P.push([a[0]+(q[0]-a[0])*t2,a[1]+(q[1]-a[1])*t2,a[2]+(q[2]-a[2])*t2]);}});
-            var pos=d.geometry.attributes.position;
-            if(P.length<3){d.geometry.setDrawRange(0,0);pos.needsUpdate=true;return;}
-            var cx=0,cy=0,cz=0;P.forEach(function(p){cx+=p[0];cy+=p[1];cz+=p[2];});cx/=P.length;cy/=P.length;cz/=P.length;
-            var u=new THREE.Vector3(1,0,0);if(Math.abs(n.x)>0.9)u.set(0,1,0);
-            var e1=new THREE.Vector3().crossVectors(n,u).normalize(),e2=new THREE.Vector3().crossVectors(n,e1);
-            function wk(p){return Math.atan2((p[0]-cx)*e2.x+(p[1]-cy)*e2.y+(p[2]-cz)*e2.z,(p[0]-cx)*e1.x+(p[1]-cy)*e1.y+(p[2]-cz)*e1.z);}
-            P.sort(function(p,q){return wk(p)-wk(q);});
-            var k=0, off=0.012; /* v84: Deckel 12mm INS Wandmaterial zurueck - eingebettete Teile
-              ragen ab Ebenenkontakt sofort sauber davor, kein Kampf an der Schnittebene */
-            for(var i=1;i<P.length-1&&k<=pos.count-3;i++){
-              [P[0],P[i],P[i+1]].forEach(function(p){pos.setXYZ(k++,p[0]+n.x*off,p[1]+n.y*off,p[2]+n.z*off);});
-            }
-            d.geometry.setDrawRange(0,k);pos.needsUpdate=true;d.geometry.computeBoundingSphere();
-          });
-        }
+        /* v90: keine Deckel mehr zu positionieren */
       }
       function schnittCapsWeg(){
         if(schnittCapNetz){schnittCapNetz.forEach(function(d){scene.remove(d);});}

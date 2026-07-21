@@ -699,6 +699,23 @@ _FLSTAT = {'gesamt': 0, 'leer': 0, 'unplanar': 0}  # v55: misst Pauls 'Flaechen 
 def _flaeche_zerlegen(aussen, loecher):
     _FLSTAT['gesamt'] += 1
     _FLSTAT['letzte_breite'] = 99.0
+    try:  # v89: Loch-Ausschnitte 2% zum Zentrum schrumpfen - schliesst die Phasen-Zwickel
+        #   zwischen Ausschnittring (Stegflaeche) und Lochwand: die zwei getrennt erzeugten
+        #   16-Ecke stehen verdreht, durch die Spalte war die Wand ringsum sichtbar
+        #   (Pauls voller Kranz); 2% von d20 = 0,2 mm je Seite, optisch unsichtbar.
+        if loecher:
+            _l89 = []
+            for _r in loecher:
+                _a89 = np.asarray(_r, dtype=float)
+                if len(_a89) >= 3:
+                    _z89 = _a89.mean(axis=0)
+                    _a89 = _z89 + (_a89 - _z89) * 0.98
+                    _l89.append(_a89.tolist())
+                else:
+                    _l89.append(_r)
+            loecher = _l89
+    except Exception:
+        pass
     try:
         a0 = np.asarray(aussen, dtype=float)
         if len(a0) >= 3:
@@ -1451,7 +1468,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v78\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v89\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
