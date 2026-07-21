@@ -5394,6 +5394,7 @@ var GOKOBA_LAYER_ACI = {
             /* ★ Farbe der Gruppe zuordnen (GOKOBA_FARBSCHEMA), sonst Standard dunkles Blau */
             var reg=null,_aci=(m.name||'').match(/^GOKOBA_ACI_(\d+)/);
             if(_aci)reg=gokobaRegAusAci(parseInt(_aci[1],10));
+            if((m.name||'').toLowerCase().indexOf('mmung')>=0)reg={zu:GOKOBA_DAEMMUNG,met:0.00,rau:0.90,alpha:0.80}; /* v66: Daemmung am LAYERNAMEN, unabhaengig von der Layerfarbe */
             if(!reg&&!_aci)reg=gokobaSchema(m.color); /* ★ STEP-Pipeline unveraendert */
             if(reg){
               m.userData._display=reg.zu;
@@ -6011,7 +6012,16 @@ var GOKOBA_LAYER_ACI = {
         var gProfil=summe(function(d){return d.art==='profil'||d.art==='kantprofil';});
         var gBlech=summe(function(d){return d.art==='blech'||d.art==='kantblech';});
         var gAlles=gProfil+gBlech; /* ★ Gesamt = Profile + Bleche, exakt wie vereinbart */
-        var qmRost=0;T.forEach(function(d){if(d.art==='gitterrost'&&d.masse)qmRost+=d.masse[0]*d.masse[1]/1e6;});
+        var qmRost=0,nRost=0;T.forEach(function(d){if(d.art==='gitterrost'){nRost++;if(d.flaeche)qmRost+=d.flaeche;else if(d.masse)qmRost+=d.masse[0]*d.masse[1]/1e6;}}); /* v66: netto */
+        function kgFmt2(x){return x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg';}
+        function qmFmt(x){return x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' m\u00b2';}
+        function wsKey(d){var s=((d.material||'')+' '+(d.layer||'')).toLowerCase();
+          if(s.indexOf('mineralit')>=0)return 'Mineralit'+(d.dicke?' t='+d.dicke+' mm':'');
+          if(s.indexOf('glas')>=0)return 'Glas';
+          if(s.indexOf('bws')>=0||s.indexOf('werkstein')>=0)return 'Betonwerkstein';
+          return null;}
+        var werk={};T.forEach(function(d){var wk=wsKey(d);if(!wk)return;var w=werk[wk]=werk[wk]||{n:0,qm:0,kg:0};
+          w.n++;if(d.flaeche)w.qm+=d.flaeche;else if(d.masse)w.qm+=d.masse[0]*d.masse[1]/1e6;if(d.gewicht)w.kg+=d.gewicht;});
         var stufen={};T.forEach(function(d){if(d.art==='gitterroststufe'&&d.masse){var k=Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1]);stufen[k]=(stufen[k]||0)+1;}});
 
         listePanel=el('div',glasBox('width:min(316px,84vw);max-height:72%;display:flex;flex-direction:column;overflow:hidden;'));
@@ -6019,14 +6029,24 @@ var GOKOBA_LAYER_ACI = {
         var kopf=flyKopf('liste');
         var zeilen='';
         function kz(k,v){zeilen+='<div style="display:flex;justify-content:space-between;gap:14px;padding:2.5px 0;"><span style="color:var(--gktx2);">'+k+'</span><strong style="white-space:nowrap;">'+v+'</strong></div>';}
-        kz('Gewicht Profile',kgFmt(gProfil));
-        kz('Gewicht Bleche',kgFmt(gBlech));
-        kz('Gewicht gesamt (Profile + Bleche)',kgFmt(gAlles));
-        if(qmRost>0)kz('Gitterrost-Fl\u00e4che',qmRost.toFixed(1).replace('.',',')+' m\u00b2');
+        zeilen+='<div style="color:var(--gktx2);padding:2px 0 2px;font-weight:600;">Gewichte</div>';
+        kz('Profile',kgFmt2(gProfil));
+        kz('Bleche',kgFmt2(gBlech));
+        kz('Gesamt (Profile + Bleche)',kgFmt2(gAlles));
+        if(nRost>0){
+          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;font-weight:600;">Gitterroste</div>';
+          kz('St\u00fcckzahl',nRost+' St\u00fcck');
+          kz('Fl\u00e4che (netto, Ausschnitte abgezogen)',qmFmt(qmRost));
+        }
         var stKeys=Object.keys(stufen).sort(function(a,b){return stufen[b]-stufen[a];});
         if(stKeys.length){
-          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;">Gitterroststufen</div>';
+          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;font-weight:600;">Gitterroststufen</div>';
           stKeys.forEach(function(k){kz('&nbsp;&nbsp;'+k+' mm',stufen[k]+' St\u00fcck');});
+        }
+        var wsK=Object.keys(werk).sort();
+        if(wsK.length){
+          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;font-weight:600;">Werkstoffe</div>';
+          wsK.forEach(function(k){var w=werk[k];kz(k+' ('+w.n+' St.)',qmFmt(w.qm)+' \u00b7 '+kgFmt2(w.kg));});
         }
         listePanel.innerHTML=kopf+
           '<div style="overflow:auto;padding:0 13px 6px;">'+zeilen+
@@ -6249,31 +6269,45 @@ var GOKOBA_LAYER_ACI = {
       }
       function schnittCapsBauen(){
         if(schnittCapNetz)return;
-        var mb=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
-          stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.BackSide,
-          stencilFail:THREE.IncrementWrapStencilOp,stencilZFail:THREE.IncrementWrapStencilOp,stencilZPass:THREE.IncrementWrapStencilOp});
-        var mf=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
-          stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.FrontSide,
-          stencilFail:THREE.DecrementWrapStencilOp,stencilZFail:THREE.DecrementWrapStencilOp,stencilZPass:THREE.DecrementWrapStencilOp});
-        schnittCapMats=[mb,mf];
-        var traeger=[];
-        model.traverse(function(o){ if(o.isMesh&&o.geometry&&!o.userData._capKind&&!o.userData._kanten)traeger.push(o); });
-        traeger.forEach(function(o){
-          [mb,mf].forEach(function(mm){
-            var h=new THREE.Mesh(o.geometry,mm);h.userData._capKind=1;h.renderOrder=1;h.raycast=function(){};
-            o.add(h);
-          });
-        });
+        /* v67: JE-GRUPPEN-SCHNITT (Pauls Vorgabe): jede Materialgruppe bekommt ihr eigenes
+           Stencil-Zaehlwerk + ihren eigenen Deckel in BAUTEILFARBE (leicht abgedunkelt).
+           Reihenfolge ueber renderOrder-Baender; jeder Deckel loescht sein Stencil selbst
+           (ZeroStencilOp) - das raeumt auch die frueheren Uebermal-Fragmente ab. */
+        schnittCapMats=[]; schnittCapNetz=[];
+        var gruppen={};
+        model.traverse(function(o){ if(o.isMesh&&o.geometry&&!o.userData._capKind&&!o.userData._kanten){
+          var mm=Array.isArray(o.material)?o.material[0]:o.material; if(!mm)return;
+          (gruppen[mm.uuid]=gruppen[mm.uuid]||{mat:mm,meshes:[]}).meshes.push(o); } });
         var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.78;
-        var fbC=0x2E414E; try{ if(typeof stahlbauMats!=='undefined'&&stahlbauMats.length&&stahlbauMats[0].color)fbC=stahlbauMats[0].color.getHex(); }catch(e){}
-        /* v62: Schnittflaeche in Koerperfarbe, OHNE Schraffur (Pauls Vorgabe; echte je-Teil-Farbe = eigenes Gewerk) */
-        schnittCapNetz=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),
-          new THREE.MeshBasicMaterial({color:fbC,side:THREE.DoubleSide,
+        var gi=0;
+        Object.keys(gruppen).forEach(function(u){
+          var G=gruppen[u], basis=10+gi*2; gi++;
+          var mb=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
+            stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.BackSide,
+            stencilFail:THREE.IncrementWrapStencilOp,stencilZFail:THREE.IncrementWrapStencilOp,stencilZPass:THREE.IncrementWrapStencilOp});
+          var mf=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
+            stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.FrontSide,
+            stencilFail:THREE.DecrementWrapStencilOp,stencilZFail:THREE.DecrementWrapStencilOp,stencilZPass:THREE.DecrementWrapStencilOp});
+          schnittCapMats.push(mb,mf);
+          G.meshes.forEach(function(o){
+            [mb,mf].forEach(function(mm2){
+              var h=new THREE.Mesh(o.geometry,mm2);h.userData._capKind=1;h.renderOrder=basis;h.raycast=function(){};
+              o.add(h);
+            });
+          });
+          var dm=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,
             stencilWrite:true,stencilRef:0,stencilFunc:THREE.NotEqualStencilFunc,
-            stencilFail:THREE.ReplaceStencilOp,stencilZFail:THREE.ReplaceStencilOp,stencilZPass:THREE.ReplaceStencilOp,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
-        schnittCapNetz.renderOrder=2;
-        schnittCapNetz.onAfterRender=function(r){r.clearStencil();};
-        scene.add(schnittCapNetz);
+            stencilFail:THREE.ZeroStencilOp,stencilZFail:THREE.ZeroStencilOp,stencilZPass:THREE.ZeroStencilOp,
+            polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+          try{ if(G.mat.transparent){dm.transparent=true;dm.opacity=G.mat.opacity;} }catch(e){}
+          var deckel=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),dm);
+          deckel.renderOrder=basis+1;
+          deckel.userData._capMat=G.mat;
+          deckel.raycast=function(){};
+          schnittCapMats.push(dm);
+          schnittCapNetz.push(deckel);
+          scene.add(deckel);
+        });
         schnittCapLege();
       }
       function schnittCapLege(){
@@ -6283,13 +6317,17 @@ var GOKOBA_LAYER_ACI = {
            Sonst deckt der Deckel bei hohen/versetzten Modellen nur einen Teil ab. */
         var mi=schnittBox.getCenter(new THREE.Vector3());
         var ab=n.dot(mi)+schnittEbene.constant;
-        schnittCapNetz.position.copy(mi).addScaledVector(n,-ab);
-        schnittCapNetz.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+        schnittCapNetz.forEach(function(d){
+          d.position.copy(mi).addScaledVector(n,-ab);
+          d.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+          try{ d.material.color.copy(d.userData._capMat.color).multiplyScalar(0.85); }catch(e){} /* Farbe folgt dem Bauteil, leicht dunkler */
+        });
       }
       function schnittCapsWeg(){
-        if(schnittCapNetz){scene.remove(schnittCapNetz);
-          if(schnittCapNetz.material.map)schnittCapNetz.material.map.dispose();
-          schnittCapNetz.material.dispose();schnittCapNetz=null;}
+        if(schnittCapNetz){
+          schnittCapNetz.forEach(function(d){scene.remove(d);});
+          schnittCapNetz=null;
+        }
         var weg=[];
         model.traverse(function(o){if(o.userData&&o.userData._capKind)weg.push(o);});
         weg.forEach(function(o){if(o.parent)o.parent.remove(o);});

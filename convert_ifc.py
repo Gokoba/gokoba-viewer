@@ -975,6 +975,15 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if art in ('profil', 'kantprofil') and not d.get('laenge'):
                 mm = masse_aus_obb(m)
                 if mm: d['laenge'] = round(mm[0], 1)
+            try:  # v66: Netto-Projektionsflaeche (Ausschnitte abgezogen) fuer Roste/Werkstoffe
+                ext6 = m.bounds[1] - m.bounds[0]
+                ax6 = int(np.argmin(ext6))
+                mk6 = np.abs(m.face_normals[:, ax6]) > 0.9
+                fl6 = float(m.area_faces[mk6].sum()) / 2.0
+                if fl6 > 0:
+                    d['flaeche'] = round(fl6, 3)
+            except Exception:
+                pass
             if art in ('anker', 'kopfbolzen'):
                 d['gewicht'] = None  # v62: Anker ohne Gewicht (Pauls Vorgabe)
             if d.get('gewicht') is None and art not in ('anker', 'kopfbolzen'):
@@ -987,6 +996,15 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         vB = d0.get('volumen')
                         if isinstance(vB, (int, float)) and vB > 0:
                             d['gewicht'] = round(vB * 1e-9 * 2500.0, 1)  # Rueckfall: Pauls AS-Dichte 2,5 kg/dm3
+                elif 'glas' in _bwsT or 'mineralit' in _bwsT:
+                    gB = d0.get('gewicht_as')
+                    if isinstance(gB, (int, float)) and gB > 0:
+                        d['gewicht'] = round(gB, 2)  # v66: aus den AS-Eigenschaften
+                    else:
+                        vB = d0.get('volumen')
+                        if isinstance(vB, (int, float)) and vB > 0:
+                            dichte6 = 2450.0 if 'mineralit' in _bwsT else 2500.0  # Mineralit-Infoblatt 2,45 g/cm3; Glas 2,5
+                            d['gewicht'] = round(vB * 1e-9 * dichte6, 2)
             if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
                 gAS = d0.get('gewicht_as')  # v61: AS-eigenes Gewicht = exakt wie Pauls AS-Liste
                 if isinstance(gAS, (int, float)) and gAS > 0:
@@ -1343,6 +1361,18 @@ def main():
                                           'gummi', 'plattenlager', 'abdeckleist', 'dachbelag'))
                 or (('alu' in _ns) and ('wann' in _ns or 'flach' in _ns))):
             d['nichtstahl'] = 1  # v65: zaehlt NICHT in die Profile+Bleche-Summe (Pauls Liste; Kaertchen-Gewicht bleibt)
+        try:  # v66: Zerlegung der Gewichtssumme fuer bericht.txt (Balkon-Differenz messbar machen)
+            _g6 = d.get('gewicht') or 0
+            _l6 = ((d.get('layer') or '')).lower()
+            _gel6 = ('gelaender' in _l6) or ('geländer' in _l6) or ('gelander' in _l6)
+            if d.get('nichtstahl'):
+                _FLSTAT['gw_nichtstahl'] = _FLSTAT.get('gw_nichtstahl', 0.0) + _g6
+            elif d.get('art') in ('profil', 'kantprofil'):
+                _FLSTAT['gw_prof_gel' if _gel6 else 'gw_prof'] = _FLSTAT.get('gw_prof_gel' if _gel6 else 'gw_prof', 0.0) + _g6
+            elif d.get('art') in ('blech', 'kantblech'):
+                _FLSTAT['gw_blech_gel' if _gel6 else 'gw_blech'] = _FLSTAT.get('gw_blech_gel' if _gel6 else 'gw_blech', 0.0) + _g6
+        except Exception:
+            pass
         if d['art'] != alt_art:
             umsortiert += 1
     # ★ Stufenbreite = ZUKAUFMASS: Rostbreite + 2x 3-mm-Lasche - fuer JEDE Stufe genau einmal,
@@ -1379,8 +1409,10 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v65\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v66\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
+            bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
+                     % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
     except Exception:
