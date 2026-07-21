@@ -906,11 +906,10 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     tri5 = m.triangles.reshape(-1, 3)
                     weg2 = np.zeros(len(m.faces), dtype=bool)
                     for fid in np.unique(fl_id):
-                        if hatL is not None and fid < len(hatL) and hatL[fid]:
-                            continue
                         mk5 = fl_id == fid
                         if float(A5[mk5].sum()) > 0.02:
-                            continue
+                            continue  # v68: hatL-Sperre entfernt (Halbmond-Deckel sind Ring-Stuecke MIT Loch);
+                                      #   der Groessen-Match schuetzt die echte Traegerflaeche
                         p5 = tri5[np.repeat(mk5, 3)]
                         fmin = p5.min(axis=0); fmax = p5.max(axis=0)
                         fc = (fmin + fmax) / 2.0; fs = fmax - fmin
@@ -991,7 +990,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 if 'bws' in _bwsT or 'werkstein' in _bwsT:
                     gB = d0.get('gewicht_as')
                     if isinstance(gB, (int, float)) and gB > 0:
-                        d['gewicht'] = round(gB, 2)  # v63: BWS direkt aus den AS-Eigenschaften (Pauls Entscheid, 400x400x40 -> 16 kg)
+                        d['gewicht'] = round(gB / 1000.0, 2)  # v68: AS-Weight in GRAMM; 400x400x40 -> 16,00 kg
                     else:
                         vB = d0.get('volumen')
                         if isinstance(vB, (int, float)) and vB > 0:
@@ -999,7 +998,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 elif 'glas' in _bwsT or 'mineralit' in _bwsT:
                     gB = d0.get('gewicht_as')
                     if isinstance(gB, (int, float)) and gB > 0:
-                        d['gewicht'] = round(gB, 2)  # v66: aus den AS-Eigenschaften
+                        d['gewicht'] = round(gB / 1000.0, 2)  # v68: AS-Weight in GRAMM
                     else:
                         vB = d0.get('volumen')
                         if isinstance(vB, (int, float)) and vB > 0:
@@ -1008,7 +1007,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
                 gAS = d0.get('gewicht_as')  # v61: AS-eigenes Gewicht = exakt wie Pauls AS-Liste
                 if isinstance(gAS, (int, float)) and gAS > 0:
-                    d['gewicht'] = round(gAS, 2)
+                    d['gewicht'] = round(gAS / 1000.0, 2)  # v68: AS-Weight in GRAMM (gemessen: BWS-Referenz 16000)
             if d.get('gewicht') is None and art in ('profil', 'kantprofil', 'blech', 'kantblech', 'sonderteil'):
                 vAS = d0.get('volumen')  # v60: exaktes AS-Volumen (mm3) - unabhaengig von Wasserdichtheit
                 if isinstance(vAS, (int, float)) and vAS > 0:
@@ -1325,6 +1324,33 @@ def main():
     # ★ Rost oder Stufe: die Rostklasse aus dem Modell entscheidet, nicht die Breite.
     #   Prioritaet: Klasse sagt Grating/Graiting -> Rost; Klasse/Beschreibung sagt Stufe -> Stufe;
     #   sonst Pauls Standard-Stufentiefen 240/270/305; sonst bleibt die bisherige Zuordnung.
+    for d in teile.values():  # v68: ALLE Teile (der Stufen-Loop darunter filtert auf Rost/Stufe)
+        if not isinstance(d, dict):
+            continue
+        typ8 = ((d.get('typ') or '')).lower()
+        if d.get('art') in ('gitterrost', 'gitterroststufe') and 'grating' not in typ8 and 'graiting' not in typ8:
+            # Text-'Stufen' OHNE Grating-Klasse = angeschweisste Laschen o.ae. -> zurueckstufen
+            d['art'] = 'blech' if 'plate' in typ8 else ('profil' if 'beam' in typ8 else d['art'])
+        if d.get('art') in ('blech', 'kantblech') and 'stufe' in ((d.get('bgname') or '')).lower():
+            d['gewicht'] = None  # an Gitterroststufen angeschweisste Laschen = Teil des Zukaufteils
+        _ns = ((d.get('material') or '') + ' ' + (d.get('layer') or '') + ' ' + (d.get('roh') or '')).lower()
+        if (d.get('art') == 'sonderteil'
+                or any(w in _ns for w in ('glas', 'thermostop', 'bws', 'werkstein', 'mineralit', 'trespa',
+                                          'gummi', 'plattenlager', 'abdeckleist', 'dachbelag'))
+                or (('alu' in _ns) and ('wann' in _ns or 'flach' in _ns))):
+            d['nichtstahl'] = 1  # zaehlt NICHT in die Profile+Bleche-Summe (Kaertchen-Gewicht bleibt)
+        try:  # Zerlegung der Gewichtssumme fuer bericht.txt
+            _g6 = d.get('gewicht') or 0
+            _l6 = ((d.get('layer') or '')).lower()
+            _gel6 = ('gelaender' in _l6) or ('geländer' in _l6) or ('gelander' in _l6)
+            if d.get('nichtstahl'):
+                _FLSTAT['gw_nichtstahl'] = _FLSTAT.get('gw_nichtstahl', 0.0) + _g6
+            elif d.get('art') in ('profil', 'kantprofil'):
+                _FLSTAT['gw_prof_gel' if _gel6 else 'gw_prof'] = _FLSTAT.get('gw_prof_gel' if _gel6 else 'gw_prof', 0.0) + _g6
+            elif d.get('art') in ('blech', 'kantblech'):
+                _FLSTAT['gw_blech_gel' if _gel6 else 'gw_blech'] = _FLSTAT.get('gw_blech_gel' if _gel6 else 'gw_blech', 0.0) + _g6
+        except Exception:
+            pass
     umsortiert = 0
     for d in teile.values():
         if not isinstance(d, dict) or d.get('art') not in ('gitterrost', 'gitterroststufe'):
@@ -1351,28 +1377,8 @@ def main():
                 d['art'] = 'gitterroststufe'  # Standard-Tiefen nur als Gegencheck
             else:
                 d['art'] = 'gitterrost'
-        elif d['art'] in ('gitterrost', 'gitterroststufe') and ('stufe' in qt or 'rost' in qt or 'grating' in qt or 'graiting' in qt):
-            pass  # bereits korrekt klassifiziert (fruehere Wege) - nicht anfassen
-        if d.get('art') in ('blech', 'kantblech') and 'stufe' in ((d.get('bgname') or '')).lower():
-            d['gewicht'] = None  # v64: an Gitterroststufen angeschweisste Laschen = Teil des Zukaufteils, zaehlt nicht
-        _ns = ((d.get('material') or '') + ' ' + (d.get('layer') or '') + ' ' + (d.get('roh') or '')).lower()
-        if (d.get('art') == 'sonderteil'
-                or any(w in _ns for w in ('glas', 'thermostop', 'bws', 'werkstein', 'mineralit', 'trespa',
-                                          'gummi', 'plattenlager', 'abdeckleist', 'dachbelag'))
-                or (('alu' in _ns) and ('wann' in _ns or 'flach' in _ns))):
-            d['nichtstahl'] = 1  # v65: zaehlt NICHT in die Profile+Bleche-Summe (Pauls Liste; Kaertchen-Gewicht bleibt)
-        try:  # v66: Zerlegung der Gewichtssumme fuer bericht.txt (Balkon-Differenz messbar machen)
-            _g6 = d.get('gewicht') or 0
-            _l6 = ((d.get('layer') or '')).lower()
-            _gel6 = ('gelaender' in _l6) or ('geländer' in _l6) or ('gelander' in _l6)
-            if d.get('nichtstahl'):
-                _FLSTAT['gw_nichtstahl'] = _FLSTAT.get('gw_nichtstahl', 0.0) + _g6
-            elif d.get('art') in ('profil', 'kantprofil'):
-                _FLSTAT['gw_prof_gel' if _gel6 else 'gw_prof'] = _FLSTAT.get('gw_prof_gel' if _gel6 else 'gw_prof', 0.0) + _g6
-            elif d.get('art') in ('blech', 'kantblech'):
-                _FLSTAT['gw_blech_gel' if _gel6 else 'gw_blech'] = _FLSTAT.get('gw_blech_gel' if _gel6 else 'gw_blech', 0.0) + _g6
-        except Exception:
-            pass
+        # v68: Rest-Logik laeuft jetzt im ALLE-TEILE-Nachlauf (das continue-Gate dieses
+        #   Loops liess nur Rost/Stufen durch - nichtstahl/Zerlegung/Laschen waren tot)
         if d['art'] != alt_art:
             umsortiert += 1
     # ★ Stufenbreite = ZUKAUFMASS: Rostbreite + 2x 3-mm-Lasche - fuer JEDE Stufe genau einmal,
@@ -1409,7 +1415,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v66\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v68\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))

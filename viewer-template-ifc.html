@@ -5395,6 +5395,17 @@ var GOKOBA_LAYER_ACI = {
             var reg=null,_aci=(m.name||'').match(/^GOKOBA_ACI_(\d+)/);
             if(_aci)reg=gokobaRegAusAci(parseInt(_aci[1],10));
             if((m.name||'').toLowerCase().indexOf('mmung')>=0)reg={zu:GOKOBA_DAEMMUNG,met:0.00,rau:0.90,alpha:0.80}; /* v66: Daemmung am LAYERNAMEN, unabhaengig von der Layerfarbe */
+            if(!window._gkDmNach){window._gkDmNach=1;setTimeout(function(){try{ /* v68: Daemmung TEIL-basiert - greift auch wenn der GLB-Materialname den Layer nicht traegt */
+              if(!GOKOBA_TEILE||!model)return; var klone={};
+              model.traverse(function(o){
+                if(!o.isMesh||!o.material||(o.userData&&o.userData._capKind))return;
+                var d=GOKOBA_TEILE[o.name]; if(!d)return;
+                if((''+(d.layer||'')).toLowerCase().indexOf('mmung')<0)return;
+                var m0=Array.isArray(o.material)?o.material[0]:o.material;
+                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;kk.depthWrite=false;klone[m0.uuid]=kk;}
+                o.material=klone[m0.uuid];
+              });
+            }catch(e){}},500);}
             if(!reg&&!_aci)reg=gokobaSchema(m.color); /* ★ STEP-Pipeline unveraendert */
             if(reg){
               m.userData._display=reg.zu;
@@ -6230,6 +6241,7 @@ var GOKOBA_LAYER_ACI = {
           '.gkico.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}';
         document.head.appendChild(stl);
         var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;');
+        w.style.cssText+='background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.55);border-radius:14px;padding:9px 12px;box-shadow:0 8px 24px rgba(30,40,60,0.10);'; /* v68: Glas-Optik wie die rechte Palette */
         w.innerHTML='<div style="font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:0 2px 4px;">SCHNELLANSICHTEN</div>';
         var g=el('div','display:grid;grid-template-columns:1fr;gap:1px;');
         var bs='';
@@ -6269,65 +6281,39 @@ var GOKOBA_LAYER_ACI = {
       }
       function schnittCapsBauen(){
         if(schnittCapNetz)return;
-        /* v67: JE-GRUPPEN-SCHNITT (Pauls Vorgabe): jede Materialgruppe bekommt ihr eigenes
-           Stencil-Zaehlwerk + ihren eigenen Deckel in BAUTEILFARBE (leicht abgedunkelt).
-           Reihenfolge ueber renderOrder-Baender; jeder Deckel loescht sein Stencil selbst
-           (ZeroStencilOp) - das raeumt auch die frueheren Uebermal-Fragmente ab. */
+        /* v68: FRAGMENTFREIER SCHNITT. Der Stencil-Deckel-Ansatz setzt wasserdichte
+           Koerper voraus - AS liefert offene Flaechensuppen (teile_dicht=0), daraus
+           entstanden die Sprenkel/Streifen zwangslaeufig. Stattdessen zeigen wir beim
+           Schnitt die INNENSEITEN jedes Bauteils in seiner eigenen, leicht abgedunkelten
+           Farbe (Wand weisslich, Gelaender gelb, Wange blau). Reine Geometrie - es kann
+           prinzipbedingt keine Fragmente mehr geben. */
         schnittCapMats=[]; schnittCapNetz=[];
         var gruppen={};
         model.traverse(function(o){ if(o.isMesh&&o.geometry&&!o.userData._capKind&&!o.userData._kanten){
           var mm=Array.isArray(o.material)?o.material[0]:o.material; if(!mm)return;
           (gruppen[mm.uuid]=gruppen[mm.uuid]||{mat:mm,meshes:[]}).meshes.push(o); } });
-        var gr=schnittBox.getSize(new THREE.Vector3()).length()*0.78;
-        var gi=0;
         Object.keys(gruppen).forEach(function(u){
-          var G=gruppen[u], basis=10+gi*2; gi++;
-          var mb=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
-            stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.BackSide,
-            stencilFail:THREE.IncrementWrapStencilOp,stencilZFail:THREE.IncrementWrapStencilOp,stencilZPass:THREE.IncrementWrapStencilOp});
-          var mf=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
-            stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.FrontSide,
-            stencilFail:THREE.DecrementWrapStencilOp,stencilZFail:THREE.DecrementWrapStencilOp,stencilZPass:THREE.DecrementWrapStencilOp});
-          schnittCapMats.push(mb,mf);
+          var G=gruppen[u];
+          var im=new THREE.MeshBasicMaterial({side:THREE.BackSide,clippingPlanes:[schnittEbene],
+            polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+          try{ im.color.copy(G.mat.color).multiplyScalar(0.72); }catch(e){}
+          try{ if(G.mat.transparent){im.transparent=true;im.opacity=G.mat.opacity;} }catch(e){}
+          im.userData={_quellMat:G.mat};
+          schnittCapMats.push(im);
           G.meshes.forEach(function(o){
-            [mb,mf].forEach(function(mm2){
-              var h=new THREE.Mesh(o.geometry,mm2);h.userData._capKind=1;h.renderOrder=basis;h.raycast=function(){};
-              o.add(h);
-            });
+            var h=new THREE.Mesh(o.geometry,im);h.userData._capKind=1;h.renderOrder=1;h.raycast=function(){};
+            o.add(h);
           });
-          var dm=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,
-            stencilWrite:true,stencilRef:0,stencilFunc:THREE.NotEqualStencilFunc,
-            stencilFail:THREE.ZeroStencilOp,stencilZFail:THREE.ZeroStencilOp,stencilZPass:THREE.ZeroStencilOp,
-            polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
-          try{ if(G.mat.transparent){dm.transparent=true;dm.opacity=G.mat.opacity;} }catch(e){}
-          var deckel=new THREE.Mesh(new THREE.PlaneGeometry(gr,gr),dm);
-          deckel.renderOrder=basis+1;
-          deckel.userData._capMat=G.mat;
-          deckel.raycast=function(){};
-          schnittCapMats.push(dm);
-          schnittCapNetz.push(deckel);
-          scene.add(deckel);
         });
         schnittCapLege();
       }
       function schnittCapLege(){
-        if(!schnittCapNetz)return;
-        var n=schnittEbene.normal;
-        /* \u2605 Mittelpunkt des MODELLS auf die Ebene projizieren - nicht den Ursprung!
-           Sonst deckt der Deckel bei hohen/versetzten Modellen nur einen Teil ab. */
-        var mi=schnittBox.getCenter(new THREE.Vector3());
-        var ab=n.dot(mi)+schnittEbene.constant;
-        schnittCapNetz.forEach(function(d){
-          d.position.copy(mi).addScaledVector(n,-ab);
-          d.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
-          try{ d.material.color.copy(d.userData._capMat.color).multiplyScalar(0.85); }catch(e){} /* Farbe folgt dem Bauteil, leicht dunkler */
-        });
+        if(!schnittCapMats)return;
+        /* Farbe folgt dem Bauteil (auch nach RAL-Wechsel), leicht dunkler */
+        schnittCapMats.forEach(function(m){ try{ m.color.copy(m.userData._quellMat.color).multiplyScalar(0.72); }catch(e){} });
       }
       function schnittCapsWeg(){
-        if(schnittCapNetz){
-          schnittCapNetz.forEach(function(d){scene.remove(d);});
-          schnittCapNetz=null;
-        }
+        schnittCapNetz=null;
         var weg=[];
         model.traverse(function(o){if(o.userData&&o.userData._capKind)weg.push(o);});
         weg.forEach(function(o){if(o.parent)o.parent.remove(o);});
