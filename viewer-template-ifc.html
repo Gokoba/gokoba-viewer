@@ -6185,7 +6185,7 @@ var GOKOBA_LAYER_ACI = {
         };
         var A={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,-1)}; /* \u2605 Y-Achse zur anderen Seite */
         var N={x:'X',y:'Z',z:'Y'}; /* \u2605 Bau-Beschriftung: Hoehe heisst Z */
-        setTimeout(function(){window.gkAchsBild(true);},400); /* \u2605 immer sichtbar */
+        setTimeout(function(){window.gkAchsBild(true); try{window.gkStartAnsicht={p:camera.position.clone(),t:controls.target.clone(),u:camera.up.clone()};}catch(e){}},400); /* v93: Startansicht merken */ /* \u2605 immer sichtbar */
         window.gkAchsTick=function(){
           if(!box||box.style.display==='none')return;
           var q=camera.quaternion.clone().invert();
@@ -6295,9 +6295,12 @@ var GOKOBA_LAYER_ACI = {
           g.appendChild(b);
         });
         w.appendChild(g);
-        var az=el('button',bs+'width:100%;margin-top:2px;'); az.className='gkfv'; az.innerHTML=gkIkon('Auge'); az.title='Alles zeigen'; az.style.opacity='.4';
-        az.addEventListener('click',function(){
+        var az=el('button',bs+'width:100%;margin-top:2px;font:500 11px var(--ui,sans-serif);color:var(--gktx);'); az.className='gkfv'; az.textContent='Ursprungsansicht'; az.title='Alles einblenden und zur Startansicht wechseln';
+        az.addEventListener('click',function(){ /* v93: Pauls Ursprungsansicht - alles zeigen UND zurueck zur Ansicht des Seitenaufrufs */
           model.traverse(function(o){ if(o.isMesh||o.isLineSegments)o.visible=true; });
+          var s=window.gkStartAnsicht;
+          if(s){ try{ camera.up.copy(s.u); camera.position.copy(s.p); controls.target.copy(s.t); controls.update();
+            window.gk2d=null; gkFestDir=null; gkFestUp=null; }catch(e){} }
         });
         w.appendChild(az);
         var at=el('div','height:1px;background:rgba(127,140,150,.25);margin:7px 2px 6px;');
