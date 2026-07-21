@@ -871,20 +871,23 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     for key, fids in ebenen.items():
                         if len(fids) < 2: continue
                         fl_area = {fid: float(A3[fl_id == fid].sum()) for fid in fids}
-                        gross = max(fids, key=lambda f: fl_area[f])
-                        mg = fl_id == gross
+                        def _mitLoch(f):
+                            return bool(hatL is not None and f < len(hatL) and hatL[f])
+                        lochIds = [f for f in fids if _mitLoch(f)]
+                        # v64: LOCH-VORRANG - Referenz ist die groesste GELOCHTE Flaeche der Ebene
+                        #   (die lochlose Kopie darueber ist die groessere und uebermalte sonst das Loch)
+                        ref = max(lochIds, key=lambda f: fl_area[f]) if lochIds else max(fids, key=lambda f: fl_area[f])
+                        mg = fl_id == ref
                         gmin = m.triangles.reshape(-1, 3)[np.repeat(mg, 3)].min(axis=0) - 0.002
                         gmax = m.triangles.reshape(-1, 3)[np.repeat(mg, 3)].max(axis=0) + 0.002
                         for fid in fids:
-                            if fid == gross: continue
+                            if fid == ref: continue
+                            if _mitLoch(fid): continue  # gelochte Flaechen nie verwerfen
                             mk2 = fl_id == fid
                             pts2 = m.triangles.reshape(-1, 3)[np.repeat(mk2, 3)]
                             innen = bool(np.all(pts2 >= gmin) and np.all(pts2 <= gmax))
                             if not innen: continue
-                            kopie = fl_area[fid] >= 0.99 * fl_area[gross]  # v61: exakte Doppel-Kopie (auch mit Loechern) = Z-Fighting
-                            lochlos = not (hatL is not None and fid < len(hatL) and hatL[fid])
-                            deckel = lochlos and fl_area[fid] <= 0.6 * fl_area[gross]
-                            if kopie or deckel:
+                            if fl_area[fid] <= 1.35 * fl_area[ref]:  # Deckel (klein) UND Zwilling/Uebermaler (~gleich/groesser)
                                 weg |= mk2
                                 _FLSTAT['deckel'] = _FLSTAT.get('deckel', 0) + 1
                     if weg.any():
@@ -1280,16 +1283,19 @@ def main():
         alt_art = d['art']
         m = d.get('masse') or []
         tiefe = m[1] if len(m) > 1 else 0
-        if 'stufe' in qt or 'step' in qt or 'tread' in qt:
-            d['art'] = 'gitterroststufe'  # v62: Modell-Text schlaegt ALLES (auch GratingClass)
-        elif 'graiting' in qt or 'grating' in qt or 'rost' in qt:
-            d['art'] = 'gitterrost'
-        elif 'grating' in typ_l or 'graiting' in typ_l:
-            # v62: grating-Klasse OHNE Text - Standard-Stufentiefen nur als Gegencheck (Pauls Regel)
-            if tiefe and any(abs(tiefe - st) <= 3 for st in (240, 270, 305)) and (m[0] if m else 0) <= 1700:
+        if 'grating' in typ_l or 'graiting' in typ_l:
+            # v64: NUR echte Grating-Objekte werden Rost/Stufe - die 311x70-Anschraub-
+            #   laschen (Plate) liefen sonst ueber ihren Attributtext als Stufen mit.
+            if 'stufe' in qt or 'step' in qt or 'tread' in qt:
                 d['art'] = 'gitterroststufe'
+            elif tiefe and any(abs(tiefe - st) <= 3 for st in (240, 270, 305)) and (m[0] if m else 0) <= 1700:
+                d['art'] = 'gitterroststufe'  # Standard-Tiefen nur als Gegencheck
             else:
                 d['art'] = 'gitterrost'
+        elif d['art'] in ('gitterrost', 'gitterroststufe') and ('stufe' in qt or 'rost' in qt or 'grating' in qt or 'graiting' in qt):
+            pass  # bereits korrekt klassifiziert (fruehere Wege) - nicht anfassen
+        if d.get('art') in ('blech', 'kantblech') and 'stufe' in ((d.get('bgname') or '')).lower():
+            d['gewicht'] = None  # v64: an Gitterroststufen angeschweisste Laschen = Teil des Zukaufteils, zaehlt nicht
         if d['art'] != alt_art:
             umsortiert += 1
     # ★ Stufenbreite = ZUKAUFMASS: Rostbreite + 2x 3-mm-Lasche - fuer JEDE Stufe genau einmal,
@@ -1326,7 +1332,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v63\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\n'
+            bf.write('konverter=v64\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
