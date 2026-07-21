@@ -808,7 +808,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
-    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []
+    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []
 
     def _fl_ab():
         nonlocal flLeer
@@ -819,6 +819,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 fl_ntris.append(len(t3))
                 fl_breitL.append(_FLSTAT.get('letzte_breite', 99.0) > 12.0)  # v56: >12mm = breite Ebene
                 fl_hatLoch.append(bool(loecher))  # v58: Deckel-Erkennung
+                fl_lochB.append([(np.asarray(lo, dtype=float).min(axis=0), np.asarray(lo, dtype=float).max(axis=0)) for lo in (loecher or [])])  # v65: Lochring-Boxen
             else: flLeer += 1
 
     def _teil_ab():
@@ -893,6 +894,46 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     if weg.any():
                         m.update_faces(~weg)
                         fl_id = fl_id[~weg]
+            except Exception:
+                pass
+            try:  # v65: Stanz-Deckel IN DER LOCHTIEFE - Umriss ~ Lochring => weg (Achse frei)
+                alleLB = []
+                for li in fl_lochB:
+                    for lmn, lmx in li:
+                        alleLB.append((lmn * skal, lmx * skal))
+                if alleLB and fl_id is not None and len(m.faces) == len(fl_id):
+                    A5 = m.area_faces
+                    tri5 = m.triangles.reshape(-1, 3)
+                    weg2 = np.zeros(len(m.faces), dtype=bool)
+                    for fid in np.unique(fl_id):
+                        if hatL is not None and fid < len(hatL) and hatL[fid]:
+                            continue
+                        mk5 = fl_id == fid
+                        if float(A5[mk5].sum()) > 0.02:
+                            continue
+                        p5 = tri5[np.repeat(mk5, 3)]
+                        fmin = p5.min(axis=0); fmax = p5.max(axis=0)
+                        fc = (fmin + fmax) / 2.0; fs = fmax - fmin
+                        for lmn, lmx in alleLB:
+                            lc = (lmn + lmx) / 2.0; ls = lmx - lmn
+                            ax = int(np.argmin(ls))
+                            tol = ls * 0.5 + fs * 0.5 + 0.002
+                            tol[ax] += 0.012
+                            if not np.all(np.abs(fc - lc) <= tol):
+                                continue
+                            gut = True
+                            for q in range(3):
+                                if q == ax:
+                                    continue
+                                if abs(float(fs[q] - ls[q])) > max(0.5 * float(ls[q]), 0.004):
+                                    gut = False; break
+                            if gut:
+                                weg2 |= mk5
+                                _FLSTAT['lochdeckel'] = _FLSTAT.get('lochdeckel', 0) + 1
+                                break
+                    if weg2.any():
+                        m.update_faces(~weg2)
+                        fl_id = fl_id[~weg2]
             except Exception:
                 pass
             m = _knick_normalen(m, fl_id=fl_id, fl_breit=fl_breit)
@@ -987,7 +1028,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     nT += 1
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
-                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []
+                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []
                 elif z[0] == 'L':
                     nL += 1
                     if len(probeZeilen) < 3: probeZeilen.append(z[:140])
@@ -1296,6 +1337,12 @@ def main():
             pass  # bereits korrekt klassifiziert (fruehere Wege) - nicht anfassen
         if d.get('art') in ('blech', 'kantblech') and 'stufe' in ((d.get('bgname') or '')).lower():
             d['gewicht'] = None  # v64: an Gitterroststufen angeschweisste Laschen = Teil des Zukaufteils, zaehlt nicht
+        _ns = ((d.get('material') or '') + ' ' + (d.get('layer') or '') + ' ' + (d.get('roh') or '')).lower()
+        if (d.get('art') == 'sonderteil'
+                or any(w in _ns for w in ('glas', 'thermostop', 'bws', 'werkstein', 'mineralit', 'trespa',
+                                          'gummi', 'plattenlager', 'abdeckleist', 'dachbelag'))
+                or (('alu' in _ns) and ('wann' in _ns or 'flach' in _ns))):
+            d['nichtstahl'] = 1  # v65: zaehlt NICHT in die Profile+Bleche-Summe (Pauls Liste; Kaertchen-Gewicht bleibt)
         if d['art'] != alt_art:
             umsortiert += 1
     # ★ Stufenbreite = ZUKAUFMASS: Rostbreite + 2x 3-mm-Lasche - fuer JEDE Stufe genau einmal,
@@ -1332,8 +1379,8 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v64\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\n'
-                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0)))
+            bf.write('konverter=v65\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+                     % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
     except Exception:

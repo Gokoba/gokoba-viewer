@@ -6007,7 +6007,7 @@ var GOKOBA_LAYER_ACI = {
       }
       function listeStart(){
         var T=Object.keys(GOKOBA_TEILE).map(function(k){return GOKOBA_TEILE[k];});
-        function summe(f){var g=0;T.forEach(function(d){if(f(d)&&d.gewicht!=null)g+=d.gewicht;});return g;}
+        function summe(f){var g=0;T.forEach(function(d){if(f(d)&&!d.nichtstahl&&d.gewicht!=null)g+=d.gewicht;});return g;}
         var gProfil=summe(function(d){return d.art==='profil'||d.art==='kantprofil';});
         var gBlech=summe(function(d){return d.art==='blech'||d.art==='kantblech';});
         var gAlles=gProfil+gBlech; /* ★ Gesamt = Profile + Bleche, exakt wie vereinbart */
