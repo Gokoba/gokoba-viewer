@@ -6260,31 +6260,50 @@ var GOKOBA_LAYER_ACI = {
           '.gkfv.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}'+
           '.gkico{opacity:.6;transition:opacity .15s ease,background .15s ease,box-shadow .15s ease;}'+
           '.gkico:hover{opacity:1;background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.22);}'+
-          '.gkico.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}';
+          '.gkico.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}'+
+          '.gksw{width:30px;height:16px;border-radius:9px;background:rgba(127,140,150,.32);position:relative;cursor:pointer;border:none;padding:0;transition:background .16s ease;}'+
+          '.gksw span{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .16s ease;box-shadow:0 1px 3px rgba(0,0,0,.25);}'+
+          '.gksw.on{background:'+AKZENT+';}'+
+          '.gksw.on span{left:16px;}';
         document.head.appendChild(stl);
         var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;'); w.id='gklinks'; /* v72 */
         w.style.cssText+='background:rgba(255,255,255,0.46);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;padding:8px 10px;box-shadow:0 6px 18px rgba(30,40,60,0.08);opacity:.96;'; /* v70: dezenter als die rechte Palette (Rangfolge) */
-        w.innerHTML='<div style="font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:0 2px 4px;">ANSICHTEN</div>';
-        var g=el('div','display:grid;grid-template-columns:1fr;gap:1px;');
-        var bs='';
+        /* v92: Pauls A13-Freigabe - Icon-Kacheln statt Textliste, Trennlinie, Achsen-Kippschalter */
+        function gkIkon(nm){
+          var W='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">';
+          var hx='<path d="M12 3 20 7.5 20 16.5 12 21 4 16.5 4 7.5Z"/><path d="M4 7.5 12 12 20 7.5M12 12 12 21"/>';
+          var f={'Oben':'<path d="M4 7.5 12 3 20 7.5 12 12Z" fill="currentColor" opacity=".4" stroke="none"/>',
+                 'Unten':'<path d="M4 16.5 12 12 20 16.5 12 21Z" fill="currentColor" opacity=".4" stroke="none"/>',
+                 'Links':'<path d="M4 7.5 12 12 12 21 4 16.5Z" fill="currentColor" opacity=".4" stroke="none"/>',
+                 'Rechts':'<path d="M20 7.5 12 12 12 21 20 16.5Z" fill="currentColor" opacity=".4" stroke="none"/>'};
+          if(nm==='Vorne')return W+'<rect x="5.5" y="5.5" width="13" height="13" rx="1.5" fill="currentColor" opacity=".4"/><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/></svg>';
+          if(nm==='Hinten')return W+'<rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/><path d="M9 9h6v6H9Z" opacity=".45"/></svg>';
+          if(nm==='Auge')return W+'<path d="M2.5 12C5 7.5 8.3 5.5 12 5.5s7 2 9.5 6.5C19 16.5 15.7 18.5 12 18.5s-7-2-9.5-6.5Z"/><circle cx="12" cy="12" r="2.6" fill="currentColor" opacity=".4"/></svg>';
+          return W+(f[nm]||'')+hx+'</svg>';
+        }
+        w.innerHTML='';
+        var g=el('div','display:grid;grid-template-columns:repeat(3,1fr);gap:2px;');
+        var bs='display:flex;align-items:center;justify-content:center;padding:5px 0;';
         [['Vorne',  0,0, 1, 0,1,0],
          ['Hinten', 0,0,-1, 0,1,0],
          ['Links', -1,0,0,  0,1,0],
          ['Rechts', 1,0,0,  0,1,0],
          ['Oben',   0,1,0,  0,0,-1],
          ['Unten',  0,-1,0, 0,0,1]].forEach(function(k){
-          var b=el('button',bs,k[0]); b.className='gkfv';
+          var b=el('button',bs); b.className='gkfv'; b.innerHTML=gkIkon(k[0]); b.title=k[0];
           b.addEventListener('click',function(){ gkAnsicht(k[1],k[2],k[3],k[4],k[5],k[6]); });
           g.appendChild(b);
         });
         w.appendChild(g);
-        var az=el('button','','Alles zeigen'); az.className='gkfv'; az.style.marginTop='6px'; az.style.opacity='.4';
+        var az=el('button',bs+'width:100%;margin-top:2px;'); az.className='gkfv'; az.innerHTML=gkIkon('Auge'); az.title='Alles zeigen'; az.style.opacity='.4';
         az.addEventListener('click',function(){
           model.traverse(function(o){ if(o.isMesh||o.isLineSegments)o.visible=true; });
         });
         w.appendChild(az);
-        var at=el('div','font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:8px 2px 4px;','ACHSEN');
-        var ab=el('button','','Ein / Aus'); ab.className='gkfv';
+        var at=el('div','height:1px;background:rgba(127,140,150,.25);margin:7px 2px 6px;');
+        var ar=el('div','display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 3px 1px;');
+        ar.innerHTML='<span style="font:500 11px var(--ui,sans-serif);color:var(--gktx2);">Achsen</span>';
+        var ab=el('button','<span></span>'.replace('x','x')); ab.className='gksw'; ab.innerHTML='<span></span>'; ab.title='Achsen ein/aus';
         var hatA=!!(GOKOBA_ACHSEN&&GOKOBA_ACHSEN.length);
         if(!hatA){ab.style.opacity='.25';ab.style.cursor='default';ab.title='Keine Achsen im Modell';}
         ab.addEventListener('click',function(){
@@ -6314,7 +6333,7 @@ var GOKOBA_LAYER_ACI = {
           } else { window.gkAchsG.visible=!window.gkAchsG.visible; }
           ab.classList.toggle('on',!!(window.gkAchsG&&window.gkAchsG.visible));
         });
-        w.appendChild(at); w.appendChild(ab);
+        ar.appendChild(ab); w.appendChild(at); w.appendChild(ar); /* v92 */
         panel.appendChild(w);
       })();
 
