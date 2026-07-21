@@ -5242,6 +5242,7 @@ var GOKOBA_LAYER_ACI = {
           ' vec4 gkT;\n'+
           ' if(uGkOben>0.5){ /* nur Draufsicht: Stirn- und Seitenflaechen bleiben in der Grundfarbe */\n'+
           '   vec3 gkFn=normalize(cross(dFdx(vGkPos),dFdy(vGkPos)));\n'+
+          '   if(!gl_FrontFacing)gkFn=-gkFn; /* v70: geometrische Richtung, betrachterunabhaengig - Unterseiten ohne Textur, kein Flimmern */\n'+
           '   float gkOb=smoothstep(0.6,0.8,gkFn.y);\n'+
           '   gkT=mix(vec4(1.0),texture2D(map,gkP.zx),gkOb);\n'+
           ' } else {\n'+
@@ -5367,6 +5368,7 @@ var GOKOBA_LAYER_ACI = {
     else{var l=new THREE.Color(spec).convertSRGBToLinear();arr.forEach(function(m){m.color.copy(l);m.metalness=0.18;m.roughness=0.30;m.envMap=gokobaEnv;m.envMapIntensity=0.35;m.map=null;m.userData._display=m.color.getHex();m.needsUpdate=true;});}}
   /* ★ Modell laden */
   /* ★ Bauteildaten (nur IFC-Pipeline): Knotenname E<id> -> Position/Profil/Laenge/Gewicht */
+  var GOKOBA_ACHSEN=null; try{GOKOBA_ACHSEN=JSON.parse('__ACHSEN__');}catch(e){GOKOBA_ACHSEN=null;} /* v70 */
   var GOKOBA_TEILE=null;
   if(typeof GOKOBA_TEILE_B64==='string' && GOKOBA_TEILE_B64.indexOf('__')<0){
     try{GOKOBA_TEILE=JSON.parse(decodeURIComponent(escape(atob(GOKOBA_TEILE_B64))));}catch(e){GOKOBA_TEILE=null;}
@@ -5402,7 +5404,7 @@ var GOKOBA_LAYER_ACI = {
                 var d=GOKOBA_TEILE[o.name]; if(!d)return;
                 if((''+(d.layer||'')).toLowerCase().indexOf('mmung')<0)return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
-                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;kk.depthWrite=false;klone[m0.uuid]=kk;}
+                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;kk.depthWrite=true;klone[m0.uuid]=kk;} /* v69: depthWrite AN = stabile Selbstverdeckung, kein Flackern */
                 o.material=klone[m0.uuid];
               });
             }catch(e){}},500);}
@@ -5597,7 +5599,7 @@ var GOKOBA_LAYER_ACI = {
           zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);
           zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);} /* v59: Rost schlank - Pos, Attribut 1, Mass, Attribute, Baugruppe */
-        else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Hersteller / DIN',d.din);zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
+        else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Norm',d.din); /* v72 */zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Bezeichnung',d.name);zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
         if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)zeile('Beschichtung',d.beschichtung); /* v50: NUR Alu-Wannen (Pauls Vorgabe) */
@@ -5611,7 +5613,7 @@ var GOKOBA_LAYER_ACI = {
           atl.forEach(function(w,i){ if(w&&!(i===0&&(a1Kopf||(d.bgname&&String(d.bgname).trim()===String(w).trim()))))zeile('Benutzerattribut '+(i+1),w); }); /* v60: Attribut 1 nie doppelt zur Baugruppen-Zeile */
         }
         /* \u2605 Baugruppe: genau EINE Zeile, nie doppelt - Schrauben und Anker haben keine */
-        if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'&&!_plw){ /* v59: Platten-Werkstoffe ohne Baugruppen-Zeile (Pauls Vorgabe) */
+        if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'&&art!=='sonderteil'&&!_plw){ /* v72: Sonderteile ohne Baugruppe */ /* v59: Platten-Werkstoffe ohne Baugruppen-Zeile (Pauls Vorgabe) */
           var bgN=d.bgname||null; /* v48: Attribut 1 laeuft jetzt als Benutzerattribut-Zeile, nicht mehr als Baugruppen-Ersatz */
           if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
           if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
@@ -5625,7 +5627,9 @@ var GOKOBA_LAYER_ACI = {
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
-      window.addEventListener('keydown',function(e){if(e.key==='Escape')abwaehlen();}); /* v59: ESC waehlt ab (Pauls Wunsch) */
+      window.addEventListener('keydown',function(e){if(e.key!=='Escape')return;
+        try{ if(typeof aktiv!=='undefined'&&aktiv){schalte(null);return;} }catch(_e){} /* v73: ESC schliesst zuerst das offene Werkzeug */
+        abwaehlen();}); /* v59: ESC waehlt ab (Pauls Wunsch) */
       function heben(o,farbe,staerke){
         var urm=(Array.isArray(o.material)?o.material[0]:o.material);
         var hi=urm.clone();
@@ -5637,10 +5641,15 @@ var GOKOBA_LAYER_ACI = {
         if(gewaehlt)gewaehlt.material=gewMat;
         gewaehlt=o;gewMat=o.material;o.material=heben(o);
         var z=zeilenVon(d);
-        karte.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+
-          '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);">'+kopfVon(d)+'</strong>'+
-          '<span data-zu style="cursor:pointer;color:var(--gktx2);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span></div>'+
-          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;white-space:nowrap;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;' /* v61: einzeilig */+(p[0]==='Baugruppe'?'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
+        var kko=kopfVon(d); /* v72: Pos links, Bezeichnung RECHTSBUENDIG (fluchtend mit den Werten), x ganz in die Ecke */
+        var _ly72=((d.layer||'')+'').toLowerCase();
+        if(_ly72.indexOf('beton')>=0||_ly72.indexOf('mauerwerk')>=0||_ly72.indexOf('mmung')>=0||_ly72.indexOf('bestand')>=0){z=[];kko='Bestand - bauseits';} /* v72: Pauls Vorgabe */
+        var kki=kko.indexOf(' \u00b7 '),kkl=kki>=0?kko.slice(0,kki):'',kkr=kki>=0?kko.slice(kki+3):kko;
+        karte.innerHTML='<span data-zu style="position:absolute;top:6px;right:7px;cursor:pointer;color:var(--gktx2);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span>'+
+          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding-right:16px;">'+
+          '<span style="font:700 14px/1.35 var(--ui);color:var(--gktx);white-space:nowrap;">'+kkl+'</span>'+
+          '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);text-align:right;">'+kkr+'</strong></div>'+
+          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;white-space:nowrap;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;'+(p[0]==='Bezeichnung'?'white-space:normal;text-wrap:balance;max-width:320px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;':'')+(p[0]==='Baugruppe'? /* v73: Bezeichnung bis 3 ausgewogene Zeilen */'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
@@ -5732,7 +5741,7 @@ var GOKOBA_LAYER_ACI = {
                bg:'Bauteil antippen - die ganze Schwei\u00dfbaugruppe leuchtet.',
                mass:'Punkte antippen - Eckpunkte werden gefangen.',
                schnitt:'Achse w\u00e4hlen, dann die Scheibe greifen und durchs Modell ziehen.'};
-      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Notizen',foto:'Foto',liste:'Auswertung',bg:'Baugruppe',mass:'Messen',schnitt:'Schnitt'};
+      var NAME={summe:'Gewicht sammeln',farbe:'Farbe',iso:'Ein- / Ausblenden',notiz:'Kommentar' /* v72 */,foto:'Foto',liste:'Auswertung',bg:'Baugruppe',mass:'Messen',schnitt:'Schnitt'};
       var palette=el('div','position:absolute;z-index:8;display:flex;flex-direction:column;gap:5px;padding:6px 5px;align-items:center;user-select:none;');
       palette.id='gkpalette'; panel.appendChild(palette);
       /* ★ Mobil: Palette startet eingeklappt; ein Griffstrich am rechten Rand zeigt das Menue.
@@ -6028,7 +6037,7 @@ var GOKOBA_LAYER_ACI = {
         function qmFmt(x){return x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' m\u00b2';}
         function wsKey(d){var s=((d.material||'')+' '+(d.layer||'')).toLowerCase();
           if(s.indexOf('mineralit')>=0)return 'Mineralit'+(d.dicke?' t='+d.dicke+' mm':'');
-          if(s.indexOf('glas')>=0)return 'Glas';
+          if(s.indexOf('glas')>=0)return 'Glasscheiben'; /* v71: Pauls Benennung */
           if(s.indexOf('bws')>=0||s.indexOf('werkstein')>=0)return 'Betonwerkstein';
           return null;}
         var werk={};T.forEach(function(d){var wk=wsKey(d);if(!wk)return;var w=werk[wk]=werk[wk]||{n:0,qm:0,kg:0};
@@ -6040,23 +6049,22 @@ var GOKOBA_LAYER_ACI = {
         var kopf=flyKopf('liste');
         var zeilen='';
         function kz(k,v){zeilen+='<div style="display:flex;justify-content:space-between;gap:14px;padding:2.5px 0;"><span style="color:var(--gktx2);">'+k+'</span><strong style="white-space:nowrap;">'+v+'</strong></div>';}
-        zeilen+='<div style="color:var(--gktx2);padding:2px 0 2px;font-weight:600;">Gewichte</div>';
+        function kb(tt){zeilen+='<div style="margin:8px -4px 5px;padding:3.5px 9px;border-radius:7px;background:rgba(96,114,132,0.13);font:600 12.5px var(--ui);color:var(--gktx);letter-spacing:.02em;">'+tt+'</div>';} /* v71: Kopfband klar abgesetzt */
+        kb('Gewichte');
         kz('Profile',kgFmt2(gProfil));
         kz('Bleche',kgFmt2(gBlech));
         kz('Gesamt (Profile + Bleche)',kgFmt2(gAlles));
-        if(nRost>0){
-          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;font-weight:600;">Gitterroste</div>';
-          kz('St\u00fcckzahl',nRost+' St\u00fcck');
-          kz('Fl\u00e4che (netto, Ausschnitte abgezogen)',qmFmt(qmRost));
-        }
+        var mengenKopf=false;
+        function mk8(){if(!mengenKopf){mengenKopf=true;kb('Bauteile & Werkstoffe');}}
+        if(nRost>0){mk8();kz('Gitterroste ('+nRost+' St.)',qmFmt(qmRost)+' netto');} /* v71: einzeilig */
         var stKeys=Object.keys(stufen).sort(function(a,b){return stufen[b]-stufen[a];});
         if(stKeys.length){
-          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;font-weight:600;">Gitterroststufen</div>';
-          stKeys.forEach(function(k){kz('&nbsp;&nbsp;'+k+' mm',stufen[k]+' St\u00fcck');});
+          mk8();
+          stKeys.forEach(function(k){kz('Gitterroststufen '+k+' mm',stufen[k]+' St\u00fcck');}); /* v71: einzeilig, voller Name */
         }
         var wsK=Object.keys(werk).sort();
         if(wsK.length){
-          zeilen+='<div style="color:var(--gktx2);padding:7px 0 2px;font-weight:600;">Werkstoffe</div>';
+          mk8();
           wsK.forEach(function(k){var w=werk[k];kz(k+' ('+w.n+' St.)',qmFmt(w.qm)+' \u00b7 '+kgFmt2(w.kg));});
         }
         listePanel.innerHTML=kopf+
@@ -6151,7 +6159,9 @@ var GOKOBA_LAYER_ACI = {
         var box=null,sv=null;
         window.gkAchsBild=function(an){
           if(an&&!box){
-            box=el('div','position:absolute;left:14px;bottom:40px;z-index:9;pointer-events:none;opacity:.75;');
+            box=el('div','position:absolute;left:12px;z-index:6;pointer-events:none;opacity:.7;');
+            var lw72=document.getElementById('gklinks'); /* v72: direkt unter dem linken Menue statt verloren in der Ecke */
+            if(lw72){box.style.top=(lw72.offsetTop+lw72.offsetHeight+6)+'px';}else{box.style.bottom='40px';}
             box.innerHTML='<svg width="200" height="200" viewBox="-100 -100 200 200" style="overflow:visible;">'+
               '<line data-a="x" stroke="currentColor" stroke-width="1.6"/><path data-p="x" stroke="currentColor" stroke-width="1.6" fill="none"/><text data-tx="x" font-size="13" fill="currentColor"></text>'+
               '<line data-a="y" stroke="currentColor" stroke-width="1.6"/><path data-p="y" stroke="currentColor" stroke-width="1.6" fill="none"/><text data-tx="y" font-size="13" fill="currentColor"></text>'+
@@ -6240,9 +6250,9 @@ var GOKOBA_LAYER_ACI = {
           '.gkico:hover{opacity:1;background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.22);}'+
           '.gkico.on{opacity:1;color:'+AKZENT+';background:'+GLAS+';box-shadow:inset 0 0 0 1px rgba(127,140,150,.28);}';
         document.head.appendChild(stl);
-        var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;');
-        w.style.cssText+='background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.55);border-radius:14px;padding:9px 12px;box-shadow:0 8px 24px rgba(30,40,60,0.10);'; /* v68: Glas-Optik wie die rechte Palette */
-        w.innerHTML='<div style="font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:0 2px 4px;">SCHNELLANSICHTEN</div>';
+        var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;'); w.id='gklinks'; /* v72 */
+        w.style.cssText+='background:rgba(255,255,255,0.46);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;padding:8px 10px;box-shadow:0 6px 18px rgba(30,40,60,0.08);opacity:.96;'; /* v70: dezenter als die rechte Palette (Rangfolge) */
+        w.innerHTML='<div style="font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:0 2px 4px;">ANSICHTEN</div>';
         var g=el('div','display:grid;grid-template-columns:1fr;gap:1px;');
         var bs='';
         [['Vorne',  0,0, 1, 0,1,0],
@@ -6260,7 +6270,40 @@ var GOKOBA_LAYER_ACI = {
         az.addEventListener('click',function(){
           model.traverse(function(o){ if(o.isMesh||o.isLineSegments)o.visible=true; });
         });
-        w.appendChild(az); panel.appendChild(w);
+        w.appendChild(az);
+        var at=el('div','font:600 9.5px var(--ui,sans-serif);letter-spacing:.14em;color:var(--gktx2);opacity:.45;margin:8px 2px 4px;','ACHSEN');
+        var ab=el('button','','Ein / Aus'); ab.className='gkfv';
+        var hatA=!!(GOKOBA_ACHSEN&&GOKOBA_ACHSEN.length);
+        if(!hatA){ab.style.opacity='.25';ab.style.cursor='default';ab.title='Keine Achsen im Modell';}
+        ab.addEventListener('click',function(){
+          if(!hatA)return;
+          if(!window.gkAchsG){
+            try{ /* v70: flach auf dem Boden, Strichlinie + Kreis + Beschriftung am Achsanfang */
+              var G=new THREE.Group(); G.name='gkAchsen';
+              var by=new THREE.Box3().setFromObject(model).min.y+0.02;
+              var lm=new THREE.LineDashedMaterial({color:0x7d8590,dashSize:0.55,gapSize:0.22,transparent:true,opacity:0.95});
+              GOKOBA_ACHSEN.forEach(function(a){
+                var p=a.p||[]; if(p.length<6)return;
+                var p1=new THREE.Vector3(p[0]*0.001,by,-p[1]*0.001), p2=new THREE.Vector3(p[3]*0.001,by,-p[4]*0.001);
+                if(p1.distanceTo(p2)<0.01)return;
+                var li=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1,p2]),lm); li.computeLineDistances(); G.add(li);
+                var dir=p2.clone().sub(p1).normalize(), r=0.32, cz=p1.clone().addScaledVector(dir,-r*1.15);
+                var seg=[]; for(var i=0;i<=32;i++){var wk=i/32*Math.PI*2; seg.push(new THREE.Vector3(cz.x+Math.cos(wk)*r,by,cz.z+Math.sin(wk)*r));}
+                G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seg),new THREE.LineBasicMaterial({color:0x7d8590})));
+                if(a.l){
+                  var cv=document.createElement('canvas');cv.width=cv.height=128;var g2=cv.getContext('2d');
+                  g2.fillStyle='#5a626d';g2.font='700 62px sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText((''+a.l).slice(0,4),64,66);
+                  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true}));
+                  sp.scale.set(0.5,0.5,1); sp.position.set(cz.x,by+0.01,cz.z); G.add(sp);
+                }
+              });
+              scene.add(G); window.gkAchsG=G;
+            }catch(e){}
+          } else { window.gkAchsG.visible=!window.gkAchsG.visible; }
+          ab.classList.toggle('on',!!(window.gkAchsG&&window.gkAchsG.visible));
+        });
+        w.appendChild(at); w.appendChild(ab);
+        panel.appendChild(w);
       })();
 
       /* ── Schnitt: Scheibe je Achse, frei durchs Modell ziehbar (GPU-Clipping) ── */

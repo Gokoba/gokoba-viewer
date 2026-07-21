@@ -19,7 +19,10 @@ import trimesh
 
 # ★ Farbtabelle: AS-Layername → RGB. AS schreibt Umlaute als '?' in die IFC,
 #   deshalb stehen die Namen hier genauso. Bei Bedarf anpassen/ergaenzen.
+import time as _t74
+_T0 = _t74.time()
 KONFIG = {}
+ACHSEN_ROH = []  # v70: Raster-Achsen aus direkt.json
 
 def saniere_profil(p):
     if p and ('Autodesk' in str(p) or 'ProfileType' in str(p)): return None
@@ -765,6 +768,8 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     info = meta.get('teile', {}) or {}
     try:
         KONFIG.update({k: v for k, v in (meta.get('konfig') or {}).items() if v})
+        if meta.get('achsen'):
+            ACHSEN_ROH[:] = meta.get('achsen')  # v70
         if KONFIG: print('* Dialog-Konfig uebernommen: %s' % ', '.join(sorted(KONFIG)))
     except Exception:
         pass
@@ -891,6 +896,12 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                             if fl_area[fid] <= 1.35 * fl_area[ref]:  # Deckel (klein) UND Zwilling/Uebermaler (~gleich/groesser)
                                 weg |= mk2
                                 _FLSTAT['deckel'] = _FLSTAT.get('deckel', 0) + 1
+                                if len(_FLSTAT.setdefault('deckelkill_probe', [])) < 6:  # v73: Beweis (fehlende Flansche jagen)
+                                    _p2 = pts2
+                                    _FLSTAT['deckelkill_probe'].append('%.2fm2|%.0f,%.0f,%.0f' % (
+                                        fl_area[fid], (_p2.min(axis=0)[0] + _p2.max(axis=0)[0]) * 500,
+                                        (_p2.min(axis=0)[1] + _p2.max(axis=0)[1]) * 500,
+                                        (_p2.min(axis=0)[2] + _p2.max(axis=0)[2]) * 500))
                     if weg.any():
                         m.update_faces(~weg)
                         fl_id = fl_id[~weg]
@@ -916,6 +927,9 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         for lmn, lmx in alleLB:
                             lc = (lmn + lmx) / 2.0; ls = lmx - lmn
                             ax = int(np.argmin(ls))
+                            if float(fs[ax]) > 0.003:
+                                continue  # v69: Deckel sind FLACH - dicke Kandidaten (Lochwand-Segmente,
+                                          #   Stegdicke!) werden nie gekillt (Pauls voller-Ring-Befund)
                             tol = ls * 0.5 + fs * 0.5 + 0.002
                             tol[ax] += 0.012
                             if not np.all(np.abs(fc - lc) <= tol):
@@ -929,6 +943,9 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                             if gut:
                                 weg2 |= mk5
                                 _FLSTAT['lochdeckel'] = _FLSTAT.get('lochdeckel', 0) + 1
+                                if len(_FLSTAT.setdefault('lochdeckel_probe', [])) < 6:  # v69: Beweis im bericht
+                                    _FLSTAT['lochdeckel_probe'].append('%.0f,%.0f,%.0f|%.1f,%.1f,%.1f' % (
+                                        fc[0] * 1000, fc[1] * 1000, fc[2] * 1000, fs[0] * 1000, fs[1] * 1000, fs[2] * 1000))
                                 break
                     if weg2.any():
                         m.update_faces(~weg2)
@@ -1097,6 +1114,8 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
     info = meta.get('teile', {}) or {}
     try:
         KONFIG.update({k: v for k, v in (meta.get('konfig') or {}).items() if v})
+        if meta.get('achsen'):
+            ACHSEN_ROH[:] = meta.get('achsen')  # v70
         if KONFIG: print('* Dialog-Konfig uebernommen: %s' % ', '.join(sorted(KONFIG)))
     except Exception:
         pass
@@ -1333,6 +1352,8 @@ def main():
             d['art'] = 'blech' if 'plate' in typ8 else ('profil' if 'beam' in typ8 else d['art'])
         if d.get('art') in ('blech', 'kantblech') and 'stufe' in ((d.get('bgname') or '')).lower():
             d['gewicht'] = None  # an Gitterroststufen angeschweisste Laschen = Teil des Zukaufteils
+        if d.get('art') in ('gitterrost', 'gitterroststufe'):
+            d['gewicht'] = None  # v74: Roste/Stufen NIE mit Gewicht (Pauls Vorgabe - nirgendwo im Viewer)
         _ns = ((d.get('material') or '') + ' ' + (d.get('layer') or '') + ' ' + (d.get('roh') or '')).lower()
         if (d.get('art') == 'sonderteil'
                 or any(w in _ns for w in ('glas', 'thermostop', 'bws', 'werkstein', 'mineralit', 'trespa',
@@ -1404,6 +1425,8 @@ def main():
     html = html.replace('__TEILE_B64__', t64)
     html = html.replace('__PROJ_NAME__', args.model_name)
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
+    import json as _j70
+    html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
     html = html.replace('__DEF_STAHL__', KONFIG.get('stahl') or '__DEF_STAHL__')
     html = html.replace('__DEF_GEL__', KONFIG.get('gelaender') or '__DEF_GEL__')
     html = html.replace('__GITTER_TEX__', KONFIG.get('gitter') or '__GITTER_TEX__')
@@ -1415,10 +1438,13 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v68\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v74\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
+            bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
+            bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
+            bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
               % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar']))
     except Exception:
