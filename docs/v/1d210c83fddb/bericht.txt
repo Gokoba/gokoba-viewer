@@ -1,0 +1,15 @@
+konverter=v66
+knick=breitenregel-26-8
+flaechen_gesamt=72660
+flaechen_leer=0
+flaechen_unplanar_1mm=0
+doppelflaechen=3411
+teile_dicht=0
+koplanar_flaechen=10216
+deckel_verworfen=677
+lochdeckel=147
+gew_profil_stahl=0.00
+gew_profil_gelaender=0.00
+gew_blech_stahl=0.00
+gew_blech_gelaender=0.00
+gew_nichtstahl_ausgeschlossen=0.00
