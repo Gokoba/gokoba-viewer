@@ -1309,6 +1309,19 @@ def main():
               % (len(namen_pos), len(namen_ort), len(namen_bg)))
     if direkt_glb is not None:
         glb, teile = direkt_glb
+        try:  # v78: BG-Namen NUR aus HAUPTTEILEN (eigene Pos == BG-Nr) - die Namensliste
+            #   kreuzte Teil-Positionsnummern mit Baugruppen-Nummern (Pauls 'Riegel'-Beweis:
+            #   Hauptteil der BG 2 traegt 'Stuetze', ein TEIL mit Pos 2 traegt 'Riegel')
+            _bg78 = {}
+            for _d in teile.values():
+                if isinstance(_d, dict) and _d.get('bgnr') and _d.get('ref') and str(_d['bgnr']) == str(_d['ref']):
+                    _a78 = (_d.get('attrs') or [None])[0]
+                    if _a78:
+                        _bg78[str(_d['bgnr'])] = str(_a78)
+            if _bg78:
+                namen_bg = _bg78
+        except Exception:
+            pass
     else:
         glb, teile = wandle(ifc, em, args.ohne_schrauben, args.ohne_beton)
     # ── Namensliste verheiraten: erst Position, dann Schwerpunkt (Sonderteile) ──
@@ -1438,7 +1451,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v74\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v78\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))

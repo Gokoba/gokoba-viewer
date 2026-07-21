@@ -5034,7 +5034,7 @@ var GOKOBA_LAYER_ACI = {
   var cv=document.getElementById('cv');
   var panel=document.getElementById('vpanel');
   var loadingEl=document.getElementById('loading');
-  var renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  var renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,logarithmicDepthBuffer:true}); /* v75: Tiefenpuffer-Praezision - anliegende Teile (Laschen an Stufen, Rost-Deck) flimmern nicht mehr */
   renderer.setPixelRatio(Math.min((window.devicePixelRatio||1)*1.5,2.5));
   renderer.setClearColor(0x000000,0);
   renderer.outputEncoding=THREE.sRGBEncoding;
@@ -5616,14 +5616,14 @@ var GOKOBA_LAYER_ACI = {
         if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'&&art!=='sonderteil'&&!_plw){ /* v72: Sonderteile ohne Baugruppe */ /* v59: Platten-Werkstoffe ohne Baugruppen-Zeile (Pauls Vorgabe) */
           var bgN=d.bgname||null; /* v48: Attribut 1 laeuft jetzt als Benutzerattribut-Zeile, nicht mehr als Baugruppen-Ersatz */
           if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
-          if(d.bgnr)zeile('Baugruppe',bgN?(d.bgnr+' \u00b7 '+bgN):d.bgnr);
+          if(d.bgnr)zeile('Baugruppe',bgN?('BG '+d.bgnr+' \u00b7 '+bgN):('BG '+d.bgnr)); /* v77: Pauls Format */
           else if(bgN)zeile('Baugruppe',bgN);
         }
         return z;
       }
 
       /* ── Info-Kaertchen ── */
-      var karte=el('div',glasBox('display:none;max-width:620px;padding:13px 15px;z-index:30;'));
+      var karte=el('div',glasBox('display:none;max-width:648px;padding:13px 32px 13px 15px;z-index:30;'));
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
       function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
@@ -5646,7 +5646,7 @@ var GOKOBA_LAYER_ACI = {
         if(_ly72.indexOf('beton')>=0||_ly72.indexOf('mauerwerk')>=0||_ly72.indexOf('mmung')>=0||_ly72.indexOf('bestand')>=0){z=[];kko='Bestand - bauseits';} /* v72: Pauls Vorgabe */
         var kki=kko.indexOf(' \u00b7 '),kkl=kki>=0?kko.slice(0,kki):'',kkr=kki>=0?kko.slice(kki+3):kko;
         karte.innerHTML='<span data-zu style="position:absolute;top:6px;right:7px;cursor:pointer;color:var(--gktx2);font-size:16px;line-height:1;padding:2px 4px;">\u00d7</span>'+
-          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding-right:16px;">'+
+          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+ /* v76: Kopf endet buendig mit der Wertespalte, x wohnt im Randstreifen */
           '<span style="font:700 14px/1.35 var(--ui);color:var(--gktx);white-space:nowrap;">'+kkl+'</span>'+
           '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);text-align:right;">'+kkr+'</strong></div>'+
           z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;white-space:nowrap;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;'+(p[0]==='Bezeichnung'?'white-space:normal;text-wrap:balance;max-width:320px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;':'')+(p[0]==='Baugruppe'? /* v73: Bezeichnung bis 3 ausgewogene Zeilen */'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
@@ -6335,8 +6335,37 @@ var GOKOBA_LAYER_ACI = {
         model.traverse(function(o){ if(o.isMesh&&o.geometry&&!o.userData._capKind&&!o.userData._kanten){
           var mm=Array.isArray(o.material)?o.material[0]:o.material; if(!mm)return;
           (gruppen[mm.uuid]=gruppen[mm.uuid]||{mat:mm,meshes:[]}).meshes.push(o); } });
+        var gr76=schnittBox.getSize(new THREE.Vector3()).length()*0.78, gi76=0;
         Object.keys(gruppen).forEach(function(u){
           var G=gruppen[u];
+          var nm76=((G.mat.name||'')+'').toLowerCase();
+          var massiv=false; /* v76: massive Bestandsteile bekommen einen ECHTEN Deckel - kein Durchgucken */
+          try{ massiv=(G.mat.userData&&(G.mat.userData._display===GOKOBA_BESTAND||G.mat.userData._display===GOKOBA_DAEMMUNG))
+            ||nm76.indexOf('bws')>=0||nm76.indexOf('werkstein')>=0||nm76.indexOf('beton')>=0||nm76.indexOf('mauerwerk')>=0||nm76.indexOf('bestand')>=0||nm76.indexOf('mmung')>=0; }catch(e){}
+          if(massiv){
+            var basis=10+gi76*2; gi76++;
+            var mb=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
+              stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.BackSide,
+              stencilFail:THREE.IncrementWrapStencilOp,stencilZFail:THREE.IncrementWrapStencilOp,stencilZPass:THREE.IncrementWrapStencilOp});
+            var mf=new THREE.MeshBasicMaterial({depthWrite:false,depthTest:false,colorWrite:false,
+              stencilWrite:true,stencilFunc:THREE.AlwaysStencilFunc,clippingPlanes:[schnittEbene],side:THREE.FrontSide,
+              stencilFail:THREE.DecrementWrapStencilOp,stencilZFail:THREE.DecrementWrapStencilOp,stencilZPass:THREE.DecrementWrapStencilOp});
+            schnittCapMats.push(mb,mf);
+            G.meshes.forEach(function(o){
+              [mb,mf].forEach(function(mm2){
+                var h=new THREE.Mesh(o.geometry,mm2);h.userData._capKind=1;h.renderOrder=basis;h.raycast=function(){};
+                o.add(h);
+              });
+            });
+            var dm=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,
+              stencilWrite:true,stencilRef:0,stencilFunc:THREE.NotEqualStencilFunc,
+              stencilFail:THREE.ZeroStencilOp,stencilZFail:THREE.ZeroStencilOp,stencilZPass:THREE.ZeroStencilOp,
+              polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+            var deckel=new THREE.Mesh(new THREE.PlaneGeometry(gr76,gr76),dm);
+            deckel.renderOrder=basis+1; deckel.userData._capMat=G.mat; deckel.raycast=function(){};
+            schnittCapMats.push(dm); schnittCapNetz.push(deckel); scene.add(deckel);
+            return;
+          }
           var im=new THREE.MeshBasicMaterial({side:THREE.BackSide,clippingPlanes:[schnittEbene],
             polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
           try{ im.color.copy(G.mat.color).multiplyScalar(0.72); }catch(e){}
@@ -6352,10 +6381,19 @@ var GOKOBA_LAYER_ACI = {
       }
       function schnittCapLege(){
         if(!schnittCapMats)return;
-        /* Farbe folgt dem Bauteil (auch nach RAL-Wechsel), leicht dunkler */
-        schnittCapMats.forEach(function(m){ try{ m.color.copy(m.userData._quellMat.color).multiplyScalar(0.72); }catch(e){} });
+        schnittCapMats.forEach(function(m){ try{ if(m.userData&&m.userData._quellMat)m.color.copy(m.userData._quellMat.color).multiplyScalar(0.72); }catch(e){} });
+        if(schnittCapNetz&&schnittCapNetz.length){ /* v76: Massiv-Deckel positionieren + faerben */
+          var n=schnittEbene.normal, mi=schnittBox.getCenter(new THREE.Vector3());
+          var ab=n.dot(mi)+schnittEbene.constant;
+          schnittCapNetz.forEach(function(d){
+            d.position.copy(mi).addScaledVector(n,-ab);
+            d.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),n);
+            try{ d.material.color.copy(d.userData._capMat.color).multiplyScalar(0.85); }catch(e){}
+          });
+        }
       }
       function schnittCapsWeg(){
+        if(schnittCapNetz){schnittCapNetz.forEach(function(d){scene.remove(d);});}
         schnittCapNetz=null;
         var weg=[];
         model.traverse(function(o){if(o.userData&&o.userData._capKind)weg.push(o);});
