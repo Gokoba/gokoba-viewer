@@ -878,7 +878,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 #   OEFFNUNGS-Loch einer ANDEREN Flaeche desselben Teils ist (parallel versetzte
                 #   Wandseiten!), ist der Deckel, der die Oeffnung verschliesst -> verwerfen.
                 _ly91 = str((info.get(kn, {}) or {}).get('layer') or '').lower()
-                _istDaemm91 = ('mmung' in _ly91) or ('daemm' in _ly91)
+                _istDaemm91 = any(w in _ly91 for w in ('mmung', 'daemm', 'mauerwerk', 'beton', 'bestand'))  # v93: Bestandswaende haben dieselben Fehl-Facetten (Pauls zue Fenster)
                 if _istDaemm91 and fl_id is not None and fl_outBB and any(fl_lochB):
                     _weg90 = np.zeros(len(fl_ntris), dtype=bool)
                     for _i90, (_omn, _omx) in enumerate(fl_outBB):
@@ -901,6 +901,24 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         if _tref:
                             _weg90[_i90] = True
                             _FLSTAT['tuerdeckel'] = _FLSTAT.get('tuerdeckel', 0) + 1
+                    # v92: DOPPEL-FACETTEN-Rasur (Pauls Boden 163% doppelt trianguliert = Flimmern):
+                    #   koplanare kleinere Flaeche, die vollstaendig IN einer groesseren Flaeche
+                    #   derselben Ebene desselben Daemm-Teils liegt, ist Doppel-Geometrie -> weg.
+                    for _i92, (_omn, _omx) in enumerate(fl_outBB):
+                        if _weg90[_i92]: continue
+                        _og = _omx - _omn
+                        _ax92 = int(np.argmin(_og))
+                        if _og[_ax92] > 2.0: continue  # nur ebene (achsparallele) Flaechen
+                        for _j92, (_jmn, _jmx) in enumerate(fl_outBB):
+                            if _j92 == _i92 or _weg90[_j92]: continue
+                            _jg = _jmx - _jmn
+                            if int(np.argmin(_jg)) != _ax92 or _jg[_ax92] > 2.0: continue
+                            if abs(float(_omn[_ax92] - _jmn[_ax92])) > 2.0: continue  # koplanar?
+                            if not (np.all(_omn >= _jmn - 5.0) and np.all(_omx <= _jmx + 5.0)): continue
+                            if float(np.prod(np.sort(_jg)[-2:])) <= 1.5 * float(np.prod(np.sort(_og)[-2:])): continue
+                            _weg90[_i92] = True
+                            _FLSTAT['doppel_facette'] = _FLSTAT.get('doppel_facette', 0) + 1
+                            break
                     if _weg90.any():
                         _mk90 = ~_weg90[fl_id]
                         m.update_faces(_mk90)
@@ -1519,12 +1537,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v91\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v93\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
