@@ -5417,7 +5417,7 @@ var GOKOBA_LAYER_ACI = {
                 if(_ly82.indexOf('mmung')<0)return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
-                  kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=2;kk.polygonOffsetUnits=4; /* v95: Endfassung -
+                  kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=0;kk.polygonOffsetUnits=1; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
                     Tiefe SCHREIBEN (Plattenstoesse und Selbstverdeckung deterministisch, kein Sortier-Flackern) +
                     kraeftiger Rueckversatz: an Beruehrflaechen gewinnt IMMER der Stahl (das fehlte v69) */
                   klone[m0.uuid]=kk;}
