@@ -5416,8 +5416,11 @@ var GOKOBA_LAYER_ACI = {
                 }
                 if(_ly82.indexOf('mmung')<0)return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
-                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;kk.depthWrite=true;klone[m0.uuid]=kk;} /* v69: depthWrite AN = stabile Selbstverdeckung, kein Flackern */
-                o.material=klone[m0.uuid];
+                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
+                  kk.depthWrite=false;kk.polygonOffset=true;kk.polygonOffsetFactor=1;kk.polygonOffsetUnits=2; /* v94: Paul meldet Flackern -
+                    depthWrite AUS nimmt die Daemmflaechen aus dem Tiefenkampf, renderOrder zeichnet sie nach dem Stahl */
+                  klone[m0.uuid]=kk;}
+                o.material=klone[m0.uuid];o.renderOrder=2;
               });
             }catch(e){}},500);}
             if(!reg&&!_aci)reg=gokobaSchema(m.color); /* ★ STEP-Pipeline unveraendert */
