@@ -901,6 +901,28 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         if _tref:
                             _weg90[_i90] = True
                             _FLSTAT['tuerdeckel'] = _FLSTAT.get('tuerdeckel', 0) + 1
+                    # v94: VOLLFLAECHEN-DUPLIKAT: der Export liefert Wandseiten MEHRFACH -
+                    #   einmal MIT Oeffnungs-Loechern, zusaetzlich als ungelochte Vollflaechen
+                    #   (Pauls Mauerwerkswand E4318: Fenster dadurch zu). Regel: ungelochte
+                    #   Flaeche, koplanar mit einer GELOCHTEN Flaeche aehnlicher Groesse
+                    #   desselben Teils -> Duplikat verwerfen, die gelochte gewinnt.
+                    for _i94, (_omn, _omx) in enumerate(fl_outBB):
+                        if _weg90[_i94] or (len(fl_hatLoch) > _i94 and fl_hatLoch[_i94]): continue
+                        _og = _omx - _omn
+                        _ax94 = int(np.argmin(_og))
+                        if _og[_ax94] > 2.0: continue
+                        for _j94, (_jmn, _jmx) in enumerate(fl_outBB):
+                            if _j94 == _i94 or _weg90[_j94]: continue
+                            if not (len(fl_hatLoch) > _j94 and fl_hatLoch[_j94]): continue
+                            _jg = _jmx - _jmn
+                            if int(np.argmin(_jg)) != _ax94 or _jg[_ax94] > 2.0: continue
+                            if abs(float(_omn[_ax94] - _jmn[_ax94])) > 2.0: continue
+                            _dz94 = np.abs((_omn + _omx) - (_jmn + _jmx)) / 2.0
+                            _dg94 = np.abs(_og - _jg)
+                            if (np.sort(_dz94)[:2] < 400.0).all() and (np.sort(_dg94)[:2] < 800.0).all():
+                                _weg90[_i94] = True
+                                _FLSTAT['voll_duplikat'] = _FLSTAT.get('voll_duplikat', 0) + 1
+                                break
                     # v92: DOPPEL-FACETTEN-Rasur (Pauls Boden 163% doppelt trianguliert = Flimmern):
                     #   koplanare kleinere Flaeche, die vollstaendig IN einer groesseren Flaeche
                     #   derselben Ebene desselben Daemm-Teils liegt, ist Doppel-Geometrie -> weg.
@@ -1148,7 +1170,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     nT += 1
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
-                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []
+                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []
                 elif z[0] == 'L':
                     nL += 1
                     if len(probeZeilen) < 3: probeZeilen.append(z[:140])
@@ -1537,12 +1559,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v93\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v94\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
