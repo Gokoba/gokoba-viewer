@@ -699,6 +699,22 @@ _FLSTAT = {'gesamt': 0, 'leer': 0, 'unplanar': 0}  # v55: misst Pauls 'Flaechen 
 def _flaeche_zerlegen(aussen, loecher):
     _FLSTAT['gesamt'] += 1
     _FLSTAT['letzte_breite'] = 99.0
+    try:  # v90: Loecher, die AUSSERHALB der Aussenkontur liegen, verwerfen -
+        #   Pauls Tuer-Modell: F1 der Daemmwand trug einen fremd zugeordneten
+        #   Innenring komplett neben der eigenen Flaeche -> earcut-Muell.
+        if loecher:
+            _amn = np.asarray(aussen, dtype=float).min(axis=0) - 0.010
+            _amx = np.asarray(aussen, dtype=float).max(axis=0) + 0.010
+            _lok = []
+            for _r in loecher:
+                _b = np.asarray(_r, dtype=float)
+                if len(_b) >= 3 and np.all(_b.min(axis=0) >= _amn) and np.all(_b.max(axis=0) <= _amx):
+                    _lok.append(_r)
+                else:
+                    _FLSTAT['loch_aussen'] = _FLSTAT.get('loch_aussen', 0) + 1
+            loecher = _lok
+    except Exception:
+        pass
     try:  # v89: Loch-Ausschnitte 2% zum Zentrum schrumpfen - schliesst die Phasen-Zwickel
         #   zwischen Ausschnittring (Stegflaeche) und Lochwand: die zwei getrennt erzeugten
         #   16-Ecke stehen verdreht, durch die Spalte war die Wand ringsum sichtbar
@@ -830,7 +846,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
-    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []
+    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []
 
     def _fl_ab():
         nonlocal flLeer
@@ -841,6 +857,8 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 fl_ntris.append(len(t3))
                 fl_breitL.append(_FLSTAT.get('letzte_breite', 99.0) > 12.0)  # v56: >12mm = breite Ebene
                 fl_hatLoch.append(bool(loecher))  # v58: Deckel-Erkennung
+                _ao90 = np.asarray(aussen, dtype=float)
+                fl_outBB.append((_ao90.min(axis=0), _ao90.max(axis=0)))  # v90: Tuer-Deckel-Paarung
                 fl_lochB.append([(np.asarray(lo, dtype=float).min(axis=0), np.asarray(lo, dtype=float).max(axis=0)) for lo in (loecher or [])])  # v65: Lochring-Boxen
             else: flLeer += 1
 
@@ -856,6 +874,34 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             m.merge_vertices()
             fl_id = np.repeat(np.arange(len(fl_ntris)), fl_ntris) if fl_ntris else None
             fl_breit = np.array(fl_breitL, dtype=bool) if fl_breitL else None
+            try:  # v90: TUER-DECKEL: eine Flaeche, deren Aussenkontur deckungsgleich mit einem
+                #   OEFFNUNGS-Loch einer ANDEREN Flaeche desselben Teils ist (parallel versetzte
+                #   Wandseiten!), ist der Deckel, der die Oeffnung verschliesst -> verwerfen.
+                if fl_id is not None and fl_outBB and any(fl_lochB):
+                    _weg90 = np.zeros(len(fl_ntris), dtype=bool)
+                    for _i90, (_omn, _omx) in enumerate(fl_outBB):
+                        _tref = False
+                        for _j90, _lbs in enumerate(fl_lochB):
+                            if _j90 == _i90 or not _lbs: continue
+                            for _lmn, _lmx in _lbs:
+                                _lmn = np.asarray(_lmn, dtype=float); _lmx = np.asarray(_lmx, dtype=float)
+                                _dz = np.abs(((_omn + _omx) - (_lmn + _lmx)) / 2.0)  # Zentren-Abstand, roh (mm)
+                                _dg = np.abs((_omx - _omn) - (_lmx - _lmn))          # Groessen-Differenz (mm)
+                                # deckungsgleich in den 2 grossen Achsen (Zentren <25mm, Groessen <50mm),
+                                # Versatz nur in der Dickenrichtung erlaubt
+                                _ok = (np.sort(_dz)[:2] < 25.0).all() and (np.sort(_dg)[:2] < 50.0).all()
+                                if _ok:
+                                    _tref = True; break
+                            if _tref: break
+                        if _tref:
+                            _weg90[_i90] = True
+                            _FLSTAT['tuerdeckel'] = _FLSTAT.get('tuerdeckel', 0) + 1
+                    if _weg90.any():
+                        _mk90 = ~_weg90[fl_id]
+                        m.update_faces(_mk90)
+                        fl_id = fl_id[_mk90]
+            except Exception:
+                pass
             try:  # v56: exakte Doppel-Dreiecke raus (Flimmer-Fragmente)
                 srt = np.sort(m.faces, axis=1)
                 _, uidx = np.unique(srt, axis=0, return_index=True)
@@ -1468,11 +1514,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v89\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v90\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
