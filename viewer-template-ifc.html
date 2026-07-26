@@ -5417,8 +5417,9 @@ var GOKOBA_LAYER_ACI = {
                 if(_ly82.indexOf('mmung')<0)return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
-                  kk.depthWrite=false;kk.polygonOffset=true;kk.polygonOffsetFactor=1;kk.polygonOffsetUnits=2; /* v94: Paul meldet Flackern -
-                    depthWrite AUS nimmt die Daemmflaechen aus dem Tiefenkampf, renderOrder zeichnet sie nach dem Stahl */
+                  kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=2;kk.polygonOffsetUnits=4; /* v95: Endfassung -
+                    Tiefe SCHREIBEN (Plattenstoesse und Selbstverdeckung deterministisch, kein Sortier-Flackern) +
+                    kraeftiger Rueckversatz: an Beruehrflaechen gewinnt IMMER der Stahl (das fehlte v69) */
                   klone[m0.uuid]=kk;}
                 o.material=klone[m0.uuid];o.renderOrder=2;
               });
