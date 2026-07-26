@@ -877,7 +877,9 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             try:  # v90: TUER-DECKEL: eine Flaeche, deren Aussenkontur deckungsgleich mit einem
                 #   OEFFNUNGS-Loch einer ANDEREN Flaeche desselben Teils ist (parallel versetzte
                 #   Wandseiten!), ist der Deckel, der die Oeffnung verschliesst -> verwerfen.
-                if fl_id is not None and fl_outBB and any(fl_lochB):
+                _ly91 = str((info.get(kn, {}) or {}).get('layer') or '').lower()
+                _istDaemm91 = ('mmung' in _ly91) or ('daemm' in _ly91)
+                if _istDaemm91 and fl_id is not None and fl_outBB and any(fl_lochB):
                     _weg90 = np.zeros(len(fl_ntris), dtype=bool)
                     for _i90, (_omn, _omx) in enumerate(fl_outBB):
                         _tref = False
@@ -885,11 +887,14 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                             if _j90 == _i90 or not _lbs: continue
                             for _lmn, _lmx in _lbs:
                                 _lmn = np.asarray(_lmn, dtype=float); _lmx = np.asarray(_lmx, dtype=float)
+                                _lgr = np.sort(_lmx - _lmn)[-2:]
+                                if _lgr[0] < 400.0:
+                                    continue  # v91: nur GROSSE Oeffnungen (Tuer/Fenster) - v90 fraß mit
+                                              #   539 Treffern massenhaft Schraubenloch-Umgebung
                                 _dz = np.abs(((_omn + _omx) - (_lmn + _lmx)) / 2.0)  # Zentren-Abstand, roh (mm)
                                 _dg = np.abs((_omx - _omn) - (_lmx - _lmn))          # Groessen-Differenz (mm)
-                                # deckungsgleich in den 2 grossen Achsen (Zentren <25mm, Groessen <50mm),
-                                # Versatz nur in der Dickenrichtung erlaubt
-                                _ok = (np.sort(_dz)[:2] < 25.0).all() and (np.sort(_dg)[:2] < 50.0).all()
+                                # deckungsgleich in den 2 grossen Achsen, ECHTER Versatz (>10mm) in der Dickenrichtung
+                                _ok = (np.sort(_dz)[:2] < 25.0).all() and (np.sort(_dg)[:2] < 50.0).all() and (np.sort(_dz)[2] > 10.0)
                                 if _ok:
                                     _tref = True; break
                             if _tref: break
@@ -1514,7 +1519,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v90\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v91\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
