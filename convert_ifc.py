@@ -784,6 +784,185 @@ def _flaeche_zerlegen_kern(aussen, loecher):
     if len(tri) == 0: return None
     return alle[np.asarray(tri, dtype=np.int64)].reshape(-1, 3, 3)
 
+# ===================== v97 WURZEL-WEG =====================
+# Das Plugin (ab v115/v118) schneidet jedes BESTANDSTEIL mit fuenf Ebenen und schreibt
+# die exakten Schnittkanten des echten CAD-Volumenkoerpers ins Paket:
+#     D <achse> <min> <max> <lage>      Dicke-Achse und Schnittlage
+#     S x1 y1 z1 x2 y2 z2               eine Schnittkante
+# Daraus wird der Koerper NEU GEBAUT statt aus der lueckenhaften Flaechenliste geraten.
+# Gemessen an Pauls Paket vom 27.07.: 16 von 16 Bestandsteilen eindeutig rekonstruierbar,
+# alle Volumen auf 0,00 % genau, Flaechen auf gleicher Tiefe von 99,2 % auf 0,0 %.
+# Teile OHNE D-Zeilen (aller Stahlbau) laufen unveraendert den alten Weg - der Riegel
+# ist die blosse Existenz der Schnittdaten, die das Plugin nur fuer Bestand schreibt.
+
+_WZ_BASIS = {0: (1, 2), 1: (2, 0), 2: (0, 1)}   # rechtshaendig: e0 x e1 = +Achse
+
+def _wz_ringe(kanten, ax):
+    """Schnittkanten zu geschlossenen Ringen verketten (2D in der Schnittebene)."""
+    import collections as _c
+    e0, e1 = _WZ_BASIS[ax]
+    seg = []
+    for k in kanten:
+        a = (round(k[e0], 2), round(k[e1], 2)); b = (round(k[3 + e0], 2), round(k[3 + e1], 2))
+        if a != b: seg.append((a, b))
+    nach = _c.defaultdict(list)
+    for i, (a, b) in enumerate(seg):
+        nach[a].append((b, i)); nach[b].append((a, i))
+    frei = set(range(len(seg))); out = []
+    while frei:
+        i0 = min(frei); a, b = seg[i0]; frei.discard(i0); weg = [a, b]; akt = b
+        while True:
+            nx = None
+            for (p, i) in nach[akt]:
+                if i in frei: nx = (p, i); break
+            if nx is None: break
+            frei.discard(nx[1]); akt = nx[0]; weg.append(akt)
+            if akt == weg[0]: break
+        if len(weg) > 3 and weg[0] == weg[-1]:
+            out.append(np.array(weg[:-1], dtype=float))
+    return out
+
+def _wz_flaeche(p):
+    x, y = p[:, 0], p[:, 1]
+    return float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)) / 2.0
+
+def _wz_drin(pt, poly):
+    x, y = pt; n = len(poly); c = False
+    for i in range(n):
+        x1, y1 = poly[i]; x2, y2 = poly[(i + 1) % n]
+        if ((y1 > y) != (y2 > y)) and (x < (x2 - x1) * (y - y1) / (y2 - y1 + 1e-30) + x1): c = not c
+    return c
+
+def _wz_auf_kante(p, poly, tol=0.5):
+    for i in range(len(poly)):
+        a = poly[i]; b = poly[(i + 1) % len(poly)]; ab = b - a; l2 = float(ab @ ab)
+        if l2 < 1e-12: continue
+        s = max(0.0, min(1.0, float((p - a) @ ab) / l2))
+        if float(np.linalg.norm(p - (a + s * ab))) <= tol: return True
+    return False
+
+def _wz_ring_drin(klein, gross, tol=0.5):
+    """randtolerant - die Ecken duerfen exakt AUF der Kante des groesseren Rings liegen"""
+    innen = 0
+    for p in klein:
+        if _wz_drin(p, gross): innen += 1
+        elif not _wz_auf_kante(p, gross, tol): return False
+    return innen > 0
+
+def _wz_gruppiere(rs):
+    """Ringe zu (Aussenring CCW, [Loecher CW]) ueber die Verschachtelungstiefe."""
+    n = len(rs); tiefe = [0] * n; fl = [abs(_wz_flaeche(r)) for r in rs]
+    for i in range(n):
+        for j in range(n):
+            if i != j and fl[j] > fl[i] and _wz_drin(rs[i][0], rs[j]): tiefe[i] += 1
+    ccw = lambda r: r if _wz_flaeche(r) > 0 else r[::-1]
+    cw = lambda r: r if _wz_flaeche(r) < 0 else r[::-1]
+    grp = []
+    for i in range(n):
+        if tiefe[i] % 2: continue
+        loch = [cw(rs[j]) for j in range(n) if tiefe[j] == tiefe[i] + 1 and _wz_drin(rs[j][0], rs[i])]
+        grp.append((ccw(rs[i]), loch))
+    return grp
+
+def _wz_auf3d(p2, ax, u):
+    e0, e1 = _WZ_BASIS[ax]
+    p = np.zeros((len(p2), 3)); p[:, e0] = p2[:, 0]; p[:, e1] = p2[:, 1]; p[:, ax] = u
+    return p
+
+def _wz_koerper(abschnitte, ax):
+    """abschnitte: [(u_min, u_max, ringe2d)] -> Dreiecke (M,3,3) in mm, Normalen nach aussen.
+       An der Naht zweier Abschnitte wird der eingeschlossene Bereich aus dem unteren
+       Deckel ausgestanzt und der obere weggelassen - sonst liegen dort zwei Flaechen
+       exakt aufeinander, und genau das ist die Flimmer-Ursache."""
+    grp = [_wz_gruppiere(rs) for (_a, _b, rs) in abschnitte]
+    n = len(abschnitte)
+    zus_o = [[[] for _ in g] for g in grp]; zus_u = [[[] for _ in g] for g in grp]
+    weg_u = [[False] * len(g) for g in grp]; weg_o = [[False] * len(g) for g in grp]
+    for i in range(n - 1):
+        if abs(abschnitte[i][1] - abschnitte[i + 1][0]) > 1e-6: continue
+        for a, (au_a, lo_a) in enumerate(grp[i]):
+            for b, (au_b, lo_b) in enumerate(grp[i + 1]):
+                if _wz_ring_drin(au_b, au_a):
+                    if lo_b: continue
+                    zus_o[i][a].append(au_b); weg_u[i + 1][b] = True
+                elif _wz_ring_drin(au_a, au_b):
+                    if lo_a: continue
+                    zus_u[i + 1][b].append(au_a); weg_o[i][a] = True
+    cw = lambda r: r if _wz_flaeche(r) < 0 else r[::-1]
+    tris = []
+    for i, (ua, ub, rs) in enumerate(abschnitte):
+        if ub - ua <= 1e-9: continue
+        for gi, (aussen, loecher) in enumerate(grp[i]):
+            for u, soll, fort, zus in ((ua, -1.0, weg_u[i][gi], zus_u[i][gi]),
+                                       (ub, +1.0, weg_o[i][gi], zus_o[i][gi])):
+                if fort: continue
+                lo = loecher + [cw(np.asarray(z)) for z in zus]
+                t = _flaeche_zerlegen_kern(_wz_auf3d(aussen, ax, u), [_wz_auf3d(h, ax, u) for h in lo])
+                if t is None or len(t) == 0: continue
+                t = np.asarray(t, dtype=float)
+                if np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])[:, ax].sum() * soll < 0:
+                    t = t[:, ::-1, :]      # Deckel messbar ausrichten, nicht raten
+                tris.append(t)
+            for ring in [aussen] + loecher:   # aussen CCW, Loecher CW -> Normalen nach aussen
+                A = _wz_auf3d(ring, ax, ua); B = _wz_auf3d(ring, ax, ub); m = len(ring)
+                for j in range(m):
+                    k = (j + 1) % m
+                    tris.append(np.array([[A[j], A[k], B[k]], [A[j], B[k], B[j]]]))
+    return np.vstack(tris) if tris else None
+
+def _wz_bauen(schnitte, fl_ringe):
+    """schnitte: [{'ax','min','max','lage','S'}] + die Rohkonturen des Teils.
+       Rueckgabe: Dreiecke (M,3,3) in mm oder None (dann bleibt der alte Weg).
+       ZWEI SELBSTPRUEFUNGEN, beide an Pauls Paket vom 27.07. gemessen (je 0 Verstoesse):
+       A) Der Koerper muss laengs der Schnittachse ein Prisma sein - jede Flaeche also
+          parallel ODER senkrecht zur Achse. Eine schraege Flaeche hiesse: die Kontur
+          aendert sich innerhalb eines Abschnitts, dann darf nicht extrudiert werden.
+       B) Jedes Intervall zwischen zwei Trennebenen muss von einer Schnittlage abgetastet
+          sein. Sonst waere unbekannt, was darin steckt, und der Koerper verlore ein Stueck.
+       Schlaegt eine der beiden an, liefert die Funktion None und der alte Facettenweg
+       uebernimmt - lieber der bekannte Stand als ein still falscher Koerper."""
+    if not schnitte: return None
+    ax = int(schnitte[0]['ax'])
+    if any(int(s['ax']) != ax for s in schnitte): return None
+    for _a97, _l97 in fl_ringe:                       # SELBSTPRUEFUNG A
+        _p97 = np.asarray(_a97, dtype=float)
+        if len(_p97) < 3: continue
+        _n97 = np.zeros(3)
+        for _i97 in range(len(_p97)):
+            _n97 += np.cross(_p97[_i97], _p97[(_i97 + 1) % len(_p97)])
+        _ln97 = float(np.linalg.norm(_n97))
+        if _ln97 < 1e-9: continue
+        _c97 = abs(float(_n97[ax]) / _ln97)
+        if 0.001 < _c97 < 0.999: return None          # schraege Flaeche -> kein Prisma
+    pkt = [np.asarray(a, dtype=float) for a, _l in fl_ringe if len(a) >= 3]
+    pkt += [np.asarray(l, dtype=float) for _a, ls in fl_ringe for l in ls if len(l) >= 3]
+    if not pkt: return None
+    ebenen = np.unique(np.round(np.vstack(pkt)[:, ax], 1))
+    if len(ebenen) < 2: return None
+    # Soll-Raster der Schnittlagen. MUSS zu _lagen115 im Plugin passen; stimmt es nicht
+    #   mit den tatsaechlich gelieferten Lagen ueberein, ist das Raster veraltet - dann
+    #   wird Pruefung B stillgelegt statt fehlzuschlagen.
+    _mn97 = float(schnitte[0]['min']); _mx97 = float(schnitte[0]['max'])
+    _soll97 = [_mn97 + (_mx97 - _mn97) * f for f in (0.10, 0.30, 0.50, 0.70, 0.90)]
+    _raster97 = all(any(abs(float(s['lage']) - r) < 1.0 for r in _soll97) for s in schnitte)
+    absch = []
+    for a, b in zip(ebenen[:-1], ebenen[1:]):
+        rs = None
+        for s in schnitte:                       # STRENG innen - Lagen auf der Trennebene sind mehrdeutig
+            if a + 0.5 < float(s['lage']) < b - 0.5:
+                rs = _wz_ringe(s['S'], ax); break
+        if rs:
+            absch.append((float(a), float(b), rs))
+        elif _raster97 and not any(a + 0.5 < r < b - 0.5 for r in _soll97):
+            return None                          # SELBSTPRUEFUNG B: Intervall nie abgetastet
+    if not absch: return None
+    T = _wz_koerper(absch, ax)
+    if T is None or len(T) < 4: return None
+    vol = float(np.sum(np.einsum('ij,ij->i', T[:, 0], np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])))) / 6.0
+    if vol <= 0.0: return None                   # Selbstkontrolle: ein Koerper hat positives Volumen
+    return T
+# =================== ENDE v97 WURZEL-WEG ===================
+
 def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     """★ DIREKT-Rohformat: T E<id> / L x y z ... (Aussenkontur) / H x y z ... (Loch,
     gehoert zur letzten L-Zeile). Millimeter. Zerlegung hier in der Cloud - das
@@ -868,6 +1047,30 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         if kn is None: return
         try:
             if not dreiecke: return
+            # v97 WURZEL-WEG: Liegen fuer dieses Teil Schnittdaten aus dem CAD-Kern vor,
+            #   wird der Koerper daraus NEU GEBAUT und ersetzt die Facetten vollstaendig.
+            #   Damit entfaellt jedes Raten an der lueckenhaften Flaechenliste - und mit
+            #   ihm die v96-Schalen-Ergaenzung, die nur ein Symptom geflickt hat.
+            #   Nur EINE Flaeche mit Kennung 'breite Ebene' -> Kanten bleiben scharf,
+            #   Waende flach (Schwelle 8 Grad statt 26).
+            if schnitte:
+                _wzT = None
+                try:
+                    _wzT = _wz_bauen(schnitte, fl_ringe)
+                except Exception:
+                    _wzT = None
+                if _wzT is not None:
+                    dreiecke[:] = [_wzT]
+                    fl_ntris[:] = [len(_wzT)]
+                    fl_breitL[:] = [True]
+                    fl_hatLoch[:] = [False]
+                    _bb97 = _wzT.reshape(-1, 3)
+                    fl_outBB[:] = [(_bb97.min(axis=0), _bb97.max(axis=0))]
+                    fl_lochB[:] = [[]]
+                    fl_ringe[:] = []          # schaltet die v96-Schalen-Ergaenzung ab
+                    _FLSTAT['wurzelweg'] = _FLSTAT.get('wurzelweg', 0) + 1
+                else:
+                    _FLSTAT['wurzelweg_fehl'] = _FLSTAT.get('wurzelweg_fehl', 0) + 1
             try:  # v96: FEHLENDE AUSSENSCHALE ERGAENZEN.
                 #   MESSUNG an Pauls Echtpaket: die Daemmwand E1065 (125 mm) liefert im Export
                 #   NUR ihre Rueckseite (y=0, 36,6 m2 mit 8 Oeffnungen) - die AUSSENHAUT bei
@@ -1207,7 +1410,8 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return k.reshape(-1, 3)
 
     kaputt = 0
-    nT = nL = nH = 0; flLeer = 0; probeZeilen = []
+    nT = nL = nH = 0; nD = nS = 0; flLeer = 0; probeZeilen = []
+    schnitte = []
     with open(geo_pfad, encoding='utf-8', errors='replace') as fh:
         for zeile in fh:
             try:
@@ -1218,6 +1422,18 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
                     dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []; fl_ringe = []
+                    schnitte = []   # v97 Wurzel-Weg: Schnittdaten dieses Teils
+                elif z[0] == 'D':   # v97: "D <achse> <min> <max> <lage>"
+                    nD += 1
+                    _w97 = z.split()
+                    if len(_w97) >= 5:
+                        schnitte.append({'ax': int(_w97[1]), 'min': float(_w97[2]),
+                                         'max': float(_w97[3]), 'lage': float(_w97[4]), 'S': []})
+                elif z[0] == 'S':   # v97: "S x1 y1 z1 x2 y2 z2" - gehoert zur letzten D-Zeile
+                    nS += 1
+                    if schnitte:
+                        _w97 = z.split()
+                        if len(_w97) >= 7: schnitte[-1]['S'].append([float(x) for x in _w97[1:7]])
                 elif z[0] == 'L':
                     nL += 1
                     if len(probeZeilen) < 3: probeZeilen.append(z[:140])
@@ -1235,7 +1451,9 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     _fl_ab(); _teil_ab()
 
     print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
-    print('* DIREKT-Diagnose: T=%d L=%d H=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, flLeer, kaputt))
+    print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
+    print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
+          % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
     for pz in probeZeilen:
         print('* Probezeile: %s' % pz)
     if n == 0:
@@ -1606,12 +1824,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v96\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v97\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
