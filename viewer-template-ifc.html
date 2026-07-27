@@ -5653,7 +5653,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V106_ET_BG'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V107_ACHSEN'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -6427,26 +6427,44 @@ var GOKOBA_LAYER_ACI = {
             try{ /* v70: flach auf dem Boden, Strichlinie + Kreis + Beschriftung am Achsanfang */
               var G=new THREE.Group(); G.name='gkAchsen';
               var by=new THREE.Box3().setFromObject(model).min.y+0.02;
-              var lm=new THREE.LineDashedMaterial({color:0x7d8590,dashSize:0.55,gapSize:0.22,transparent:true,opacity:0.95});
+              /* v107 GEMESSEN an Pauls Rasterprojekt: das Plugin zerlegt die ASTGRID-Objekte und
+                 liefert ALLE Bruchstuecke als Achsen - im Beispiel 45 Eintraege, davon aber nur
+                 FUENF echte Achsen (A, 1, 2, 3, 4; 13,3 m und viermal 7,2 m lang). Die uebrigen 40
+                 sind 12 bis 22 mm kurze Reste der zerlegten Rasterkoepfe, also Kreisboegen und
+                 Strichmarken. Jedes Bruchstueck bekam bisher einen eigenen Kreis UND eine eigene
+                 Beschriftung - daher die Haeufchen aus uebereinanderliegenden Ziffern. Es zaehlen
+                 jetzt nur Linien ab einem halben Meter, Doppelte fallen weg, und Kreis, Strich und
+                 Schrift sind dezenter. */
+              var lm=new THREE.LineDashedMaterial({color:0x9aa3ab,dashSize:0.55,gapSize:0.22,transparent:true,opacity:0.75});
+              var km=new THREE.LineBasicMaterial({color:0x9aa3ab,transparent:true,opacity:0.75});
+              var _gz={};
               GOKOBA_ACHSEN.forEach(function(a){
                 var p=a.p||[]; if(p.length<6)return;
                 var p1=new THREE.Vector3(p[0]*0.001,by,-p[1]*0.001), p2=new THREE.Vector3(p[3]*0.001,by,-p[4]*0.001);
-                if(p1.distanceTo(p2)<0.01)return;
+                if(p1.distanceTo(p2)<0.5)return;
+                var sig=[p1.x.toFixed(2),p1.z.toFixed(2),p2.x.toFixed(2),p2.z.toFixed(2)].join('|');
+                if(_gz[sig])return; _gz[sig]=1;
                 var li=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1,p2]),lm); li.computeLineDistances(); G.add(li);
-                var dir=p2.clone().sub(p1).normalize(), r=0.32, cz=p1.clone().addScaledVector(dir,-r*1.15);
-                var seg=[]; for(var i=0;i<=32;i++){var wk=i/32*Math.PI*2; seg.push(new THREE.Vector3(cz.x+Math.cos(wk)*r,by,cz.z+Math.sin(wk)*r));}
-                G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seg),new THREE.LineBasicMaterial({color:0x7d8590})));
+                var dir=p2.clone().sub(p1).normalize(), r=0.20, cz=p1.clone().addScaledVector(dir,-r*1.25);
+                var seg=[]; for(var i=0;i<=40;i++){var wk=i/40*Math.PI*2; seg.push(new THREE.Vector3(cz.x+Math.cos(wk)*r,by,cz.z+Math.sin(wk)*r));}
+                G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seg),km));
                 if(a.l){
                   var cv=document.createElement('canvas');cv.width=cv.height=128;var g2=cv.getContext('2d');
-                  g2.fillStyle='#5a626d';g2.font='700 62px sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText((''+a.l).slice(0,4),64,66);
-                  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true}));
-                  sp.scale.set(0.5,0.5,1); sp.position.set(cz.x,by+0.01,cz.z); G.add(sp);
+                  g2.fillStyle='#6b7480';g2.font='700 66px sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText((''+a.l).slice(0,4),64,66);
+                  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true,opacity:0.9}));
+                  sp.scale.set(0.30,0.30,1); sp.position.set(cz.x,by+0.01,cz.z); G.add(sp);
                 }
               });
               scene.add(G); window.gkAchsG=G;
             }catch(e){}
-          } else { window.gkAchsG.visible=!window.gkAchsG.visible; }
-          ab.classList.toggle('on',!!(window.gkAchsG&&window.gkAchsG.visible));
+            if(window.gkAchsG)window.gkAchsG.visible=false;
+          }
+          /* v107: EIN Zustand steuert beides - Sichtbarkeit und Schalterbild koennen nicht mehr
+             auseinanderlaufen. Vorher hing das Schalterbild an der Gruppe und konnte 'aus' zeigen,
+             waehrend die Achsen noch standen. */
+          window.gkAchsAn=!window.gkAchsAn;
+          if(window.gkAchsG)window.gkAchsG.visible=!!window.gkAchsAn;
+          ab.classList.toggle('on',!!window.gkAchsAn);
         });
         ar.appendChild(ab); w.appendChild(at); w.appendChild(ar); /* v92 */
         panel.appendChild(w);
