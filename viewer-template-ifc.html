@@ -5587,6 +5587,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
+      var GOKOBA_VORLAGE='VORLAGE_V101_KAERTCHEN'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5596,6 +5597,7 @@ var GOKOBA_LAYER_ACI = {
           else if((ly.indexOf('bws')>=0||ly.indexOf('werkstein')>=0||ly.indexOf('trespa')>=0)&&d.attrs&&d.attrs[0])name=d.attrs[0];
           else if(ly.indexOf('alu')>=0&&ly.indexOf('wann')>=0)name=(d.attrs&&d.attrs[0])||'Alu-Wanne'; /* v56: Attribut 1 als Ueberschrift */
           else if((ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0)&&(d.bgname||(d.attrs&&d.attrs[0])))name=d.bgname||d.attrs[0];
+          else if(ly.indexOf('thermostop')>=0)name=(d.material||'Thermostop')+' t='+rund(d.masse[2])+' mm'; /* v101: Pauls Vorgabe - eigener Name statt BL, Dicke exakt aus dem AS-Dialog */
           else name='BL t='+rund(d.masse[2])+' mm'; /* v56: Pauls Vorgabe */
         }
         else if(art==='sonderteil')name=null; /* v48: Kopf 'Sonderteil', Blockname steht als Zeile darunter */
@@ -5608,13 +5610,14 @@ var GOKOBA_LAYER_ACI = {
         var art=d.art||'sonstiges', z=[], ly=(d.layer||'').toLowerCase();
         function zeile(k,v){if(v)z.push([k,v]);}
         var glas=ly.indexOf('glas')>=0, mine=ly.indexOf('mineralit')>=0,
+            thermo=ly.indexOf('thermostop')>=0, /* v101: Thermostop-Platten (eigener Layer) */
             riff=(ly.indexOf('riffel')>=0||ly.indexOf('traenen')>=0||ly.indexOf('tr\u00e4nen')>=0);
         if(art==='profil'||art==='kantprofil'){zeile('Material',d.material);zeile('L\u00e4nge',fmtLaenge(d.laenge));zeile('Gewicht',fmtKg(d.gewicht));}
         else if(art==='blech'||art==='kantblech'){
-          if(!glas&&!mine)zeile('Material',d.material);
-          zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);
-          zeile('Gewicht',fmtKg(d.gewicht));}
-        else if(art==='gitterrost'||art==='gitterroststufe'){zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);} /* v59: Rost schlank - Pos, Attribut 1, Mass, Attribute, Baugruppe */
+          if(!glas&&!mine&&!thermo)zeile('Material',d.material); /* v101: bei Thermostop steht der Name schon im Kopf */
+          if(!thermo)zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null); /* v101: Thermostop ohne b x l */
+          if(!thermo)zeile('Gewicht',fmtKg(d.gewicht));} /* v101: Thermostop ohne Gewicht */
+        else if(art==='gitterrost'||art==='gitterroststufe'){if(art==='gitterrost')zeile('Ma\u00df',d.masse?(Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1])+' mm'):null);} /* v101: STUFEN ohne Mass - nur noch die Benutzerattribute; Roste behalten es */
         else if(art==='schraube'||art==='kopfbolzen'||art==='anker'){zeile('Norm',d.din); /* v72 */zeile('Gr\u00f6\u00dfe',d.groesse);zeile('Material',d.material);}
         else if(art==='sonderteil'){zeile('Bezeichnung',d.name);zeile('Hersteller',d.hersteller);zeile('Material',d.material);}
         else{zeile('Material',d.material);}
