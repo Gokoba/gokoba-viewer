@@ -5133,7 +5133,7 @@ var GOKOBA_LAYER_ACI = {
     253:{farbe:GOKOBA_BESTAND,matt:1}, 254:{farbe:GOKOBA_BESTAND,matt:1}, 252:{farbe:GOKOBA_BESTAND,matt:1}, 251:{farbe:GOKOBA_BESTAND,matt:1},
     107:{farbe:GOKOBA_MAUERWERK,matt:1},
     215:{farbe:GOKOBA_ESTRICH,matt:1},
-    165:{farbe:GOKOBA_DAEMMUNG,matt:1,alpha:0.80},
+    165:{farbe:GOKOBA_DAEMMUNG,matt:1},
     51:{farbe:GOKOBA_GLAS,alpha:0.50},
     30:{farbe:GOKOBA_CHROM,chrom:1}
   };
@@ -5146,7 +5146,7 @@ var GOKOBA_LAYER_ACI = {
     {von:0x74DA5B, zu:GOKOBA_STAHL,     met:0.28, rau:0.19, env:1, envI:0.55},  /* ★ Hellgruen   -> Bleche (81), dunkles Blau glaenzend */
     {von:0x142D19, zu:GOKOBA_MAUERWERK, met:0.00, rau:0.90},              /* ★ Dunkelgruen -> Mauerwerk (107), matt */
     {von:0x3E193E, zu:GOKOBA_ESTRICH,   met:0.00, rau:0.90},              /* ★ Lila        -> Estrich (215), matt */
-    {von:0x171D39, zu:GOKOBA_DAEMMUNG,  met:0.00, rau:0.90, alpha:0.80},  /* ★ Dunkelblau  -> Daemmung (165), matt, ~28% transparent */
+    {von:0x171D39, zu:GOKOBA_DAEMMUNG,  met:0.00, rau:0.90},  /* ★ Dunkelblau  -> Daemmung (165), matt, ~28% transparent */
     {von:0xF2F269, zu:GOKOBA_GLAS,      met:0.00, rau:0.20, alpha:0.50},  /* ★ Gelb        -> Glas (51), 50% transparent */
     {von:0xAA400C, zu:GOKOBA_CHROM,     chrom:1},
     {von:0x0E0608, zu:GOKOBA_CHROM,     riffel:1},
@@ -5167,7 +5167,7 @@ var GOKOBA_LAYER_ACI = {
     if(n===15||n===8||n===9||n===253||n===254||n===252||n===251)return{zu:GOKOBA_BESTAND,met:0,rau:0.85};
     if(n===107)return{zu:GOKOBA_MAUERWERK,met:0,rau:0.90};
     if(n===215)return{zu:GOKOBA_ESTRICH,met:0,rau:0.90};
-    if(n===165)return{zu:GOKOBA_DAEMMUNG,met:0,rau:0.90,alpha:0.80};
+    if(n===165)return{zu:GOKOBA_DAEMMUNG,met:0,rau:0.90};
     if(n===51)return{zu:GOKOBA_GLAS,met:0,rau:0.20,alpha:0.50};
     if(n===30)return{zu:GOKOBA_CHROM,chrom:1};
     if(n===249)return{zu:GOKOBA_CHROM,riffel:1};
@@ -5396,7 +5396,7 @@ var GOKOBA_LAYER_ACI = {
             /* ★ Farbe der Gruppe zuordnen (GOKOBA_FARBSCHEMA), sonst Standard dunkles Blau */
             var reg=null,_aci=(m.name||'').match(/^GOKOBA_ACI_(\d+)/);
             if(_aci)reg=gokobaRegAusAci(parseInt(_aci[1],10));
-            if((m.name||'').toLowerCase().indexOf('mmung')>=0)reg={zu:GOKOBA_DAEMMUNG,met:0.00,rau:0.90,alpha:0.80}; /* v66: Daemmung am LAYERNAMEN, unabhaengig von der Layerfarbe */
+            if((m.name||'').toLowerCase().indexOf('mmung')>=0)reg={zu:GOKOBA_DAEMMUNG,met:0.00,rau:0.90}; /* v97: Daemmung OPAK (Pauls Auftrag - durchscheinende Laibungen/Stirnen beseitigen) */ /* v66: Daemmung am LAYERNAMEN, unabhaengig von der Layerfarbe */
             if(!window._gkDmNach){window._gkDmNach=1;setTimeout(function(){try{ /* v68: Daemmung TEIL-basiert - greift auch wenn der GLB-Materialname den Layer nicht traegt */
               if(!GOKOBA_TEILE||!model)return; var klone={};
               model.traverse(function(o){
@@ -5416,7 +5416,7 @@ var GOKOBA_LAYER_ACI = {
                 }
                 if(_ly82.indexOf('mmung')<0)return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
-                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
+                if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=false;kk.opacity=1.0;kk.side=THREE.DoubleSide;
                   kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=0;kk.polygonOffsetUnits=1; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
                     Tiefe SCHREIBEN (Plattenstoesse und Selbstverdeckung deterministisch, kein Sortier-Flackern) +
                     kraeftiger Rueckversatz: an Beruehrflaechen gewinnt IMMER der Stahl (das fehlte v69) */
@@ -5450,7 +5450,7 @@ var GOKOBA_LAYER_ACI = {
                 if(reg.env){m.envMap=gokobaEnv;m.envMapIntensity=(reg.envI!==undefined?reg.envI:0.4);m.needsUpdate=true;}
               }
               if(reg.alpha!==undefined){m.transparent=true;m.opacity=reg.alpha;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;}
-              if((m.name||'').toLowerCase().indexOf('mmung')>=0){m.transparent=true;m.opacity=0.30;m.depthWrite=false;m.side=THREE.DoubleSide;m.needsUpdate=true;} /* \u2605 Daemmungs-LAYER: immer transparent, egal welche Farbe zugewiesen ist */ /* \u2605 DoubleSide: auch bei gedrehten AS-Flaechennormalen kein Durchblick */
+              if((m.name||'').toLowerCase().indexOf('mmung')>=0){m.transparent=false;m.opacity=1.0;m.depthWrite=true;m.side=THREE.DoubleSide;m.needsUpdate=true;} /* \u2605 Daemmungs-LAYER: immer transparent, egal welche Farbe zugewiesen ist */ /* \u2605 DoubleSide: auch bei gedrehten AS-Flaechennormalen kein Durchblick */
             }
             else{m.userData._display=GOKOBA_STAHL;m.userData._stahlbau=true;m.metalness=0.28;m.roughness=0.19;m.envMap=gokobaEnv;m.envMapIntensity=0.55;m.needsUpdate=true;} /* ★ Standard: dunkles Blau, glaenzend */
             /* v48: Eigenschaften-Farbe aus dem Modell (_F-Suffix am Materialnamen)
