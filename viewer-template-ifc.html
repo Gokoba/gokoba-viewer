@@ -5198,6 +5198,15 @@ var GOKOBA_LAYER_ACI = {
   }
   var gokobaEnv=gokobaChromEnv();
   /* ★ dezente Verzinkungs-Struktur (leichte Zink-Blumen-Fleckung) als Rauigkeits-Karte */
+  /* v121 KORREKTUR: dieser Helfer stand in v119/v120 versehentlich INNERHALB einer anderen
+     Funktion. Alle uebrigen Texturfabriken riefen ihn auf, sahen ihn dort aber nicht - das
+     warf beim Laden einen Fehler und der Viewer blieb bei "Modell wird geladen" stehen.
+     Er gehoert auf die oberste Ebene, VOR die erste Textur. Inhalt unveraendert: Anisotropie
+     und Mipmap-Filterung gegen das Flimmern der Gitterrost-Schraffur beim Drehen. */
+  function gkTexFein(t){
+    try{ t.anisotropy=8; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.needsUpdate=true; }catch(e){}
+    return t;
+  }
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
     g.fillStyle='#c3c7ca';g.fillRect(0,0,n,n); /* v50: STEP-Original-Grund */
@@ -5743,7 +5752,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V120_ZEICHENFOLGE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V121_TEXTURFIX'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -6661,14 +6670,6 @@ window.gkTiefeStreu=function(o){
         g.fillStyle='#798087';g.fillRect(0,0,n,n);
         g.strokeStyle='rgba(34,40,46,0.32)';g.lineWidth=2.2;
         for(var i=-n;i<2*n;i+=13){g.beginPath();g.moveTo(i,0);g.lineTo(i+n,n);g.stroke();}
-      /* v119 GEMESSEN: in der gesamten Vorlage war KEINE anisotrope Texturfilterung gesetzt.
-      Eine feine Wiederholtextur wie die Gitterrost-Schraffur flimmert dadurch beim Drehen,
-      sobald man flach darauf schaut - genau Pauls Beobachtung. Der Helfer setzt Anisotropie
-      und Mipmap-Filterung; three.js begrenzt den Wert selbst auf das, was die Grafikkarte kann. */
-   function gkTexFein(t){
-     try{ t.anisotropy=8; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.needsUpdate=true; }catch(e){}
-     return t;
-   }
      var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
       }
       function schnittCapsBauen(){
