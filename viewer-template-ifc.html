@@ -5653,7 +5653,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V105_ANTRITTSKANTE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V106_ET_BG'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5740,11 +5740,26 @@ var GOKOBA_LAYER_ACI = {
            /* v102 Pauls Wunsch: erst anschauen, dann entscheiden - der Knopf sitzt dort, wo man
               gerade hinschaut, statt erst ein Werkzeug waehlen zu muessen. Zurueckholen ueber
               den Knopf "Gesamtansicht - alles anzeigen" oben links. */
-           '<div data-weg style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);text-align:center;cursor:pointer;font:500 11px var(--ui);color:var(--gktx2);">Ausblenden</div>';
+           /* v106 Pauls Wunsch: ZWEI gleich grosse Knoepfe nebeneinander - Einzelteil und
+              Baugruppe. Die Baugruppe kommt aus bgnr; hat das Modell noch keine Positionierung,
+              gibt es keine Baugruppennummer und der rechte Knopf bleibt sichtbar, aber stumm. */
+           '<div style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);display:grid;grid-template-columns:1fr 1fr;gap:6px;">'+
+           '<div data-weg style="text-align:center;cursor:pointer;font:500 11px var(--ui);color:var(--gktx2);padding:3px 0;border:1px solid rgba(127,140,150,.28);border-radius:7px;">ET ausblenden</div>'+
+           '<div data-wegbg style="text-align:center;font:500 11px var(--ui);padding:3px 0;border:1px solid rgba(127,140,150,.28);border-radius:7px;'+
+             (d.bgnr?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG ausblenden</div></div>';
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
         var _wg=karte.querySelector('[data-weg]');
         if(_wg)_wg.addEventListener('click',function(ev){ev.stopPropagation();
           var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});   /* v102: Material zuerst zurueck, dann ausblenden */
+        var _wb=karte.querySelector('[data-wegbg]');
+        if(_wb&&d.bgnr)_wb.addEventListener('click',function(ev){ev.stopPropagation();
+          var bg=String(d.bgnr); abwaehlen();                     /* v106: ganze Baugruppe ausblenden */
+          model.traverse(function(o){
+            if(!o.isMesh&&!o.isLineSegments)return;
+            var dd=GOKOBA_TEILE&&GOKOBA_TEILE[o.name];
+            if(dd&&String(dd.bgnr||'')===bg)o.visible=false;
+          });
+        });
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
         if(mobil()){karte.style.left='50%';karte.style.transform='translateX(-50%)';karte.style.top='';karte.style.bottom='14px';}
