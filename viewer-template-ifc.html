@@ -5409,6 +5409,43 @@ var GOKOBA_LAYER_ACI = {
                     sonst scheinen die Kanten des Profils darunter durch */
                   if(mA&&!mA.polygonOffset){mA.polygonOffset=true;mA.polygonOffsetFactor=0;mA.polygonOffsetUnits=-2;}
                 }
+                if(_ly82.indexOf('thermostop')>=0){
+                  /* v103 Pauls Wunsch: Thermostop-Platten sollen im Viewer sofort vom Stahlbau
+                     zu unterscheiden sein - gedecktes Braun-Orange, in der Familie des Gokoba-Kupfers.
+                     Eigenes Materialexemplar, damit farbgleiche normale Bleche NICHT mit umgefaerbt
+                     werden. Glanz und Rauheit bleiben wie beim Stahl, nur der Farbton wechselt. */
+                  var m0T=Array.isArray(o.material)?o.material[0]:o.material;
+                  if(m0T){
+                    if(!window._gkThermoKlone)window._gkThermoKlone={};
+                    var kT=window._gkThermoKlone[m0T.uuid];
+                    if(!kT){kT=m0T.clone();
+                      if(m0T.onBeforeCompile){kT.onBeforeCompile=m0T.onBeforeCompile;kT.customProgramCacheKey=m0T.customProgramCacheKey;}
+                      kT.color=new THREE.Color(0xA76A3C); kT.map=null; /* gedecktes Braun-Orange; Wert bewusst HIER direkt,
+                        weil dieser Durchlauf verzoegert und in einem anderen Bereich laeuft als die Farbkonstanten */
+                      window._gkThermoKlone[m0T.uuid]=kT;}
+                    o.material=kT;
+                  }
+                }
+                if(_ly82.indexOf('gelaender')>=0||_ly82.indexOf('gel\u00e4nder')>=0){
+                  /* v102 GEMESSEN: E1548 (Gelaender FL 40x8) und E1763 (Wange U240) teilen sich
+                     0,1098 m2 in EXAKT derselben schraegen Ebene - die groesste echte koplanare
+                     Ueberlappung im ganzen Modell. Bei gleicher Tiefe entscheidet allein die
+                     Zeichenreihenfolge, und die kippt beim Drehen: genau das ist das Flackern des
+                     Untergurts. Das Gelaender bekommt deshalb einen FESTEN Mini-Vorzug von einer
+                     einzigen Tiefenstufe - geometrisch unsichtbar, aber das Ergebnis ist immer
+                     dasselbe. Eigenes Materialexemplar, damit der Vorzug NUR das Gelaender betrifft
+                     und nicht zufaellig farbgleiche Traeger mitnimmt. */
+                  var m0G=Array.isArray(o.material)?o.material[0]:o.material;
+                  if(m0G){
+                    if(!window._gkGelKlone)window._gkGelKlone={};
+                    var kG=window._gkGelKlone[m0G.uuid];
+                    if(!kG){kG=m0G.clone();
+                      if(m0G.onBeforeCompile){kG.onBeforeCompile=m0G.onBeforeCompile;kG.customProgramCacheKey=m0G.customProgramCacheKey;}
+                      kG.polygonOffset=true;kG.polygonOffsetFactor=0;kG.polygonOffsetUnits=-1;
+                      window._gkGelKlone[m0G.uuid]=kG;}
+                    o.material=kG;
+                  }
+                }
                 if(_ly82.indexOf('beton')>=0||_ly82.indexOf('mauerwerk')>=0||_ly82.indexOf('bestand')>=0){
                   var mB=Array.isArray(o.material)?o.material[0]:o.material; /* v82: Bestand tritt hauchduenn zurueck -
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
@@ -5587,7 +5624,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V101_KAERTCHEN'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V103_ORANGE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5649,11 +5686,13 @@ var GOKOBA_LAYER_ACI = {
       window.addEventListener('keydown',function(e){if(e.key!=='Escape')return;
         try{ if(typeof aktiv!=='undefined'&&aktiv){schalte(null);return;} }catch(_e){} /* v73: ESC schliesst zuerst das offene Werkzeug */
         abwaehlen();}); /* v59: ESC waehlt ab (Pauls Wunsch) */
+      /* v103: beide Farben stehen HIER, damit sie an einer Stelle aenderbar sind */
+      var GK_WAHL_FARBE=0xFF6A00;    /* Hervorhebung angeklickter Bauteile - kraeftiges Orange */
       function heben(o,farbe,staerke){
         var urm=(Array.isArray(o.material)?o.material[0]:o.material);
         var hi=urm.clone();
         if(urm.onBeforeCompile){hi.onBeforeCompile=urm.onBeforeCompile;hi.customProgramCacheKey=urm.customProgramCacheKey;}
-        hi.emissive=new THREE.Color(farbe===undefined?0x2E86AD:farbe);hi.emissiveIntensity=(staerke===undefined?0.55:staerke);
+        hi.emissive=new THREE.Color(farbe===undefined?GK_WAHL_FARBE:farbe); /* v103: war blau 0x2E86AD */hi.emissiveIntensity=(staerke===undefined?0.55:staerke);
         return hi;
       }
       function zeigeKarte(o,d,x,y){
@@ -5668,8 +5707,15 @@ var GOKOBA_LAYER_ACI = {
           '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">'+ /* v76: Kopf endet buendig mit der Wertespalte, x wohnt im Randstreifen */
           '<span style="font:700 14px/1.35 var(--ui);color:var(--gktx);white-space:nowrap;">'+kkl+'</span>'+
           '<strong style="font:700 14px/1.35 var(--ui);color:var(--gktx);text-align:right;">'+kkr+'</strong></div>'+
-          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;white-space:nowrap;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;'+(p[0]==='Bezeichnung'?'white-space:normal;text-wrap:balance;max-width:320px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;':'')+(p[0]==='Baugruppe'? /* v73: Bezeichnung bis 3 ausgewogene Zeilen */'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('');
+          z.map(function(p){return '<div style="display:flex;justify-content:space-between;gap:16px;white-space:nowrap;"><span style="color:var(--gktx2);">'+p[0]+'</span><span style="text-align:right;'+(p[0]==='Bezeichnung'?'white-space:normal;text-wrap:balance;max-width:320px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;':'')+(p[0]==='Baugruppe'? /* v73: Bezeichnung bis 3 ausgewogene Zeilen */'white-space:nowrap;':'')+'">'+p[1]+'</span></div>';}).join('')+
+           /* v102 Pauls Wunsch: erst anschauen, dann entscheiden - der Knopf sitzt dort, wo man
+              gerade hinschaut, statt erst ein Werkzeug waehlen zu muessen. Zurueckholen ueber
+              den Knopf "Gesamtansicht - alles anzeigen" oben links. */
+           '<div data-weg style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);text-align:center;cursor:pointer;font:500 11px var(--ui);color:var(--gktx2);">Ausblenden</div>';
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
+        var _wg=karte.querySelector('[data-weg]');
+        if(_wg)_wg.addEventListener('click',function(ev){ev.stopPropagation();
+          var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});   /* v102: Material zuerst zurueck, dann ausblenden */
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
         if(mobil()){karte.style.left='50%';karte.style.transform='translateX(-50%)';karte.style.top='';karte.style.bottom='14px';}
@@ -5913,7 +5959,7 @@ var GOKOBA_LAYER_ACI = {
       }
       function summeKlick(o,d,name){
         if(summeTeile[name]){o.material=summeTeile[name].mat;delete summeTeile[name];}
-        else{summeTeile[name]={o:o,mat:o.material,d:d};o.material=heben(o,0x2E86AD,0.7);}
+        else{summeTeile[name]={o:o,mat:o.material,d:d};o.material=heben(o,GK_WAHL_FARBE,0.7);}
         summeRechne();
       }
       function summeEnde(){
@@ -5993,7 +6039,7 @@ var GOKOBA_LAYER_ACI = {
       }
       function isoKlick(o,name){
         if(isoWahl[name]){o.material=isoWahl[name].mat;delete isoWahl[name];}
-        else{isoWahl[name]={o:o,mat:o.material};o.material=heben(o,0x2E86AD,0.7);}
+        else{isoWahl[name]={o:o,mat:o.material};o.material=heben(o,GK_WAHL_FARBE,0.7);}
         isoZaehl();
       }
       function isoEnde(){
@@ -6017,7 +6063,7 @@ var GOKOBA_LAYER_ACI = {
         if(sucheFarben[kn])return;
         var os=netzKarte()[kn]||[];
         if(!os.length)return;
-        sucheFarben[kn]=os.map(function(o){var m=o.material;o.material=heben(o,0x2E86AD,0.75);return {o:o,mat:m};});
+        sucheFarben[kn]=os.map(function(o){var m=o.material;o.material=heben(o,GK_WAHL_FARBE,0.75);return {o:o,mat:m};});
       }
       function sucheLeeren(){
         Object.keys(sucheFarben).forEach(function(kn){
@@ -6302,7 +6348,7 @@ var GOKOBA_LAYER_ACI = {
           g.appendChild(b);
         });
         w.appendChild(g);
-        var az=el('button',bs+'width:100%;margin-top:2px;font:500 11px var(--ui,sans-serif);color:var(--gktx);'); az.className='gkfv'; az.textContent='Ursprungsansicht'; az.title='Alles einblenden und zur Startansicht wechseln';
+        var az=el('button',bs+'width:100%;margin-top:2px;font:500 11px var(--ui,sans-serif);color:var(--gktx);'); az.className='gkfv'; az.innerHTML='<span style="display:block;line-height:1.15;">Gesamtansicht</span><span style="display:block;font:400 9px var(--ui,sans-serif);opacity:.72;line-height:1.15;">alles anzeigen</span>'; /* v102: Pauls Wortlaut */ az.title='Alles einblenden und zur Startansicht wechseln';
         az.addEventListener('click',function(){ /* v93: Pauls Ursprungsansicht - alles zeigen UND zurueck zur Ansicht des Seitenaufrufs */
           model.traverse(function(o){ if(o.isMesh||o.isLineSegments)o.visible=true; });
           var s=window.gkStartAnsicht;
