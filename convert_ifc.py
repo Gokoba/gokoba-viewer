@@ -1071,7 +1071,7 @@ def _wz_koerper(abschnitte, ax):
                     tris.append(np.array([[A[j], A[k], B[k]], [A[j], B[k], B[j]]]))
     return np.vstack(tris) if tris else None
 
-def _wz_bauen(schnitte, fl_ringe):
+def _wz_bauen(schnitte, fl_ringe, vol_as=None):
     """schnitte: [{'ax','min','max','lage','S'}] + die Rohkonturen des Teils.
        Rueckgabe: Dreiecke (M,3,3) in mm oder None (dann bleibt der alte Weg).
        ZWEI SELBSTPRUEFUNGEN, beide an Pauls Paket vom 27.07. gemessen (je 0 Verstoesse):
@@ -1085,7 +1085,13 @@ def _wz_bauen(schnitte, fl_ringe):
     if not schnitte: return None
     ax = int(schnitte[0]['ax'])
     if any(int(s['ax']) != ax for s in schnitte): return None
-    for _a97, _l97 in fl_ringe:                       # SELBSTPRUEFUNG A
+    # v102: Ist das echte Volumen aus Advance Steel bekannt, entscheidet AM ENDE der Vergleich
+    #   mit ihm - und nicht mehr meine Heuristik. Gemessen an Pauls Balkonturm: die Wand E3254
+    #   mit den fuenf Tueroeffnungen wurde von der Prismen-Pruefung VERWORFEN, obwohl die
+    #   Rekonstruktion das AS-Volumen auf 0,02 % trifft. Genau diese Wand fiel dadurch auf den
+    #   alten Facettenweg zurueck - das waren die ueberstehenden Flaechen an den Tueren.
+    _mitVol = (vol_as is not None and vol_as > 0.0)
+    for _a97, _l97 in (() if _mitVol else fl_ringe):  # SELBSTPRUEFUNG A
         _p97 = np.asarray(_a97, dtype=float)
         if len(_p97) < 3: continue
         _n97 = np.zeros(3)
@@ -1106,21 +1112,38 @@ def _wz_bauen(schnitte, fl_ringe):
     _mn97 = float(schnitte[0]['min']); _mx97 = float(schnitte[0]['max'])
     _soll97 = [_mn97 + (_mx97 - _mn97) * f for f in (0.10, 0.30, 0.50, 0.70, 0.90)]
     _raster97 = all(any(abs(float(s['lage']) - r) < 1.0 for r in _soll97) for s in schnitte)
+    # v101: Ab Plugin v123 schreibt der Exporter fuer JEDE versuchte Schnittlage eine D-Zeile -
+    #   auch dann, wenn dort kein Material lag (dann ohne S-Zeilen). Damit ist unterscheidbar,
+    #   ob ein Abschnitt LEER war oder gar nicht abgetastet wurde. Aeltere Pakete kennen das
+    #   nicht; fuer die gilt weiter das feste Raster 10/30/50/70/90 Prozent.
     absch = []
     for a, b in zip(ebenen[:-1], ebenen[1:]):
-        rs = None
+        rs = None; getastet = False
         for s in schnitte:                       # STRENG innen - Lagen auf der Trennebene sind mehrdeutig
             if a + 0.5 < float(s['lage']) < b - 0.5:
-                rs = _wz_ringe(s['S'], ax); break
+                getastet = True
+                rs = _wz_ringe(s['S'], ax) if s.get('S') else None
+                break
         if rs:
             absch.append((float(a), float(b), rs))
-        elif _raster97 and not any(a + 0.5 < r < b - 0.5 for r in _soll97):
-            return None                          # SELBSTPRUEFUNG B: Intervall nie abgetastet
+        elif getastet:
+            continue                             # abgetastet und leer -> korrekt uebersprungen
+        elif _raster97 and any(a + 0.5 < r < b - 0.5 for r in _soll97):
+            continue                             # altes Paket: Soll-Lage lag darin, also leer
+        elif _mitVol:
+            continue                             # v102: das Volumen entscheidet, nicht die Heuristik
+        else:
+            return None                          # SELBSTPRUEFUNG B: Abschnitt nie abgetastet
     if not absch: return None
     T = _wz_koerper(absch, ax)
     if T is None or len(T) < 4: return None
     vol = float(np.sum(np.einsum('ij,ij->i', T[:, 0], np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])))) / 6.0
     if vol <= 0.0: return None                   # Selbstkontrolle: ein Koerper hat positives Volumen
+    if _mitVol:
+        # 1 % Toleranz - das deckt Rundung und Vermaschung ab, faengt aber jede echte Entgleisung.
+        if abs(vol - vol_as) > 0.01 * vol_as:
+            _FLSTAT['wz_volumen'] = _FLSTAT.get('wz_volumen', 0) + 1
+            return None
     return T
 # =================== ENDE v97 WURZEL-WEG ===================
 
@@ -1217,7 +1240,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             if schnitte:
                 _wzT = None
                 try:
-                    _wzT = _wz_bauen(schnitte, fl_ringe)
+                    _wzT = _wz_bauen(schnitte, fl_ringe, (info.get(kn, {}) or {}).get('volumen'))
                 except Exception:
                     _wzT = None
                 if _wzT is not None:
@@ -1647,6 +1670,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
           % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
+    print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
           % (_FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
     for pz in probeZeilen:
@@ -2019,7 +2043,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v100\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v102\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))

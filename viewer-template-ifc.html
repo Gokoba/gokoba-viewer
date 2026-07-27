@@ -5206,7 +5206,7 @@ var GOKOBA_LAYER_ACI = {
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
       g.closePath();g.fillStyle=li?'rgba(232,235,238,0.40)':'rgba(190,194,198,0.30)'; /* v50: kristallin wie STEP, dunkle schwaecher */g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
         try{g.filter='none';}catch(e){}
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
   }
   var verzinktTex=verzinktTextur();
   /* ★ Gitterrost-Textur (Draufsicht), Maschenweite aus dem Dialog */
@@ -5216,7 +5216,7 @@ var GOKOBA_LAYER_ACI = {
     g.fillStyle='#a9adb0';var bw=6,sx=(mw==='3010')?18:44,sy=44,i;
     for(i=0;i<=n;i+=sx)g.fillRect(i,0,bw,n);
     for(i=0;i<=n;i+=sy)g.fillRect(0,i,n,bw);
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
   }
   var gitterTex=GOKOBA_GITTER_TEX.indexOf('keine')>=0?null:gitterTextur(GOKOBA_GITTER_TEX.indexOf('3010')>=0?'3010':'3030');
   /* ★ Triplanar: Textur aus Weltkoordinaten auf JEDE Flaeche projizieren (von oben,
@@ -5297,7 +5297,7 @@ var GOKOBA_LAYER_ACI = {
       for(i=0;i<7000;i++){g.fillStyle=(Math.random()<0.5)?d.ader:d.hell;g.globalAlpha=0.25;g.fillRect(Math.random()*n,Math.random()*n,1,1);}
       g.globalAlpha=1;
     }
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;gkTexFein(t);
     t.repeat.set(1/(30.0*0.2),1/(30.0*0.2)); /* ★ eine Kachel = 0,2 m Welt (Muster fein) */
     _dekorTexCache[key]=t;return t;
   }
@@ -5330,7 +5330,7 @@ var GOKOBA_LAYER_ACI = {
       g.closePath();g.fill();
     }
     g.globalAlpha=1;
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;gkTexFein(t);
     t.repeat.set(1/(30.0*0.125),1/(30.0*0.125)); /* ★ Splitterbild alle 12,5 cm (fein) */
     _dekorTexCache[key]=t;return t;
   }
@@ -5352,7 +5352,7 @@ var GOKOBA_LAYER_ACI = {
       var px=Math.cos(ang+1.5708)*5.5,py=Math.sin(ang+1.5708)*5.5;
       traene(cx-px,cy-py,ang);traene(cx+px,cy+py,ang);
     }
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.05,1.05);t.encoding=THREE.sRGBEncoding;return t;
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.05,1.05);t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
   }
   var traenTex=traenTextur();
   /* ★ Ablaufpruefung (nur wenn Pipeline ein Datum gesetzt hat) */
@@ -5433,7 +5433,29 @@ var GOKOBA_LAYER_ACI = {
                exakt dieselbe Tiefe, geometrisch bleibt es unsichtbar, und die Rangfolge der Klassen wird
                nicht angetastet, weil die eine ganze Stufe auseinanderliegt. Angefasst wird NUR, was noch
                keinen eigenen Vorzug hat - Gitterroste, Auflieger, Bestand und Daemmung bleiben unberuehrt. */
-            window.gkTiefeStreu=function(o){
+            /* v120 A50 NEU GEDACHT. Der bisherige Weg war falsch, und zwar gleich doppelt:
+   - nur 16 Toepfe fuer hunderte Bauteile, also zwangslaeufig wieder Gleichstaende
+   - vor allem aber: BRUCHTEILE einer Tiefenstufe loesen im Tiefenpuffer gar nicht auf,
+     ein Unterschied von 0,03 Stufen ist schlicht keiner
+   Bei EXAKT gleicher Tiefe entscheidet die ZEICHENREIHENFOLGE: wer zuerst gezeichnet wird,
+   schreibt die Tiefe und gewinnt. Three.js sortiert sonst nach Entfernung - und die kippt
+   beim Drehen, genau das ist Pauls Flackern. Jedes Bauteil bekommt deshalb eine EIGENE,
+   EINDEUTIGE Zeichennummer: erst nach Klasse, dann fortlaufend. Damit ist die Reihenfolge
+   festgenagelt, unabhaengig von Blickwinkel und Entfernung. Kostet nichts, skaliert nicht
+   mit der Entfernung und braucht keine zusaetzlichen Materialien.
+   Alle Werte sind NEGATIV, damit Boden, Schnittdeckel und Messgrafik (0 bis 10) unberuehrt
+   ihre bisherige Reihenfolge behalten. */
+window._gkZf={};
+window.gkZeichenfolge=function(o,ly){
+  var rang = gkIst(ly,'gelaender') ? 1
+           : (gkIst(ly,'traeger')  ? 2
+           : (gkIst(ly,'auflieger')? 3
+           : (gkIst(ly,'bestand')  ? 5 : 4)));
+  var n = (window._gkZf[rang] = (window._gkZf[rang]||0) + 1);
+  if(n > 99000) n = 99000;
+  o.renderOrder = -1000000 + rang*100000 + n;
+};
+window.gkTiefeStreu=function(o){
               var m0=Array.isArray(o.material)?o.material[0]:o.material;
               if(!m0||m0.polygonOffset||m0.transparent)return;
               if(!window._gkTieKlone)window._gkTieKlone={};
@@ -5537,7 +5559,7 @@ var GOKOBA_LAYER_ACI = {
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
                   if(mB&&!mB.polygonOffset){mB.polygonOffset=true;mB.polygonOffsetFactor=1;mB.polygonOffsetUnits=1;}
                 }
-                if(!gkIst(_ly82,'daemmung')) gkTiefeStreu(o);   /* v116 A50: Gleichstands-Riegel */
+                if(!gkIst(_ly82,'daemmung')){ gkZeichenfolge(o,_ly82); gkTiefeStreu(o); }   /* v120: feste Zeichenreihenfolge + Rangfolge */
                 if(!gkIst(_ly82,'daemmung'))return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
@@ -5721,7 +5743,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V118_ACHSSCHRIFT'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V120_ZEICHENFOLGE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5904,7 +5926,7 @@ var GOKOBA_LAYER_ACI = {
         function achsLabel(txt,pos){
           /* ★ flach auf dem Boden liegend (Ebene in Modell-XY), ohne Kasten drumherum */
           var c=achsLabelCanvas(txt,achsFarbeAktuell());
-          var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+          var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;gkTexFein(t);
           var m=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:0.06,depthWrite:false,side:THREE.DoubleSide});
           var fl=new THREE.Mesh(new THREE.PlaneGeometry(achsSk,achsSk),m);
           fl.position.copy(pos);
@@ -6639,7 +6661,15 @@ var GOKOBA_LAYER_ACI = {
         g.fillStyle='#798087';g.fillRect(0,0,n,n);
         g.strokeStyle='rgba(34,40,46,0.32)';g.lineWidth=2.2;
         for(var i=-n;i<2*n;i+=13){g.beginPath();g.moveTo(i,0);g.lineTo(i+n,n);g.stroke();}
-        var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
+      /* v119 GEMESSEN: in der gesamten Vorlage war KEINE anisotrope Texturfilterung gesetzt.
+      Eine feine Wiederholtextur wie die Gitterrost-Schraffur flimmert dadurch beim Drehen,
+      sobald man flach darauf schaut - genau Pauls Beobachtung. Der Helfer setzt Anisotropie
+      und Mipmap-Filterung; three.js begrenzt den Wert selbst auf das, was die Grafikkarte kann. */
+   function gkTexFein(t){
+     try{ t.anisotropy=8; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.needsUpdate=true; }catch(e){}
+     return t;
+   }
+     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
       }
       function schnittCapsBauen(){
         if(schnittCapNetz)return;
