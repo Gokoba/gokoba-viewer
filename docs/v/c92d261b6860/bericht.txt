@@ -24,4 +24,4 @@ wurzelweg_fehl=3
 rund=1275
 rund_verworfen=0
 deckelkill_probe=0.00m2|7642,4394,1086;0.00m2|7640,4394,1072;0.00m2|4752,7357,9935;0.00m2|4752,7357,9939;0.00m2|4752,7357,9972;0.00m2|4752,7357,9975
-dauer_konverter_s=161.9
+dauer_konverter_s=185.7
