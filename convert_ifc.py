@@ -895,12 +895,17 @@ def _rd_verfeinern(faces, zyl, ziel=48, kappe=4, tol=0.15):
                 p=ring[i]; q=ring[(i+1)%m]
                 out.append(p)
                 r1,w1,z1=lage(p); r2,w2,z2=lage(q)
-                if abs(r1-r)>tol or abs(r2-r)>tol or abs(z1-z2)>tol: continue
+                if abs(r1-r)>tol or abs(r2-r)>tol: continue
                 dw=(w2-w1+540)%360-180
                 if abs(abs(dw)-zyl['schritt'])>0.35*zyl['schritt']: continue
                 for k in range(1,K):
-                    wk=np.radians(w1+dw*k/K)
-                    out.append((c[0]+r*np.cos(wk))*e0+(c[1]+r*np.sin(wk))*e1+z1*a)
+                    _f=k/float(K)
+                    wk=np.radians(w1+dw*_f)
+                    # v99: die Laengslage wird MITGEFUEHRT statt festgehalten. Vorher wurden nur
+                    #   waagerechte Sehnen unterteilt; bei Gehrungen und schraeg abgeschnittenen
+                    #   Rohren blieb die Deckelkante ungeteilt, dadurch entstanden T-Stoesse und
+                    #   der Selbsttest hat das ganze Teil verworfen.
+                    out.append((c[0]+r*np.cos(wk))*e0+(c[1]+r*np.sin(wk))*e1+(z1+(z2-z1)*_f)*a)
                     n+=1
             rr.append(np.array(out,dtype=float))
         neu.append((rr[0],rr[1:]))
@@ -2007,7 +2012,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v98\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v99\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))

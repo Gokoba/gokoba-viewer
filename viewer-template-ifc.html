@@ -5653,7 +5653,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V104_RANGFOLGE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V105_ANTRITTSKANTE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -6136,7 +6136,23 @@ var GOKOBA_LAYER_ACI = {
           return null;}
         var werk={};T.forEach(function(d){var wk=wsKey(d);if(!wk)return;var w=werk[wk]=werk[wk]||{n:0,qm:0,kg:0};
           w.n++;if(d.flaeche)w.qm+=d.flaeche;else if(d.masse)w.qm+=d.masse[0]*d.masse[1]/1e6;if(d.gewicht)w.kg+=d.gewicht;});
-        var stufen={};T.forEach(function(d){if(d.art==='gitterroststufe'&&d.masse){var k=Math.round(d.masse[0])+' \u00d7 '+Math.round(d.masse[1]);stufen[k]=(stufen[k]||0)+1;}});
+        /* v105 Pauls Vorgabe A49: Ist an der Gitterroststufe eine ERHOEHTE ANTRITTSKANTE
+           angeschweisst, ist die nutzbare Stufentiefe 2 mm groesser als der reine Rost.
+           Die Auskunft steht in Pauls eigenen Benutzerattributen der Stufe ('mit erhoehter
+           Antrittskante') - es wird also nichts geraten und nichts ueber die Geometrie gesucht.
+           Der Zuschlag geht auf das KLEINERE der beiden Masse; bei einer Stufe ist das immer
+           die Tiefe (1200 x 318 -> 1200 x 320), unabhaengig von der Reihenfolge im Paket. */
+        function gkAntritt(d){
+          var a=d&&d.attrs; if(!a)return false;
+          for(var i=0;i<a.length;i++){ if(a[i]&&String(a[i]).toLowerCase().indexOf('antrittskante')>=0)return true; }
+          return false;
+        }
+        function gkStufenMass(d){
+          var b=Math.round(d.masse[0]), t=Math.round(d.masse[1]);
+          if(gkAntritt(d)){ if(t<=b)t+=2; else b+=2; }
+          return b+' \u00d7 '+t;
+        }
+        var stufen={};T.forEach(function(d){if(d.art==='gitterroststufe'&&d.masse){var k=gkStufenMass(d);stufen[k]=(stufen[k]||0)+1;}});
 
         listePanel=el('div',glasBox('width:min(316px,84vw);max-height:72%;display:flex;flex-direction:column;overflow:hidden;'));
         listePanel.id='gkliste';
