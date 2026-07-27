@@ -5426,7 +5426,16 @@ var GOKOBA_LAYER_ACI = {
                     o.material=kT;
                   }
                 }
-                if(_ly82.indexOf('tr\u00e4ger')>=0||_ly82.indexOf('traeger')>=0||_ly82.indexOf('st\u00fctze')>=0||_ly82.indexOf('stuetze')>=0){
+                if((_ly82.indexOf('gelaender')<0&&_ly82.indexOf('gel\u00e4nder')<0)&&
+                   (_ly82.indexOf('tr\u00e4ger')>=0||_ly82.indexOf('traeger')>=0||_ly82.indexOf('st\u00fctze')>=0||
+                    _ly82.indexOf('stuetze')>=0||_ly82.indexOf('treppe')>=0||_ly82.indexOf('wange')>=0||
+                    _ly82.indexOf('podest')>=0)){
+                  /* v111 GEMESSEN in Pauls Treppenturm: die WANGEN liegen auf AS_Treppe (73 Stueck
+                     U240), nicht auf AS_Traeger. Meine Rangfolge kannte nur Traeger und Stuetze,
+                     also fiel die Wange auf Stufe 0 und der Gitterrost mit seinem Vorzug von zwei
+                     Stufen gewann wieder - genau deshalb schauten die Stufen erneut durch die
+                     Wange. Gelaender-Layer sind ausgenommen, damit 'Treppengelaender' nicht hier
+                     landet, sondern eine Stufe weiter vorne bleibt. */
                   /* v104 GEMESSEN: Gitterrost- und Traegerflaechen liegen stellenweise auf 0,000 mm
                      (z.B. E1150 gegen E4923). Die Gitterroste tragen seit v83 einen festen Vorzug von
                      ZWEI Tiefenstufen und gewinnen deshalb IMMER - genau deshalb schauen die Stufen
@@ -5631,7 +5640,17 @@ var GOKOBA_LAYER_ACI = {
         'body.hell #ralpanel button{color:#2C3B47;}'+
         'body.hell .ralbtn,body.hell .ralbtn .ralcv{color:#22303B!important;}';
       document.head.appendChild(st);
-      var ACHSEN=GOKOBA_TEILE['__achsen__']||null; delete GOKOBA_TEILE['__achsen__'];
+      /* v112 PAULS BEFUND, bestaetigt: hier haengt ein ZWEITER, ALTER Achsen-Zeichner aus der
+         IFC-Zeit. Er baut aus GOKOBA_TEILE['__achsen__'] dicke Zylinder-Staebe mit Schildern an
+         beiden Enden, haengt sie FEST ans Modell und hat einen EIGENEN Knopf in der Palette -
+         voellig getrennt vom Achsen-Schieberegler oben links. Das waren die dunklen Linien mit
+         den Kreisen, die auch bei ausgeschaltetem Schalter zu sehen waren und auf die sich nichts
+         anklicken liess. Er wird hier stillgelegt: ACHSEN bleibt null, damit faellt der ganze
+         Block darunter (Staebe, Schilder, Themenbeobachter) UND der zweite Knopf ersatzlos weg.
+         Gueltig ist allein die Achsen-Funktion mit dem Schieberegler. Der Eintrag wird weiterhin
+         aus der Teileliste entfernt, damit er nicht als Bauteil auftaucht. */
+      delete GOKOBA_TEILE['__achsen__'];
+      var ACHSEN=null;
       /* ★ Startzustand: FARBIG mit den nativen Layerfarben (keine RAL-Simulation,
          keine Graustufen) - nur die Schatten bleiben aus Tempogruenden aus. */
       try{
@@ -5653,7 +5672,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V109_ACHSLAGE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V112_ALTACHSEN_RAUS'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5768,7 +5787,7 @@ var GOKOBA_LAYER_ACI = {
           reihe.innerHTML = an
             ? '<div data-bgmark style="'+KS+'cursor:pointer;color:var(--gktx);">BG markiert</div>'+
               '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'
-            : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ET ausblenden</div>'+
+            : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>'+
               '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>';
           var a1=reihe.querySelector('[data-weg]');
           if(a1)a1.addEventListener('click',function(ev){ev.stopPropagation();
@@ -6421,7 +6440,7 @@ var GOKOBA_LAYER_ACI = {
           '.gksw.on span{left:16px;}';
         document.head.appendChild(stl);
         var w=el('div','position:absolute;left:10px;top:10px;z-index:7;user-select:none;'); w.id='gklinks'; /* v72 */
-        w.style.cssText+='background:rgba(255,255,255,0.46);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;padding:8px 10px;box-shadow:0 6px 18px rgba(30,40,60,0.08);opacity:.96;'; /* v70: dezenter als die rechte Palette (Rangfolge) */
+        w.style.cssText+='background:var(--gkbg);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--gkln);color:var(--gktx);border-radius:14px;padding:8px 10px;box-shadow:0 6px 18px rgba(30,40,60,0.08);opacity:.96;'; /* v70: dezenter als die rechte Palette (Rangfolge) */
         /* v92: Pauls A13-Freigabe - Icon-Kacheln statt Textliste, Trennlinie, Achsen-Kippschalter */
         function gkIkon(nm){
           var W='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">';
@@ -6449,7 +6468,7 @@ var GOKOBA_LAYER_ACI = {
           g.appendChild(b);
         });
         w.appendChild(g);
-        var az=el('button',bs+'width:100%;margin-top:2px;font:500 11px var(--ui,sans-serif);color:var(--gktx);'); az.className='gkfv'; az.innerHTML='<span style="display:block;line-height:1.15;">alle Bauteile anzeigen</span>'; /* v102: Pauls Wortlaut */ az.title='Alles einblenden und zur Startansicht wechseln';
+        var az=el('button',bs+'width:100%;margin-top:2px;font:500 11px var(--ui,sans-serif);color:var(--gktx);'); az.className='gkfv'; az.innerHTML='<span style="display:block;line-height:1.15;padding:4px 12px;">Alle Bauteile anzeigen</span>'; /* v110: grosses A, und rundum mehr Luft ohne kleinere Schrift - der Knopf waechst dafuer ein wenig */ /* v102: Pauls Wortlaut */ az.title='Alles einblenden und zur Startansicht wechseln';
         az.addEventListener('click',function(){ /* v104 Pauls Vorgabe: NUR die ausgeblendeten Bauteile
             zurueckholen. Die aktuelle Ansicht bleibt unveraendert - Kamera, Blickrichtung und Ziel
             werden nicht mehr angefasst. */
@@ -6467,43 +6486,41 @@ var GOKOBA_LAYER_ACI = {
           if(!window.gkAchsG){
             try{ /* v70: flach auf dem Boden, Strichlinie + Kreis + Beschriftung am Achsanfang */
               var G=new THREE.Group(); G.name='gkAchsen';
-              /* v109 GEMESSEN: der Konverter liefert das Modell in ROHKOORDINATEN (z ist die Hoehe),
-                 die Vorlage dreht es dann mit model.rotation.x=-90 Grad, SKALIERT es und VERSCHIEBT
-                 es in die Mitte. Die Achsen hingen bisher direkt in der Szene - also ohne Drehung,
-                 ohne Skalierung, ohne Verschiebung. Genau deshalb waren sie zu gross und sassen an
-                 der falschen Stelle. Sie werden jetzt im KOORDINATENSYSTEM DES MODELLS gebaut und
-                 als Kind an model gehaengt; damit gilt jede Transformation automatisch mit. */
+              /* v111 Achsen nach Pauls Vorgaben:
+                 - Hoehe = NULLPUNKT der Zeichnung (z=0 im Modellsystem), nicht Modellunterkante
+                 - Kreis mit Beschriftung an BEIDEN Enden der Achslinie
+                 - Beschriftung liegt FLACH auf dem Boden und dreht sich NICHT mit der Kamera
+                   (Flaeche statt Sprite - ein Sprite steht immer zum Betrachter)
+                 - kraeftigeres Blaugrau, Strichstaerke und Strichelung unveraendert
+                 Die Gruppe haengt am Modell, damit Drehung, Skalierung und Verschiebung gelten. */
               model.updateMatrixWorld(true);
-              var _lb=new THREE.Box3().setFromObject(model)
-                        .applyMatrix4(new THREE.Matrix4().copy(model.matrixWorld).invert());
-              var by=_lb.min.z+0.02;   /* im Modellsystem ist z die Hoehe */
-              /* v107 GEMESSEN an Pauls Rasterprojekt: das Plugin zerlegt die ASTGRID-Objekte und
-                 liefert ALLE Bruchstuecke als Achsen - im Beispiel 45 Eintraege, davon aber nur
-                 FUENF echte Achsen (A, 1, 2, 3, 4; 13,3 m und viermal 7,2 m lang). Die uebrigen 40
-                 sind 12 bis 22 mm kurze Reste der zerlegten Rasterkoepfe, also Kreisboegen und
-                 Strichmarken. Jedes Bruchstueck bekam bisher einen eigenen Kreis UND eine eigene
-                 Beschriftung - daher die Haeufchen aus uebereinanderliegenden Ziffern. Es zaehlen
-                 jetzt nur Linien ab einem halben Meter, Doppelte fallen weg, und Kreis, Strich und
-                 Schrift sind dezenter. */
-              var lm=new THREE.LineDashedMaterial({color:0x9aa3ab,dashSize:0.55,gapSize:0.22,transparent:true,opacity:0.75});
-              var km=new THREE.LineBasicMaterial({color:0x9aa3ab,transparent:true,opacity:0.75});
+              var by=0.0;   /* Nullpunkt der Zeichnung */
+              var ACHSFARB=0x466C8C;
+              var lm=new THREE.LineDashedMaterial({color:ACHSFARB,dashSize:0.55,gapSize:0.22,transparent:true,opacity:0.9});
+              var km=new THREE.LineBasicMaterial({color:ACHSFARB,transparent:true,opacity:0.9});
               var _gz={};
+              function achsKopf(mit,txt,G){
+                var r=0.20, seg=[];
+                for(var i=0;i<=40;i++){var wk=i/40*Math.PI*2; seg.push(new THREE.Vector3(mit.x+Math.cos(wk)*r,mit.y+Math.sin(wk)*r,by));}
+                G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seg),km));
+                if(!txt)return;
+                var cv=document.createElement('canvas');cv.width=cv.height=128;var g2=cv.getContext('2d');
+                g2.fillStyle='#2F5878';g2.font='700 76px sans-serif';g2.textAlign='center';g2.textBaseline='middle';
+                g2.fillText((''+txt).slice(0,4),64,68);
+                var pl=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.30),
+                       new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false,side:THREE.DoubleSide}));
+                pl.position.set(mit.x,mit.y,by+0.01); pl.renderOrder=7; G.add(pl);
+              }
               GOKOBA_ACHSEN.forEach(function(a){
                 var p=a.p||[]; if(p.length<6)return;
                 var p1=new THREE.Vector3(p[0]*0.001,p[1]*0.001,by), p2=new THREE.Vector3(p[3]*0.001,p[4]*0.001,by);
-                if(p1.distanceTo(p2)<0.5)return;
-                var sig=[p1.x.toFixed(2),p1.z.toFixed(2),p2.x.toFixed(2),p2.z.toFixed(2)].join('|');
+                if(p1.distanceTo(p2)<0.5)return;                       /* Bruchstuecke der Rasterkoepfe */
+                var sig=[p1.x.toFixed(2),p1.y.toFixed(2),p2.x.toFixed(2),p2.y.toFixed(2)].join('|');
                 if(_gz[sig])return; _gz[sig]=1;
                 var li=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1,p2]),lm); li.computeLineDistances(); G.add(li);
-                var dir=p2.clone().sub(p1).normalize(), r=0.20, cz=p1.clone().addScaledVector(dir,-r*1.25);
-                var seg=[]; for(var i=0;i<=40;i++){var wk=i/40*Math.PI*2; seg.push(new THREE.Vector3(cz.x+Math.cos(wk)*r,cz.y+Math.sin(wk)*r,by));}
-                G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seg),km));
-                if(a.l){
-                  var cv=document.createElement('canvas');cv.width=cv.height=128;var g2=cv.getContext('2d');
-                  g2.fillStyle='#6b7480';g2.font='700 66px sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText((''+a.l).slice(0,4),64,66);
-                  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true,opacity:0.9}));
-                  sp.scale.set(0.34,0.34,1); sp.position.set(cz.x,cz.y,by+0.01); G.add(sp);
-                }
+                var dir=p2.clone().sub(p1).normalize();
+                achsKopf(p1.clone().addScaledVector(dir,-0.25),a.l,G);
+                achsKopf(p2.clone().addScaledVector(dir, 0.25),a.l,G);
               });
               model.add(G); window.gkAchsG=G;   /* v109: ins Modell, nicht in die Szene */
             }catch(e){}
