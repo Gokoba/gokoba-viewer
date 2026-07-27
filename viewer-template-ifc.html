@@ -5653,7 +5653,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V107_ACHSEN'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V109_ACHSLAGE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5711,7 +5711,9 @@ var GOKOBA_LAYER_ACI = {
       var karte=el('div',glasBox('display:none;max-width:648px;padding:13px 32px 13px 15px;z-index:30;'));
       karte.id='teilinfo'; panel.appendChild(karte);
       var gewaehlt=null,gewMat=null;
-      function abwaehlen(){if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
+      var bgMark=null; /* v108: {bg, teile:[{o,mat}]} - die markierte Baugruppe */
+      function bgMarkAus(){ if(bgMark){ bgMark.teile.forEach(function(t){t.o.material=t.mat;}); bgMark=null; } }
+      function abwaehlen(){bgMarkAus();if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
       window.addEventListener('keydown',function(e){if(e.key!=='Escape')return;
         try{ if(typeof aktiv!=='undefined'&&aktiv){schalte(null);return;} }catch(_e){} /* v73: ESC schliesst zuerst das offene Werkzeug */
         abwaehlen();}); /* v59: ESC waehlt ab (Pauls Wunsch) */
@@ -5743,23 +5745,52 @@ var GOKOBA_LAYER_ACI = {
            /* v106 Pauls Wunsch: ZWEI gleich grosse Knoepfe nebeneinander - Einzelteil und
               Baugruppe. Die Baugruppe kommt aus bgnr; hat das Modell noch keine Positionierung,
               gibt es keine Baugruppennummer und der rechte Knopf bleibt sichtbar, aber stumm. */
-           '<div style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);display:grid;grid-template-columns:1fr 1fr;gap:6px;">'+
-           '<div data-weg style="text-align:center;cursor:pointer;font:500 11px var(--ui);color:var(--gktx2);padding:3px 0;border:1px solid rgba(127,140,150,.28);border-radius:7px;">ET ausblenden</div>'+
-           '<div data-wegbg style="text-align:center;font:500 11px var(--ui);padding:3px 0;border:1px solid rgba(127,140,150,.28);border-radius:7px;'+
-             (d.bgnr?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG ausblenden</div></div>';
+           '<div data-knopfreihe style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>';
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
-        var _wg=karte.querySelector('[data-weg]');
-        if(_wg)_wg.addEventListener('click',function(ev){ev.stopPropagation();
-          var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});   /* v102: Material zuerst zurueck, dann ausblenden */
-        var _wb=karte.querySelector('[data-wegbg]');
-        if(_wb&&d.bgnr)_wb.addEventListener('click',function(ev){ev.stopPropagation();
-          var bg=String(d.bgnr); abwaehlen();                     /* v106: ganze Baugruppe ausblenden */
+        /* v108 Pauls Ablauf: erst 'ET ausblenden | BG markieren'. Sobald die Baugruppe markiert
+           ist, interessiert das Einzelteil nicht mehr - dann steht links 'BG markieren' (jetzt zum
+           Aufheben) und rechts neu 'BG ausblenden'. Das markierte Teil selbst bleibt aussen vor,
+           es traegt schon die Auswahlfarbe. */
+        var reihe=karte.querySelector('[data-knopfreihe]');
+        /* v109: Pauls Optik-Wunsch - kleinere, ruhigere Schrift und deutlich mehr Luft zum Rand */
+        var KS='text-align:center;font:500 9.5px var(--ui);letter-spacing:.03em;padding:7px 10px;border:1px solid rgba(127,140,150,.26);border-radius:9px;line-height:1.1;';
+        function bgTeile(bg){
+          var L=[];
           model.traverse(function(o){
             if(!o.isMesh&&!o.isLineSegments)return;
             var dd=GOKOBA_TEILE&&GOKOBA_TEILE[o.name];
-            if(dd&&String(dd.bgnr||'')===bg)o.visible=false;
+            if(dd&&String(dd.bgnr||'')===bg)L.push(o);
           });
-        });
+          return L;
+        }
+        function reiheBauen(){
+          var hatBG=!!d.bgnr, an=!!(bgMark&&bgMark.bg===String(d.bgnr||''));
+          reihe.innerHTML = an
+            ? '<div data-bgmark style="'+KS+'cursor:pointer;color:var(--gktx);">BG markiert</div>'+
+              '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'
+            : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ET ausblenden</div>'+
+              '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>';
+          var a1=reihe.querySelector('[data-weg]');
+          if(a1)a1.addEventListener('click',function(ev){ev.stopPropagation();
+            var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});
+          var a2=reihe.querySelector('[data-bgmark]');
+          if(a2&&hatBG)a2.addEventListener('click',function(ev){ev.stopPropagation();
+            if(bgMark){bgMarkAus();reiheBauen();return;}
+            var bg=String(d.bgnr), L=[];
+            bgTeile(bg).forEach(function(o){
+              if(o===gewaehlt)return;                       /* traegt schon die Auswahlfarbe */
+              L.push({o:o,mat:o.material}); o.material=heben(o,GK_WAHL_FARBE,0.7);
+            });
+            bgMark={bg:bg,teile:L}; reiheBauen();
+          });
+          var a3=reihe.querySelector('[data-bgweg]');
+          if(a3)a3.addEventListener('click',function(ev){ev.stopPropagation();
+            var bg=bgMark?bgMark.bg:String(d.bgnr||'');
+            bgMarkAus(); abwaehlen();
+            bgTeile(bg).forEach(function(o){o.visible=false;});
+          });
+        }
+        reiheBauen();
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
         if(mobil()){karte.style.left='50%';karte.style.transform='translateX(-50%)';karte.style.top='';karte.style.bottom='14px';}
@@ -6158,8 +6189,18 @@ var GOKOBA_LAYER_ACI = {
            Der Zuschlag geht auf das KLEINERE der beiden Masse; bei einer Stufe ist das immer
            die Tiefe (1200 x 318 -> 1200 x 320), unabhaengig von der Reihenfolge im Paket. */
         function gkAntritt(d){
+          /* v108 KORREKTUR: Eine Antrittskante hat fast jede Gitterroststufe - Pauls Modell sagt
+             'Gitterroststufe mit Antrittskante' bei 82 Teilen. Die zwei Millimeter gelten NUR fuer
+             die ERHOEHTE Antrittskante ('mit erhoehter Antrittskante'). v105 hat auf das Wort
+             'Antrittskante' allein geprueft und deshalb auch normalen Stufen 2 mm zugeschlagen -
+             aus 305 wurde faelschlich 307. Jetzt muessen BEIDE Woerter im selben Attribut stehen. */
           var a=d&&d.attrs; if(!a)return false;
-          for(var i=0;i<a.length;i++){ if(a[i]&&String(a[i]).toLowerCase().indexOf('antrittskante')>=0)return true; }
+          for(var i=0;i<a.length;i++){
+            if(!a[i])continue;
+            var t=String(a[i]).toLowerCase().replace(/\u00f6/g,'o').replace(/\u00e4/g,'a').replace(/\u00fc/g,'u');
+            if(t.indexOf('antrittskante')<0)continue;
+            if(t.indexOf('erhoh')>=0||t.indexOf('erhoeh')>=0)return true;
+          }
           return false;
         }
         function gkStufenMass(d){
@@ -6426,7 +6467,16 @@ var GOKOBA_LAYER_ACI = {
           if(!window.gkAchsG){
             try{ /* v70: flach auf dem Boden, Strichlinie + Kreis + Beschriftung am Achsanfang */
               var G=new THREE.Group(); G.name='gkAchsen';
-              var by=new THREE.Box3().setFromObject(model).min.y+0.02;
+              /* v109 GEMESSEN: der Konverter liefert das Modell in ROHKOORDINATEN (z ist die Hoehe),
+                 die Vorlage dreht es dann mit model.rotation.x=-90 Grad, SKALIERT es und VERSCHIEBT
+                 es in die Mitte. Die Achsen hingen bisher direkt in der Szene - also ohne Drehung,
+                 ohne Skalierung, ohne Verschiebung. Genau deshalb waren sie zu gross und sassen an
+                 der falschen Stelle. Sie werden jetzt im KOORDINATENSYSTEM DES MODELLS gebaut und
+                 als Kind an model gehaengt; damit gilt jede Transformation automatisch mit. */
+              model.updateMatrixWorld(true);
+              var _lb=new THREE.Box3().setFromObject(model)
+                        .applyMatrix4(new THREE.Matrix4().copy(model.matrixWorld).invert());
+              var by=_lb.min.z+0.02;   /* im Modellsystem ist z die Hoehe */
               /* v107 GEMESSEN an Pauls Rasterprojekt: das Plugin zerlegt die ASTGRID-Objekte und
                  liefert ALLE Bruchstuecke als Achsen - im Beispiel 45 Eintraege, davon aber nur
                  FUENF echte Achsen (A, 1, 2, 3, 4; 13,3 m und viermal 7,2 m lang). Die uebrigen 40
@@ -6440,22 +6490,22 @@ var GOKOBA_LAYER_ACI = {
               var _gz={};
               GOKOBA_ACHSEN.forEach(function(a){
                 var p=a.p||[]; if(p.length<6)return;
-                var p1=new THREE.Vector3(p[0]*0.001,by,-p[1]*0.001), p2=new THREE.Vector3(p[3]*0.001,by,-p[4]*0.001);
+                var p1=new THREE.Vector3(p[0]*0.001,p[1]*0.001,by), p2=new THREE.Vector3(p[3]*0.001,p[4]*0.001,by);
                 if(p1.distanceTo(p2)<0.5)return;
                 var sig=[p1.x.toFixed(2),p1.z.toFixed(2),p2.x.toFixed(2),p2.z.toFixed(2)].join('|');
                 if(_gz[sig])return; _gz[sig]=1;
                 var li=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1,p2]),lm); li.computeLineDistances(); G.add(li);
                 var dir=p2.clone().sub(p1).normalize(), r=0.20, cz=p1.clone().addScaledVector(dir,-r*1.25);
-                var seg=[]; for(var i=0;i<=40;i++){var wk=i/40*Math.PI*2; seg.push(new THREE.Vector3(cz.x+Math.cos(wk)*r,by,cz.z+Math.sin(wk)*r));}
+                var seg=[]; for(var i=0;i<=40;i++){var wk=i/40*Math.PI*2; seg.push(new THREE.Vector3(cz.x+Math.cos(wk)*r,cz.y+Math.sin(wk)*r,by));}
                 G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seg),km));
                 if(a.l){
                   var cv=document.createElement('canvas');cv.width=cv.height=128;var g2=cv.getContext('2d');
                   g2.fillStyle='#6b7480';g2.font='700 66px sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText((''+a.l).slice(0,4),64,66);
                   var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true,opacity:0.9}));
-                  sp.scale.set(0.30,0.30,1); sp.position.set(cz.x,by+0.01,cz.z); G.add(sp);
+                  sp.scale.set(0.34,0.34,1); sp.position.set(cz.x,cz.y,by+0.01); G.add(sp);
                 }
               });
-              scene.add(G); window.gkAchsG=G;
+              model.add(G); window.gkAchsG=G;   /* v109: ins Modell, nicht in die Szene */
             }catch(e){}
             if(window.gkAchsG)window.gkAchsG.visible=false;
           }
