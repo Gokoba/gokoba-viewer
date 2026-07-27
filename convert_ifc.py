@@ -840,6 +840,7 @@ def _rd_zylinder(faces, tol=0.05):
     #   der projizierte Umriss sonst um bis zu 1 mm und der Kreis passt nicht mehr.
     sch=max(stimmen.items(),key=lambda kv:kv[1])[0]
     a=np.sum(np.array(sammel[sch]),axis=0); a=a/np.linalg.norm(a)
+
     h=np.array([1.,0,0]) if abs(a[0])<0.9 else np.array([0,1.,0])
     e0=np.cross(a,h); e0/=np.linalg.norm(e0); e1=np.cross(a,e0)
     # nur Mantelstreifen: Normale senkrecht zur Achse
@@ -864,7 +865,8 @@ def _rd_zylinder(faces, tol=0.05):
     except Exception: return None
     c=np.array([sol[0]/2.0,sol[1]/2.0]); r=float(np.sqrt(max(sol[2]+c@c,0.0)))
     if r<3.0: return None
-    if np.abs(np.linalg.norm(aus-c,axis=1)-r).max()>max(0.25,0.02*r): return None
+    _rest=np.abs(np.linalg.norm(aus-c,axis=1)-r).max()
+    if _rest>max(0.25,0.02*r): return None
     w=np.sort(np.unique(np.round(np.degrees(np.arctan2(aus[:,1]-c[1],aus[:,0]-c[0]))%360,1)))
     # dicht beieinanderliegende Winkel sind Rundungsdubletten, zusammenfassen
     ww=[w[0]]
@@ -874,7 +876,12 @@ def _rd_zylinder(faces, tol=0.05):
     N=len(w)
     if N<12 or N>=24: return None      # <12 = echtes Vieleck, >=24 = schon fein genug
     sch=np.diff(np.concatenate([w,[w[0]+360]]))
-    if sch.max()>1.8*np.median(sch): return None
+    # v102 GEMESSEN an E199 (Pauls kantiger Handlauf, 3713 mm langes RR o30x2): eine LUECKE in
+    #   der Winkelverteilung heisst nicht, dass es kein Kreis ist - sie heisst nur, dass ein paar
+    #   Punkte nicht ins Aussenband gefallen sind. Passt der Kreis sehr genau (E199: 0,046 mm
+    #   Restfehler bei erlaubten 0,30), wird die Luecke deshalb toleriert. Am Echtpaket: 92 -> 94
+    #   verfeinerte Rundteile, unveraendert 2 Ablehnungen, KEIN Verlust.
+    if sch.max()>(4.0 if _rest<=0.10 else 1.8)*np.median(sch): return None
     return {'a':a,'e0':e0,'e1':e1,'c':c,'r':r,'N':N,'schritt':float(np.median(sch))}
 
 def _rd_verfeinern(faces, zyl, ziel=48, kappe=4, tol=0.15):
@@ -2012,7 +2019,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v99\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v100\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
