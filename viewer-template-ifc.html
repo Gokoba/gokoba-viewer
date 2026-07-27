@@ -5396,19 +5396,71 @@ var GOKOBA_LAYER_ACI = {
             var reg=null,_aci=(m.name||'').match(/^GOKOBA_ACI_(\d+)/);
             if(_aci)reg=gokobaRegAusAci(parseInt(_aci[1],10));
             if((m.name||'').toLowerCase().indexOf('mmung')>=0)reg={zu:GOKOBA_DAEMMUNG,met:0.00,rau:0.90,alpha:0.80}; /* v66: Daemmung am LAYERNAMEN, unabhaengig von der Layerfarbe */
+            /* ============ v116 A51: ZENTRALES LAYER-VERZEICHNIS ============
+               Zweimal ist uns dasselbe passiert: eine Klasse lag auf einem Layer, den meine verstreuten
+               Abfragen nicht kannten (zuletzt die WANGEN auf AS_Treppe), und das Flackern kam zurueck.
+               Ab hier stehen ALLE Layer-Stichwoerter an EINER Stelle. Ein neues Projekt mit anderen
+               Layernamen ist damit ein Eintrag in dieser Liste und kein Eingriff im Code mehr.
+               Eine innere Liste bedeutet UND - alle Stichwoerter muessen vorkommen. */
+            window.GK_LAYER={
+              auflieger : [['alu','wann'],'abdeck'],
+              thermostop: ['thermostop'],
+              gelaender : ['gelaender','gel\u00e4nder'],
+              traeger   : ['tr\u00e4ger','traeger','st\u00fctze','stuetze','treppe','wange','podest'],
+              bestand   : ['beton','mauerwerk','bestand'],
+              daemmung  : ['mmung'],
+              ohnebg    : ['beton','mauerwerk','mmung','daemm','estrich','glas','trespa',
+                           'betonwerkstein','mineralit','thermostop','bestand']
+            };
+            /* Tiefen-Rangfolge an EINER Stelle. Kleiner heisst: liegt bei Gleichstand vorne. Der Gitterrost
+               traegt seine -2 ueber den Materialweg und steht deshalb nicht in dieser Liste. */
+            window.GK_TIEFE={gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
+            window.gkIst=function(ly,art){
+              var La=(window.GK_LAYER||{})[art]; if(!La)return false;
+              for(var i=0;i<La.length;i++){
+                var e=La[i];
+                if(typeof e==='string'){ if(ly.indexOf(e)>=0)return true; }
+                else { var alle=true;
+                       for(var j=0;j<e.length;j++) if(ly.indexOf(e[j])<0){alle=false;break;}
+                       if(alle)return true; }
+              }
+              return false;
+            };
+            /* v116 A50: ALLGEMEINER GLEICHSTANDS-RIEGEL.
+               Bei exakt gleicher Tiefe entscheidet sonst die Zeichenreihenfolge, und die kippt beim Drehen -
+               das ist das Flackern. Jedes Bauteil bekommt daher aus seiner eigenen Kennung einen winzigen,
+               IMMER GLEICHEN Zuschlag unter einer halben Tiefenstufe. Zwei Flaechen haben damit nie mehr
+               exakt dieselbe Tiefe, geometrisch bleibt es unsichtbar, und die Rangfolge der Klassen wird
+               nicht angetastet, weil die eine ganze Stufe auseinanderliegt. Angefasst wird NUR, was noch
+               keinen eigenen Vorzug hat - Gitterroste, Auflieger, Bestand und Daemmung bleiben unberuehrt. */
+            window.gkTiefeStreu=function(o){
+              var m0=Array.isArray(o.material)?o.material[0]:o.material;
+              if(!m0||m0.polygonOffset||m0.transparent)return;
+              if(!window._gkTieKlone)window._gkTieKlone={};
+              var h=0,nm=String(o.name||'');
+              for(var q=0;q<nm.length;q++)h=(h*31+nm.charCodeAt(q))>>>0;
+              var b=h%16, sl=m0.uuid+'|'+b, k0=window._gkTieKlone[sl];
+              if(!k0){
+                k0=m0.clone();
+                if(m0.onBeforeCompile){k0.onBeforeCompile=m0.onBeforeCompile;k0.customProgramCacheKey=m0.customProgramCacheKey;}
+                k0.polygonOffset=true; k0.polygonOffsetFactor=0; k0.polygonOffsetUnits=-0.03-b*0.028;
+                window._gkTieKlone[sl]=k0;
+              }
+              o.material=k0;
+            };
             if(!window._gkDmNach){window._gkDmNach=1;setTimeout(function(){try{ /* v68: Daemmung TEIL-basiert - greift auch wenn der GLB-Materialname den Layer nicht traegt */
               if(!GOKOBA_TEILE||!model)return; var klone={};
               model.traverse(function(o){
                 if(!o.isMesh||!o.material||(o.userData&&o.userData._capKind))return;
                 var d=GOKOBA_TEILE[o.name]; if(!d)return;
                 var _ly82=(''+(d.layer||'')).toLowerCase();
-                if((_ly82.indexOf('alu')>=0&&_ly82.indexOf('wann')>=0)||_ly82.indexOf('abdeck')>=0){
+                if(gkIst(_ly82,'auflieger')){
                   var mA=Array.isArray(o.material)?o.material[0]:o.material; /* v85: Auflieger-Bleche (Alu-Wannen,
                     Abdeckbleche) liegen konstruktiv OBEN auf - gleicher Mini-Vorzug wie die Roste,
                     sonst scheinen die Kanten des Profils darunter durch */
-                  if(mA&&!mA.polygonOffset){mA.polygonOffset=true;mA.polygonOffsetFactor=0;mA.polygonOffsetUnits=-2;}
+                  if(mA&&!mA.polygonOffset){mA.polygonOffset=true;mA.polygonOffsetFactor=0;mA.polygonOffsetUnits=GK_TIEFE.auflieger;}
                 }
-                if(_ly82.indexOf('thermostop')>=0){
+                if(gkIst(_ly82,'thermostop')){
                   /* v103 Pauls Wunsch: Thermostop-Platten sollen im Viewer sofort vom Stahlbau
                      zu unterscheiden sein - gedecktes Braun-Orange, in der Familie des Gokoba-Kupfers.
                      Eigenes Materialexemplar, damit farbgleiche normale Bleche NICHT mit umgefaerbt
@@ -5425,10 +5477,7 @@ var GOKOBA_LAYER_ACI = {
                     o.material=kT;
                   }
                 }
-                if((_ly82.indexOf('gelaender')<0&&_ly82.indexOf('gel\u00e4nder')<0)&&
-                   (_ly82.indexOf('tr\u00e4ger')>=0||_ly82.indexOf('traeger')>=0||_ly82.indexOf('st\u00fctze')>=0||
-                    _ly82.indexOf('stuetze')>=0||_ly82.indexOf('treppe')>=0||_ly82.indexOf('wange')>=0||
-                    _ly82.indexOf('podest')>=0)){
+                if(!gkIst(_ly82,'gelaender')&&gkIst(_ly82,'traeger')){
                   /* v111 GEMESSEN in Pauls Treppenturm: die WANGEN liegen auf AS_Treppe (73 Stueck
                      U240), nicht auf AS_Traeger. Meine Rangfolge kannte nur Traeger und Stuetze,
                      also fiel die Wange auf Stufe 0 und der Gitterrost mit seinem Vorzug von zwei
@@ -5447,12 +5496,12 @@ var GOKOBA_LAYER_ACI = {
                     var kT2=window._gkTraegerKlone[m0T2.uuid];
                     if(!kT2){kT2=m0T2.clone();
                       if(m0T2.onBeforeCompile){kT2.onBeforeCompile=m0T2.onBeforeCompile;kT2.customProgramCacheKey=m0T2.customProgramCacheKey;}
-                      kT2.polygonOffset=true;kT2.polygonOffsetFactor=0;kT2.polygonOffsetUnits=-3;
+                      kT2.polygonOffset=true;kT2.polygonOffsetFactor=0;kT2.polygonOffsetUnits=GK_TIEFE.traeger;
                       window._gkTraegerKlone[m0T2.uuid]=kT2;}
                     o.material=kT2;
                   }
                 }
-                if(_ly82.indexOf('gelaender')>=0||_ly82.indexOf('gel\u00e4nder')>=0){
+                if(gkIst(_ly82,'gelaender')){
                   /* v102 GEMESSEN: E1548 (Gelaender FL 40x8) und E1763 (Wange U240) teilen sich
                      0,1098 m2 in EXAKT derselben schraegen Ebene - die groesste echte koplanare
                      Ueberlappung im ganzen Modell. Bei gleicher Tiefe entscheidet allein die
@@ -5478,17 +5527,18 @@ var GOKOBA_LAYER_ACI = {
                     if(!kG){kG=m0G.clone();
                       if(m0G.onBeforeCompile){kG.onBeforeCompile=m0G.onBeforeCompile;kG.customProgramCacheKey=m0G.customProgramCacheKey;}
                       kG.polygonOffset=true;kG.polygonOffsetFactor=0;
-                      kG.polygonOffsetUnits=-4-(hG%16)*0.03;
+                      kG.polygonOffsetUnits=GK_TIEFE.gelaender-(hG%16)*0.03;
                       window._gkGelKlone[sG]=kG;}
                     o.material=kG;
                   }
                 }
-                if(_ly82.indexOf('beton')>=0||_ly82.indexOf('mauerwerk')>=0||_ly82.indexOf('bestand')>=0){
+                if(gkIst(_ly82,'bestand')){
                   var mB=Array.isArray(o.material)?o.material[0]:o.material; /* v82: Bestand tritt hauchduenn zurueck -
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
                   if(mB&&!mB.polygonOffset){mB.polygonOffset=true;mB.polygonOffsetFactor=1;mB.polygonOffsetUnits=1;}
                 }
-                if(_ly82.indexOf('mmung')<0)return;
+                if(!gkIst(_ly82,'daemmung')) gkTiefeStreu(o);   /* v116 A50: Gleichstands-Riegel */
+                if(!gkIst(_ly82,'daemmung'))return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
                   kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=0;kk.polygonOffsetUnits=1; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
@@ -5671,7 +5721,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V115_LEISTE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V118_ACHSSCHRIFT'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5787,10 +5837,7 @@ var GOKOBA_LAYER_ACI = {
         function ohneBG(dd){
           var t=((dd.layer||'')+' '+(dd.material||'')).toLowerCase()
                  .replace(/\u00e4/g,'a').replace(/\u00f6/g,'o').replace(/\u00fc/g,'u');
-          var w=['beton','mauerwerk','mmung','daemm','estrich','glas','trespa',
-                 'betonwerkstein','mineralit','thermostop','bestand'];
-          for(var i=0;i<w.length;i++) if(t.indexOf(w[i])>=0) return true;
-          return false;
+          return gkIst(t,'ohnebg');   /* v116: Stichwoerter stehen zentral in GK_LAYER */
         }
         function reiheBauen(){
           var hatBG=!!d.bgnr&&!ohneBG(d), an=!!(bgMark&&bgMark.bg===String(d.bgnr||''));
@@ -6526,9 +6573,12 @@ var GOKOBA_LAYER_ACI = {
                 var cv=document.createElement('canvas');cv.width=cv.height=128;var g2=cv.getContext('2d');
                 g2.fillStyle='#2F5878';g2.font='700 76px sans-serif';g2.textAlign='center';g2.textBaseline='middle';
                 g2.fillText((''+txt).slice(0,4),64,68);
+                /* v118: depthTest war AUS - dadurch schwebte die Beschriftung durch alles hindurch,
+                   waehrend Linie und Kreis korrekt verdeckt wurden. Jetzt wird sie wie jede andere
+                   Geometrie verdeckt, sobald ein Bauteil davorliegt. */
                 var pl=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.30),
-                       new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false,side:THREE.DoubleSide}));
-                pl.position.set(mit.x,mit.y,by+0.01); pl.renderOrder=7; G.add(pl);
+                       new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide}));
+                pl.position.set(mit.x,mit.y,by+0.01); G.add(pl);
               }
               GOKOBA_ACHSEN.forEach(function(a){
                 var p=a.p||[]; if(p.length<6)return;
@@ -6569,7 +6619,7 @@ var GOKOBA_LAYER_ACI = {
         gkReihe('Schatten','Schatten ein/aus',
                 !!document.querySelector('.tbtn[data-shade="on"].active'),
                 function(an){ gkTipp('.tbtn[data-shade="'+(an?'on':'off')+'"]'); });
-        gkReihe('Dunkler Hintergrund','Hintergrund hell/dunkel',
+        gkReihe('Hintergrund','Hintergrund hell/dunkel',
                 !!document.querySelector('.tbtn[data-bg="dunkel"].active'),
                 function(an){ gkTipp('.tbtn[data-bg="'+(an?'dunkel':'hell')+'"]'); });
         panel.appendChild(w);
