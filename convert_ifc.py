@@ -846,7 +846,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         return mat
 
     szene = trimesh.Scene(); teile = {}; n = 0; fehler = 0
-    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []
+    kn = None; dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []; fl_ringe = []
 
     def _fl_ab():
         nonlocal flLeer
@@ -859,6 +859,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 fl_hatLoch.append(bool(loecher))  # v58: Deckel-Erkennung
                 _ao90 = np.asarray(aussen, dtype=float)
                 fl_outBB.append((_ao90.min(axis=0), _ao90.max(axis=0)))  # v90: Tuer-Deckel-Paarung
+                fl_ringe.append((list(aussen), [list(lo) for lo in (loecher or [])]))  # v96: Rohkonturen fuer die Schalen-Ergaenzung
                 fl_lochB.append([(np.asarray(lo, dtype=float).min(axis=0), np.asarray(lo, dtype=float).max(axis=0)) for lo in (loecher or [])])  # v65: Lochring-Boxen
             else: flLeer += 1
 
@@ -867,6 +868,52 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         if kn is None: return
         try:
             if not dreiecke: return
+            try:  # v96: FEHLENDE AUSSENSCHALE ERGAENZEN.
+                #   MESSUNG an Pauls Echtpaket: die Daemmwand E1065 (125 mm) liefert im Export
+                #   NUR ihre Rueckseite (y=0, 36,6 m2 mit 8 Oeffnungen) - die AUSSENHAUT bei
+                #   y=-125 fehlt vollstaendig. Der Betrachter sieht deshalb die Rueckseite, die
+                #   exakt in derselben Ebene liegt wie die Mauerwerks-Vorderseite (y=0): zwei
+                #   Flaechen auf identischer Tiefe = Flimmern und scheinbar 'erhoehte' Baender
+                #   rings um Fenster und Tuer. Eine Wandschale hat zwingend ZWEI parallele
+                #   Seiten; fehlt eine, wird sie aus der vorhandenen Kontur samt Oeffnungen
+                #   exakt auf die Gegenebene kopiert - keine Schaetzung, dieselben Koordinaten.
+                _ly96 = str((info.get(kn, {}) or {}).get('layer') or '').lower()
+                if any(w in _ly96 for w in ('mmung', 'daemm', 'mauerwerk', 'beton', 'bestand', 'estrich')) and fl_ringe:
+                    _eb96 = []
+                    for _i96, (_a96, _l96) in enumerate(fl_ringe):
+                        _p96 = np.asarray(_a96, dtype=float)
+                        if len(_p96) < 3: continue
+                        _g96 = _p96.max(axis=0) - _p96.min(axis=0)
+                        _ax96 = int(np.argmin(_g96))
+                        if _g96[_ax96] > 1.0: continue          # nicht eben
+                        _fl96 = float(_g96[(_ax96 + 1) % 3] * _g96[(_ax96 + 2) % 3])
+                        _eb96.append((_ax96, float(_p96[:, _ax96].mean()), _i96, _fl96))
+                    for _ax96, _wert96, _i96, _flg96 in sorted(_eb96, key=lambda e: -e[3]):
+                        if not fl_ringe[_i96][1]: continue      # Referenz muss die Oeffnungen tragen
+                        _alle96 = np.vstack([np.asarray(_a, dtype=float) for _a, _ in fl_ringe if len(_a) >= 3])
+                        _kand96 = [float(_k) for _k in np.unique(np.round(_alle96[:, _ax96], 1))
+                                   if 5.0 < abs(float(_k) - _wert96) < 1000.0]
+                        if not _kand96: break
+                        _geg96 = min(_kand96, key=lambda k: abs(k - _wert96))
+                        if any(_a2 == _ax96 and abs(_w2 - _geg96) < 1.0 and _f2 > 0.5 * _flg96
+                               for _a2, _w2, _j2, _f2 in _eb96): break   # Gegenseite ist da - nichts tun
+                        _vs96 = _geg96 - _wert96
+                        _au96 = np.asarray(fl_ringe[_i96][0], dtype=float).copy(); _au96[:, _ax96] += _vs96
+                        _lo96 = []
+                        for _r96 in fl_ringe[_i96][1]:
+                            _rr96 = np.asarray(_r96, dtype=float).copy(); _rr96[:, _ax96] += _vs96
+                            _lo96.append(_rr96.tolist())
+                        _t96 = _flaeche_zerlegen(_au96[::-1].tolist(), _lo96)
+                        if _t96 is not None and len(_t96):
+                            dreiecke.append(_t96); fl_ntris.append(len(_t96))
+                            fl_breitL.append(True); fl_hatLoch.append(True)
+                            fl_outBB.append((_au96.min(axis=0), _au96.max(axis=0)))
+                            fl_lochB.append([(np.asarray(_l).min(axis=0), np.asarray(_l).max(axis=0)) for _l in _lo96])
+                            fl_ringe.append((_au96.tolist(), _lo96))
+                            _FLSTAT['schale_ergaenzt'] = _FLSTAT.get('schale_ergaenzt', 0) + 1
+                        break
+            except Exception:
+                pass
             t3 = np.vstack(dreiecke) * skal
             va = t3.reshape(-1, 3)
             fa = np.arange(len(va), dtype=np.int64).reshape(-1, 3)
@@ -1170,7 +1217,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     nT += 1
                     _fl_ab(); _teil_ab()
                     kn = z.split()[1] if len(z.split()) > 1 else None
-                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []
+                    dreiecke = []; aussen = None; loecher = []; fl_ntris = []; fl_breitL = []; fl_hatLoch = []; fl_lochB = []; fl_outBB = []; fl_ringe = []
                 elif z[0] == 'L':
                     nL += 1
                     if len(probeZeilen) < 3: probeZeilen.append(z[:140])
@@ -1559,12 +1606,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v94b\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v96\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
