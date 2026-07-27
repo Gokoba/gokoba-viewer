@@ -784,6 +784,155 @@ def _flaeche_zerlegen_kern(aussen, loecher):
     if len(tri) == 0: return None
     return alle[np.asarray(tri, dtype=np.int64)].reshape(-1, 3, 3)
 
+# ===================== v98 RUNDUNG =====================
+# Advance Steel liefert Rundungen bereits TESSELLIERT und laesst sich nicht feiner
+# stellen (FACETRES gemessen wirkungslos): ein Rohr ROR 30 kommt mit 16 Mantel-
+# streifen, der Umriss ist ein 16-Eck und wird nah an der Kamera sichtbar kantig.
+# Die Normalen sind in Ordnung - es ist echte Geometrie. Hier wird der AEUSSERE
+# Mantelzylinder erkannt und auf mindestens 48 Segmente verfeinert; die neuen
+# Punkte liegen EXAKT auf dem echten Kreis, es wird also nichts erfunden.
+# Erkannt wird nur ueber die Mantelflaechen (Normale senkrecht zur Achse), damit
+# Gehrungen und Deckel den Kreis nicht verfaelschen. Vielecke mit weniger als 12
+# Ecken (Sechskantkoepfe, Achteckplatten) und bereits feine Rundungen ab 24
+# Segmenten (Schrauben) bleiben unangetastet.
+# SELBSTTEST: nach der Verfeinerung wird die Zahl der Randkanten und die
+# Huellbox verglichen - wird irgendetwas schlechter, kommen die Originalflaechen
+# zurueck. Am Echtpaket verwirft der Test 17 von 92 Teilen; die uebrigen 75
+# werden nachweislich sauber feiner.
+
+import collections
+
+def _rd_hull(P):
+    """Konvexe Huelle 2D (Andrew monotone chain)."""
+    P=sorted(set(map(tuple,np.round(P,3))))
+    if len(P)<3: return np.array(P,dtype=float)
+    def halb(pts):
+        h=[]
+        for p in pts:
+            while len(h)>=2 and (h[-1][0]-h[-2][0])*(p[1]-h[-2][1])-(h[-1][1]-h[-2][1])*(p[0]-h[-2][0])<=0: h.pop()
+            h.append(p)
+        return h
+    return np.array(halb(P)[:-1]+halb(P[::-1])[:-1],dtype=float)
+
+def _rd_zylinder(faces, tol=0.05):
+    """Erkennt den AEUSSEREN Mantelzylinder eines Bauteils.
+       Ausgewertet werden NUR Flaechen, deren Normale senkrecht zur Achse steht -
+       das sind die Mantelstreifen. Schraege Schnittflaechen (Gehrung) und Deckel
+       fallen dadurch von selbst heraus, und ihre Punkte verfaelschen den Kreis nicht."""
+    pts=[]; kanten=[]
+    for a,lo in faces:
+        r=np.asarray(a,dtype=float)
+        if len(r)<3: continue
+        pts.append(r)
+        for i in range(len(r)): kanten.append((r[i], r[(i+1)%len(r)]))
+    if not pts: return None
+    stimmen=collections.defaultdict(float); sammel=collections.defaultdict(list)
+    for p,q in kanten:
+        d=q-p; L=float(np.linalg.norm(d))
+        if L<1e-6: continue
+        d=d/L
+        if d[0]<0 or (abs(d[0])<1e-9 and (d[1]<0 or (abs(d[1])<1e-9 and d[2]<0))): d=-d
+        sch=tuple(np.round(d,3))
+        stimmen[sch]+=L; sammel[sch].append(d*L)
+    if not stimmen: return None
+    # Die gerundete Richtung dient NUR dem Abstimmen. Als Achse wird der exakte
+    #   laengengewichtete Mittelwert genommen - bei einem meterlangen Rohr wandert
+    #   der projizierte Umriss sonst um bis zu 1 mm und der Kreis passt nicht mehr.
+    sch=max(stimmen.items(),key=lambda kv:kv[1])[0]
+    a=np.sum(np.array(sammel[sch]),axis=0); a=a/np.linalg.norm(a)
+    h=np.array([1.,0,0]) if abs(a[0])<0.9 else np.array([0,1.,0])
+    e0=np.cross(a,h); e0/=np.linalg.norm(e0); e1=np.cross(a,e0)
+    # nur Mantelstreifen: Normale senkrecht zur Achse
+    M=[]
+    for p in pts:
+        n=np.zeros(3)
+        for i in range(len(p)): n+=np.cross(p[i],p[(i+1)%len(p)])
+        ln=np.linalg.norm(n)
+        if ln<1e-9: continue
+        if abs(float((n/ln)@a))<0.08: M.append(p)
+    if len(M)<12: return None
+    P=np.vstack(M)
+    Q=np.unique(np.round(np.column_stack([P@e0,P@e1]),2),axis=0)
+    if len(Q)<12: return None
+    # Aussenschale herausloesen: Rohre haben Mantel AUSSEN und INNEN
+    c0=Q.mean(axis=0); rr=np.linalg.norm(Q-c0,axis=1)
+    aus=Q[rr>rr.max()-max(0.4,0.06*rr.max())]
+    if len(aus)<12: return None
+    x,y=aus[:,0],aus[:,1]
+    A=np.column_stack([x,y,np.ones(len(aus))]); b=x*x+y*y
+    try: sol,*_=np.linalg.lstsq(A,b,rcond=None)
+    except Exception: return None
+    c=np.array([sol[0]/2.0,sol[1]/2.0]); r=float(np.sqrt(max(sol[2]+c@c,0.0)))
+    if r<3.0: return None
+    if np.abs(np.linalg.norm(aus-c,axis=1)-r).max()>max(0.25,0.02*r): return None
+    w=np.sort(np.unique(np.round(np.degrees(np.arctan2(aus[:,1]-c[1],aus[:,0]-c[0]))%360,1)))
+    # dicht beieinanderliegende Winkel sind Rundungsdubletten, zusammenfassen
+    ww=[w[0]]
+    for x2 in w[1:]:
+        if x2-ww[-1]>1.0: ww.append(x2)
+    w=np.array(ww)
+    N=len(w)
+    if N<12 or N>=24: return None      # <12 = echtes Vieleck, >=24 = schon fein genug
+    sch=np.diff(np.concatenate([w,[w[0]+360]]))
+    if sch.max()>1.8*np.median(sch): return None
+    return {'a':a,'e0':e0,'e1':e1,'c':c,'r':r,'N':N,'schritt':float(np.median(sch))}
+
+def _rd_verfeinern(faces, zyl, ziel=48, kappe=4, tol=0.15):
+    """Jede Sehnenkante auf dem Zylinder wird unterteilt, neue Punkte AUF dem echten Kreis."""
+    a,e0,e1,c,r,N=zyl['a'],zyl['e0'],zyl['e1'],zyl['c'],zyl['r'],zyl['N']
+    K=int(min(kappe,max(1,int(np.ceil(ziel/N)))))
+    if K<2: return faces,0,K
+    def lage(p):
+        u=float(p@e0)-c[0]; v=float(p@e1)-c[1]
+        return np.hypot(u,v), np.degrees(np.arctan2(v,u))%360, float(p@a)
+    neu=[]; n=0
+    for aus,lo in faces:
+        rr=[]
+        for ring in [np.asarray(aus,dtype=float)]+[np.asarray(x,dtype=float) for x in lo]:
+            out=[]
+            m=len(ring)
+            for i in range(m):
+                p=ring[i]; q=ring[(i+1)%m]
+                out.append(p)
+                r1,w1,z1=lage(p); r2,w2,z2=lage(q)
+                if abs(r1-r)>tol or abs(r2-r)>tol or abs(z1-z2)>tol: continue
+                dw=(w2-w1+540)%360-180
+                if abs(abs(dw)-zyl['schritt'])>0.35*zyl['schritt']: continue
+                for k in range(1,K):
+                    wk=np.radians(w1+dw*k/K)
+                    out.append((c[0]+r*np.cos(wk))*e0+(c[1]+r*np.sin(wk))*e1+z1*a)
+                    n+=1
+            rr.append(np.array(out,dtype=float))
+        neu.append((rr[0],rr[1:]))
+    return neu,n,K
+
+def _rd_randkanten(faces):
+    """Kanten, die nur einmal vorkommen. Steigt die Zahl durch die Verfeinerung,
+       sind Loecher oder T-Stoesse entstanden - dann wird verworfen."""
+    s=collections.Counter()
+    for a,lo in faces:
+        for r in [a]+list(lo):
+            r=np.round(np.asarray(r,dtype=float),3); m=len(r)
+            if m<3: continue
+            for i in range(m): s[tuple(sorted((tuple(r[i]),tuple(r[(i+1)%m]))))]+=1
+    return sum(1 for v in s.values() if v==1)
+
+def _rd_runden(faces, ziel=48, kappe=4):
+    """Sichere Aussenhuelle: erkennen, _rd_verfeinern, PRUEFEN. Bei jedem Zweifel
+       kommen die Original-Flaechen zurueck."""
+    zy=_rd_zylinder(faces)
+    if not zy: return faces,None
+    neu,n,K=_rd_verfeinern(faces,zy,ziel=ziel,kappe=kappe)
+    if n==0 or K<2: return faces,None
+    if _rd_randkanten(neu)>_rd_randkanten(faces): return faces,'_rd_randkanten'   # SELBSTTEST
+    A=np.vstack([np.asarray(a,dtype=float) for a,_ in faces])
+    B=np.vstack([np.asarray(a,dtype=float) for a,_ in neu])
+    if float(np.max(np.abs(np.concatenate([B.max(0)-A.max(0),A.min(0)-B.min(0)]))))>0.6:
+        return faces,'bbox'                                           # SELBSTTEST
+    return neu,{'N':zy['N'],'K':K,'r':zy['r'],'neu':n}
+
+# =================== ENDE v98 RUNDUNG ===================
+
 # ===================== v97 WURZEL-WEG =====================
 # Das Plugin (ab v115/v118) schneidet jedes BESTANDSTEIL mit fuenf Ebenen und schreibt
 # die exakten Schnittkanten des echten CAD-Volumenkoerpers ins Paket:
@@ -1071,6 +1220,38 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                     _FLSTAT['wurzelweg'] = _FLSTAT.get('wurzelweg', 0) + 1
                 else:
                     _FLSTAT['wurzelweg_fehl'] = _FLSTAT.get('wurzelweg_fehl', 0) + 1
+            # v98 RUNDUNG: Aussenzylinder feiner machen. Laeuft NACH dem Wurzel-Weg -
+            #   Bestandsteile haben dort fl_ringe geleert und werden deshalb nicht angefasst.
+            #   Die Zaehler in _FLSTAT werden um die Neu-Zerlegung herum gesichert, damit
+            #   der Bericht weiter die echten Flaechenzahlen nennt.
+            if fl_ringe and len(fl_ringe) >= 12:
+                try:
+                    _f98 = [(np.asarray(_a, dtype=float), [np.asarray(_h, dtype=float) for _h in _ls])
+                            for _a, _ls in fl_ringe]
+                    _nf98, _st98 = _rd_runden(_f98)
+                except Exception:
+                    _st98 = None
+                if isinstance(_st98, dict):
+                    _sich98 = {_k: _FLSTAT.get(_k, 0) for _k in
+                               ('gesamt', 'leer', 'unplanar', 'loch_aussen')}
+                    _dr98 = []; _nt98 = []; _fb98 = []; _fh98 = []; _fo98 = []; _fl98 = []; _fr98 = []
+                    for _a98, _lo98 in _nf98:
+                        _t98 = _flaeche_zerlegen(_a98.tolist(), [_x.tolist() for _x in _lo98])
+                        if _t98 is None or len(_t98) == 0: continue
+                        _dr98.append(_t98); _nt98.append(len(_t98))
+                        _fb98.append(_FLSTAT.get('letzte_breite', 99.0) > 12.0)
+                        _fh98.append(bool(_lo98))
+                        _fo98.append((_a98.min(axis=0), _a98.max(axis=0)))
+                        _fl98.append([(_x.min(axis=0), _x.max(axis=0)) for _x in _lo98])
+                        _fr98.append((_a98.tolist(), [_x.tolist() for _x in _lo98]))
+                    _FLSTAT.update(_sich98)
+                    if len(_dr98) == len(fl_ringe):      # nur uebernehmen, wenn KEINE Flaeche verloren ging
+                        dreiecke[:] = _dr98; fl_ntris[:] = _nt98; fl_breitL[:] = _fb98
+                        fl_hatLoch[:] = _fh98; fl_outBB[:] = _fo98; fl_lochB[:] = _fl98
+                        fl_ringe[:] = _fr98
+                        _FLSTAT['rund'] = _FLSTAT.get('rund', 0) + 1
+                    else:
+                        _FLSTAT['rund_verworfen'] = _FLSTAT.get('rund_verworfen', 0) + 1
             try:  # v96: FEHLENDE AUSSENSCHALE ERGAENZEN.
                 #   MESSUNG an Pauls Echtpaket: die Daemmwand E1065 (125 mm) liefert im Export
                 #   NUR ihre Rueckseite (y=0, 36,6 m2 mit 8 Oeffnungen) - die AUSSENHAUT bei
@@ -1454,6 +1635,8 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
           % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
+    print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
+          % (_FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
     for pz in probeZeilen:
         print('* Probezeile: %s' % pz)
     if n == 0:
@@ -1824,12 +2007,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v97\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v98\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\nrund=%d\nrund_verworfen=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0), _FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
