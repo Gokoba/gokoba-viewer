@@ -1039,23 +1039,30 @@ def _wz_koerper(abschnitte, ax):
     n = len(abschnitte)
     zus_o = [[[] for _ in g] for g in grp]; zus_u = [[[] for _ in g] for g in grp]
     weg_u = [[False] * len(g) for g in grp]; weg_o = [[False] * len(g) for g in grp]
+    # v104: Inseln an der Naht. Hat der anschliessende Abschnitt LOECHER (etwa Ankertaschen im
+    #   Fundament), muss unter jedem dieser Loecher ein Deckel stehen - dort liegt ja Material.
+    #   Bisher habe ich solche Naehte einfach uebersprungen, dann blieben BEIDE Deckel stehen und
+    #   man sah sie als Kante mitten im Block. Genau das hat Paul am Treppenturm-Fundament gesehen.
+    ins_o = [[[] for _ in g] for g in grp]; ins_u = [[[] for _ in g] for g in grp]
     for i in range(n - 1):
         if abs(abschnitte[i][1] - abschnitte[i + 1][0]) > 1e-6: continue
         for a, (au_a, lo_a) in enumerate(grp[i]):
             for b, (au_b, lo_b) in enumerate(grp[i + 1]):
                 if _wz_ring_drin(au_b, au_a):
-                    if lo_b: continue
-                    zus_o[i][a].append(au_b); weg_u[i + 1][b] = True
+                    zus_o[i][a].append(au_b)
+                    for _h104 in lo_b: ins_o[i][a].append(_h104)   # v104: Deckel unter der Tasche
+                    weg_u[i + 1][b] = True
                 elif _wz_ring_drin(au_a, au_b):
-                    if lo_a: continue
-                    zus_u[i + 1][b].append(au_a); weg_o[i][a] = True
+                    zus_u[i + 1][b].append(au_a)
+                    for _h104 in lo_a: ins_u[i + 1][b].append(_h104)
+                    weg_o[i][a] = True
     cw = lambda r: r if _wz_flaeche(r) < 0 else r[::-1]
     tris = []
     for i, (ua, ub, rs) in enumerate(abschnitte):
         if ub - ua <= 1e-9: continue
         for gi, (aussen, loecher) in enumerate(grp[i]):
-            for u, soll, fort, zus in ((ua, -1.0, weg_u[i][gi], zus_u[i][gi]),
-                                       (ub, +1.0, weg_o[i][gi], zus_o[i][gi])):
+            for u, soll, fort, zus, insel in ((ua, -1.0, weg_u[i][gi], zus_u[i][gi], ins_u[i][gi]),
+                                              (ub, +1.0, weg_o[i][gi], zus_o[i][gi], ins_o[i][gi])):
                 if fort: continue
                 lo = loecher + [cw(np.asarray(z)) for z in zus]
                 t = _flaeche_zerlegen_kern(_wz_auf3d(aussen, ax, u), [_wz_auf3d(h, ax, u) for h in lo])
@@ -1064,6 +1071,13 @@ def _wz_koerper(abschnitte, ax):
                 if np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])[:, ax].sum() * soll < 0:
                     t = t[:, ::-1, :]      # Deckel messbar ausrichten, nicht raten
                 tris.append(t)
+                for _i104 in insel:        # v104: unter jeder Tasche ein eigener Deckel
+                    _ti = _flaeche_zerlegen_kern(_wz_auf3d(np.asarray(_i104), ax, u), [])
+                    if _ti is None or len(_ti) == 0: continue
+                    _ti = np.asarray(_ti, dtype=float)
+                    if np.cross(_ti[:, 1] - _ti[:, 0], _ti[:, 2] - _ti[:, 0])[:, ax].sum() * soll < 0:
+                        _ti = _ti[:, ::-1, :]
+                    tris.append(_ti)
             for ring in [aussen] + loecher:   # aussen CCW, Loecher CW -> Normalen nach aussen
                 A = _wz_auf3d(ring, ax, ua); B = _wz_auf3d(ring, ax, ub); m = len(ring)
                 for j in range(m):
@@ -2071,7 +2085,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v103\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v104\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))

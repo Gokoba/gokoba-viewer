@@ -41,7 +41,7 @@ header,footer{background:var(--bar);backdrop-filter:blur(9px);-webkit-backdrop-f
 header{min-height:60px;border-bottom:1px solid var(--barln);align-items:center;padding:9px 22px;}
 footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .header-inner{width:100%;max-width:1080px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-.brand{display:flex;align-items:center;gap:21px;min-width:0;}
+.brand{display:flex;align-items:center;gap:34px;min-width:0;} /* v123: mehr Luft um den Trennstrich, beidseitig gleich */
 .logo{display:flex;align-items:flex-end;gap:11px;text-decoration:none;flex:none;}
 .wmbox{display:flex;flex-direction:column;align-items:flex-start;}
 .logo img{width:40px;height:40px;border-radius:9px;display:block;}
@@ -68,7 +68,7 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .cpr a{color:var(--ftx2);text-decoration:none;border-bottom:1px solid transparent;transition:color .18s,border-color .18s;}
 .cpr a:hover{color:var(--steel-lt);border-color:var(--steel-lt);}
 .hint{font-size:.6rem;color:var(--ftx2);opacity:.85;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;}
-.ablauf{font-size:.58rem;color:var(--tx3);opacity:.8;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;align-self:center;} /* v115: sitzt jetzt oben links neben Farben */
+.ablauf{font-size:.72rem;color:var(--tx3);opacity:.85;white-space:nowrap;text-transform:none;letter-spacing:.01em;align-self:center;order:99;margin-left:auto;padding-left:20px;} /* v123: rutscht ganz nach rechts und ist groesser */ /* v115: sitzt jetzt oben links neben Farben */
 .ablauf{font-size:.58rem;color:var(--ftx2);opacity:.7;margin-right:14px;white-space:nowrap;}
 @media (max-width:820px){
   .header-inner{justify-content:center;gap:10px;}
@@ -5776,7 +5776,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V122_SPIEGELUNG'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V123_KOPF'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
