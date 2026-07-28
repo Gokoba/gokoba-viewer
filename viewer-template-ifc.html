@@ -5241,10 +5241,6 @@ var GOKOBA_LAYER_ACI = {
   /* v131: dieser Text wurde aus ZWEI Bereichen benutzt (Menue und Kaertchen) und stand nur in
      einem davon - genau das war Pauls Meldung "GK_FARBHINWEIS is not defined". Jetzt oberste Ebene. */
   var GK_FARBHINWEIS='Die dargestellten Farben k\u00f6nnen je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.';
-  function gkTexFein(t){
-    try{ t.anisotropy=8; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.needsUpdate=true; }catch(e){}
-    return t;
-  }
   function verzinktTextur(){
     var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
     g.fillStyle='#c3c7ca';g.fillRect(0,0,n,n); /* v50: STEP-Original-Grund */
@@ -5253,7 +5249,7 @@ var GOKOBA_LAYER_ACI = {
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
       g.closePath();g.fillStyle=li?'rgba(232,235,238,0.40)':'rgba(190,194,198,0.30)'; /* v50: kristallin wie STEP, dunkle schwaecher */g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
         try{g.filter='none';}catch(e){}
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var verzinktTex=verzinktTextur();
   /* ★ Gitterrost-Textur (Draufsicht), Maschenweite aus dem Dialog */
@@ -5263,7 +5259,7 @@ var GOKOBA_LAYER_ACI = {
     g.fillStyle='#a9adb0';var bw=6,sx=(mw==='3010')?18:44,sy=44,i;
     for(i=0;i<=n;i+=sx)g.fillRect(i,0,bw,n);
     for(i=0;i<=n;i+=sy)g.fillRect(0,i,n,bw);
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
   }
   var gitterTex=GOKOBA_GITTER_TEX.indexOf('keine')>=0?null:gitterTextur(GOKOBA_GITTER_TEX.indexOf('3010')>=0?'3010':'3030');
   /* ★ Triplanar: Textur aus Weltkoordinaten auf JEDE Flaeche projizieren (von oben,
@@ -5344,7 +5340,7 @@ var GOKOBA_LAYER_ACI = {
       for(i=0;i<7000;i++){g.fillStyle=(Math.random()<0.5)?d.ader:d.hell;g.globalAlpha=0.25;g.fillRect(Math.random()*n,Math.random()*n,1,1);}
       g.globalAlpha=1;
     }
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;gkTexFein(t);
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
     t.repeat.set(1/(30.0*0.2),1/(30.0*0.2)); /* ★ eine Kachel = 0,2 m Welt (Muster fein) */
     _dekorTexCache[key]=t;return t;
   }
@@ -5377,7 +5373,7 @@ var GOKOBA_LAYER_ACI = {
       g.closePath();g.fill();
     }
     g.globalAlpha=1;
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;gkTexFein(t);
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
     t.repeat.set(1/(30.0*0.125),1/(30.0*0.125)); /* ★ Splitterbild alle 12,5 cm (fein) */
     _dekorTexCache[key]=t;return t;
   }
@@ -5399,7 +5395,7 @@ var GOKOBA_LAYER_ACI = {
       var px=Math.cos(ang+1.5708)*5.5,py=Math.sin(ang+1.5708)*5.5;
       traene(cx-px,cy-py,ang);traene(cx+px,cy+py,ang);
     }
-    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.05,1.05);t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
+    var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.05,1.05);t.encoding=THREE.sRGBEncoding;return t;
   }
   var traenTex=traenTextur();
   /* ★ Ablaufpruefung (nur wenn Pipeline ein Datum gesetzt hat) */
@@ -5704,7 +5700,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V138_WIE_V96';
+      var GOKOBA_VORLAGE='VORLAGE_V139_TEXTUR_ZURUECK';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5951,7 +5947,7 @@ var GOKOBA_LAYER_ACI = {
         function achsLabel(txt,pos){
           /* ★ flach auf dem Boden liegend (Ebene in Modell-XY), ohne Kasten drumherum */
           var c=achsLabelCanvas(txt,achsFarbeAktuell());
-          var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;gkTexFein(t);
+          var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
           var m=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:0.06,depthWrite:false,side:THREE.DoubleSide});
           var fl=new THREE.Mesh(new THREE.PlaneGeometry(achsSk,achsSk),m);
           fl.position.copy(pos);
@@ -6743,7 +6739,7 @@ var GOKOBA_LAYER_ACI = {
         g.fillStyle='#798087';g.fillRect(0,0,n,n);
         g.strokeStyle='rgba(34,40,46,0.32)';g.lineWidth=2.2;
         for(var i=-n;i<2*n;i+=13){g.beginPath();g.moveTo(i,0);g.lineTo(i+n,n);g.stroke();}
-     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return gkTexFein(t);
+     var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t;
       }
       function schnittCapsBauen(){
         if(schnittCapNetz)return;
