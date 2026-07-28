@@ -68,7 +68,7 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .cpr a{color:var(--ftx2);text-decoration:none;border-bottom:1px solid transparent;transition:color .18s,border-color .18s;}
 .cpr a:hover{color:var(--steel-lt);border-color:var(--steel-lt);}
 .hint{font-size:.6rem;color:var(--ftx2);opacity:.85;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;}
-.ablauf{font-size:.72rem;color:var(--tx3);opacity:.85;white-space:nowrap;text-transform:none;letter-spacing:.01em;align-self:center;order:99;margin-left:auto;padding-left:20px;} /* v123: rutscht ganz nach rechts und ist groesser */ /* v115: sitzt jetzt oben links neben Farben */
+.ablauf{font-size:.82rem;color:var(--tx3);opacity:.85;white-space:nowrap;text-transform:none;letter-spacing:.01em;align-self:center;order:99;margin-left:auto;padding-left:20px;} /* v123: rutscht ganz nach rechts und ist groesser */ /* v115: sitzt jetzt oben links neben Farben */
 .ablauf{font-size:.58rem;color:var(--ftx2);opacity:.7;margin-right:14px;white-space:nowrap;}
 @media (max-width:820px){
   .header-inner{justify-content:center;gap:10px;}
@@ -5455,7 +5455,13 @@ var GOKOBA_LAYER_ACI = {
             };
             /* Tiefen-Rangfolge an EINER Stelle. Kleiner heisst: liegt bei Gleichstand vorne. Der Gitterrost
                traegt seine -2 ueber den Materialweg und steht deshalb nicht in dieser Liste. */
-            window.GK_TIEFE={gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
+            /* ===== TESTFASSUNG v133: die gesamte Tiefen-Rangfolge ist ABGESCHALTET. =====
+                Alle Klassen stehen auf null, kein Bauteil bekommt mehr einen Tiefenvorzug.
+                Erhalten bleibt allein die feste, eindeutige Zeichenreihenfolge je Bauteil.
+                ZWECK: Flackert es damit AUCH, war die Rangfolge nie die Ursache. Flackert es
+                NICHT, steckt die Ursache in der Rangfolge und wir haben endlich einen Ansatz.
+                Diese Datei ist NICHT fuer den Dauerbetrieb gedacht. */
+             window.GK_TIEFE={gelaender:0, traeger:0, auflieger:0, normal:0, bestand:0};
             window.gkIst=function(ly,art){
               var La=(window.GK_LAYER||{})[art]; if(!La)return false;
               for(var i=0;i<La.length;i++){
@@ -5506,7 +5512,7 @@ window.gkTiefeStreu=function(o){
               if(!k0){
                 k0=m0.clone();
                 if(m0.onBeforeCompile){k0.onBeforeCompile=m0.onBeforeCompile;k0.customProgramCacheKey=m0.customProgramCacheKey;}
-                k0.polygonOffset=true; k0.polygonOffsetFactor=0; k0.polygonOffsetUnits=-0.03-b*0.028;
+                k0.polygonOffset=false;  /* TEST v133 */
                 window._gkTieKlone[sl]=k0;
               }
               o.material=k0;
@@ -5521,7 +5527,7 @@ window.gkTiefeStreu=function(o){
                   var mA=Array.isArray(o.material)?o.material[0]:o.material; /* v85: Auflieger-Bleche (Alu-Wannen,
                     Abdeckbleche) liegen konstruktiv OBEN auf - gleicher Mini-Vorzug wie die Roste,
                     sonst scheinen die Kanten des Profils darunter durch */
-                  if(mA&&!mA.polygonOffset){mA.polygonOffset=true;mA.polygonOffsetFactor=0;mA.polygonOffsetUnits=GK_TIEFE.auflieger;}
+                  if(mA){mA.polygonOffset=false;}  /* TEST v133 */
                 }
                 if(gkIst(_ly82,'thermostop')){
                   /* v103 Pauls Wunsch: Thermostop-Platten sollen im Viewer sofort vom Stahlbau
@@ -5559,7 +5565,7 @@ window.gkTiefeStreu=function(o){
                     var kT2=window._gkTraegerKlone[m0T2.uuid];
                     if(!kT2){kT2=m0T2.clone();
                       if(m0T2.onBeforeCompile){kT2.onBeforeCompile=m0T2.onBeforeCompile;kT2.customProgramCacheKey=m0T2.customProgramCacheKey;}
-                      kT2.polygonOffset=true;kT2.polygonOffsetFactor=0;kT2.polygonOffsetUnits=GK_TIEFE.traeger;
+                      kT2.polygonOffset=false;  /* TEST v133 */
                       window._gkTraegerKlone[m0T2.uuid]=kT2;}
                     o.material=kT2;
                   }
@@ -5589,8 +5595,8 @@ window.gkTiefeStreu=function(o){
                     var kG=window._gkGelKlone[sG];
                     if(!kG){kG=m0G.clone();
                       if(m0G.onBeforeCompile){kG.onBeforeCompile=m0G.onBeforeCompile;kG.customProgramCacheKey=m0G.customProgramCacheKey;}
-                      kG.polygonOffset=true;kG.polygonOffsetFactor=0;
-                      kG.polygonOffsetUnits=GK_TIEFE.gelaender-(hG%16)*0.03;
+                      kG.polygonOffset=false;
+                      kG.polygonOffset=false;  /* TEST v133 */
                       window._gkGelKlone[sG]=kG;}
                     o.material=kG;
                   }
@@ -5598,13 +5604,13 @@ window.gkTiefeStreu=function(o){
                 if(gkIst(_ly82,'bestand')){
                   var mB=Array.isArray(o.material)?o.material[0]:o.material; /* v82: Bestand tritt hauchduenn zurueck -
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
-                  if(mB&&!mB.polygonOffset){mB.polygonOffset=true;mB.polygonOffsetFactor=1;mB.polygonOffsetUnits=1;}
+                  if(mB){mB.polygonOffset=false;}
                 }
                 if(!gkIst(_ly82,'daemmung')){ gkZeichenfolge(o,_ly82); gkTiefeStreu(o); }   /* v120: feste Zeichenreihenfolge + Rangfolge */
                 if(!gkIst(_ly82,'daemmung'))return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
-                  kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=0;kk.polygonOffsetUnits=1; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
+                  kk.depthWrite=true;kk.polygonOffset=false; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
                     Tiefe SCHREIBEN (Plattenstoesse und Selbstverdeckung deterministisch, kein Sortier-Flackern) +
                     kraeftiger Rueckversatz: an Beruehrflaechen gewinnt IMMER der Stahl (das fehlte v69) */
                   klone[m0.uuid]=kk;}
@@ -5660,7 +5666,7 @@ window.gkTiefeStreu=function(o){
           if(_nmR.indexOf('sonderteil')>=0||(_nmR.indexOf('alu')>=0&&_nmR.indexOf('wann')>=0)){m.userData._gelaender=false;m.userData._stahlbau=false;}
           if(m.userData._gelaender&&gelaenderMats.indexOf(m)<0)gelaenderMats.push(m);
           if(m.userData._stahlbau&&stahlbauMats.indexOf(m)<0)stahlbauMats.push(m);
-          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=true;m.polygonOffsetFactor=0;m.polygonOffsetUnits=-2;} /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
+          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=false;}  /* TEST v133: Gitterrost-Vorzug aus */ /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
           if(m.userData._dekor&&dekorMats[m.userData._dekor]&&dekorMats[m.userData._dekor].indexOf(m)<0)dekorMats[m.userData._dekor].push(m);
         });
         meshes.push(o);
@@ -5784,7 +5790,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V131_FARBFENSTER';
+      var GOKOBA_VORLAGE='VORLAGE_V133_TESTFASSUNG_OHNE_RANGFOLGE';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5926,7 +5932,7 @@ window.gkTiefeStreu=function(o){
           /* v124 Pauls Vorgabe: einfaerben gehoert ans EINZELNE Bauteil, also ins Kaertchen -
              links geht es um ganze Gruppen, hier um dieses eine Teil. */
           var _ef=el('div',KS+'cursor:pointer;color:var(--gktx2);grid-column:1 / -1;margin-top:6px;');
-          _ef.setAttribute('data-einf','1'); _ef.textContent='einf\u00e4rben';
+          _ef.setAttribute('data-einf','1'); _ef.textContent='farblich markieren';
           reihe.appendChild(_ef);
           var a1=reihe.querySelector('[data-weg]');
           if(a1)a1.addEventListener('click',function(ev){ev.stopPropagation();
@@ -5947,23 +5953,32 @@ window.gkTiefeStreu=function(o){
                Werkzeug Farbe - direkt unter dem Knopf, das Kaertchen waechst dafuer nach unten.
                Nach der Wahl klappt sie wieder zu. */
             var alt=reihe.querySelector('[data-palette]');
-            if(alt){ alt.remove(); return; }
+            if(alt){ alt.remove(); if(window.gkKarteRein)window.gkKarteRein(); return; }
             var pal=el('div','grid-column:1 / -1;margin-top:7px;padding-top:8px;'
               +'border-top:1px solid rgba(255,255,255,.12);');
             pal.setAttribute('data-palette','1');
-            var git=el('div','display:grid;grid-template-columns:repeat(6,1fr);gap:6px;');
+            var git=el('div','display:grid;grid-template-columns:repeat(6,22px);gap:6px;justify-content:start;');
             RAL.forEach(function(r){
-              var c=el('div','width:100%;aspect-ratio:1;border-radius:7px;cursor:pointer;'
-                +'background:'+r[1]+';border:2px solid transparent;');
+              var c=el('div','width:22px;height:22px;border-radius:6px;cursor:pointer;'
+                +'background:'+r[1]+';border:2px solid transparent;justify-self:center;');
               c.title=r[0];
               c.addEventListener('click',function(e2){e2.stopPropagation();
-                var t=gewaehlt; if(t){
-                  var basis=(t.userData&&t.userData._efUr)||gewMat;
+                /* v132 Pauls Vorgabe: ist die Baugruppe markiert, wird die GANZE Baugruppe
+                   eingefaerbt - sonst waere das Markieren sinnlos. Ohne Markierung nur das Teil. */
+                var ziele=[];
+                if(bgMark){ bgMark.teile.forEach(function(x){ziele.push(x.o);}); if(gewaehlt)ziele.push(gewaehlt); }
+                else if(gewaehlt){ ziele.push(gewaehlt); }
+                ziele.forEach(function(t){
+                  var basis=(t.userData&&t.userData._efUr)||((t===gewaehlt)?gewMat:(bgMark&&(function(){
+                      for(var i=0;i<bgMark.teile.length;i++) if(bgMark.teile[i].o===t) return bgMark.teile[i].mat;
+                      return t.material;})()));
                   if(!t.userData._efUr)t.userData._efUr=basis;
                   var nm=(Array.isArray(basis)?basis[0]:basis).clone();
                   nm.color=new THREE.Color(r[1]); if(nm.map)nm.map=null;
-                  t.userData._efMat=nm; gewMat=nm;
-                }
+                  t.userData._efMat=nm;
+                  if(t===gewaehlt) gewMat=nm; else t.material=nm;
+                  if(bgMark) for(var j=0;j<bgMark.teile.length;j++) if(bgMark.teile[j].o===t) bgMark.teile[j].mat=nm;
+                });
                 pal.remove();
               });
               git.appendChild(c);
@@ -5972,6 +5987,7 @@ window.gkTiefeStreu=function(o){
             var hin=el('div','font:400 9.5px var(--ui);color:var(--gktx2);opacity:.75;line-height:1.35;margin-top:8px;');
             hin.textContent=GK_FARBHINWEIS; pal.appendChild(hin);
             reihe.appendChild(pal);
+            if(window.gkKarteRein)window.gkKarteRein();
           });
           var a3=reihe.querySelector('[data-bgweg]');
           if(a3)a3.addEventListener('click',function(ev){ev.stopPropagation();
@@ -5987,6 +6003,18 @@ window.gkTiefeStreu=function(o){
         else{karte.style.transform='';karte.style.bottom='';
           karte.style.left=Math.max(10,Math.min(x+14,pw-kw-10))+'px';
           karte.style.top=Math.max(10,Math.min(y+14,ph-kh-10))+'px';}
+        /* v132 Pauls Vorgabe: die Karte darf NIE ueber den Bildrand ragen. Beim Oeffnen wird
+           sie zwar begrenzt, aber sie WAECHST danach noch - etwa wenn die Farbpalette aufklappt.
+           Deshalb ruecken wir sie danach erneut ins Bild. */
+        window.gkKarteRein=function(){
+          try{
+            if(mobil())return;
+            var pw2=panel.clientWidth,ph2=panel.clientHeight,kw2=karte.offsetWidth,kh2=karte.offsetHeight;
+            var li=parseFloat(karte.style.left)||10, ob=parseFloat(karte.style.top)||10;
+            karte.style.left=Math.max(10,Math.min(li,pw2-kw2-10))+'px';
+            karte.style.top =Math.max(10,Math.min(ob,ph2-kh2-10))+'px';
+          }catch(e){}
+        };
       }
 
       /* ── Achsraster: Staebe + grosse Beschriftung, themenfest, per Palette schaltbar ── */
@@ -6757,10 +6785,22 @@ window.gkTiefeStreu=function(o){
           b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
           try{
             var r=w.getBoundingClientRect();
+            ralpanel.style.right='auto'; ralpanel.style.bottom='auto';
             ralpanel.style.left=(r.right+10)+'px';
             ralpanel.style.top=(r.top+b.offsetTop)+'px';
-            ralpanel.style.right='auto'; ralpanel.style.bottom='auto';
             ralAuf();
+            /* v132: nach dem Aufklappen ins Bild ruecken - das Fenster ist breit und ragte
+               sonst rechts hinaus. Erst oeffnen, dann messen, dann begrenzen. */
+            setTimeout(function(){
+              try{
+                var q=ralpanel.getBoundingClientRect(), R=10;
+                var li=Math.min(r.right+10, window.innerWidth-q.width-R);
+                if(li<R) li=R;
+                var ob=Math.min(r.top+b.offsetTop, window.innerHeight-q.height-R);
+                if(ob<R) ob=R;
+                ralpanel.style.left=li+'px'; ralpanel.style.top=ob+'px';
+              }catch(e){}
+            },0);
           }catch(e){}
         });
         w.appendChild(gkFarbZeile);
