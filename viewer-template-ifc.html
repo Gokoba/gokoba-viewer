@@ -5227,6 +5227,9 @@ var GOKOBA_LAYER_ACI = {
      warf beim Laden einen Fehler und der Viewer blieb bei "Modell wird geladen" stehen.
      Er gehoert auf die oberste Ebene, VOR die erste Textur. Inhalt unveraendert: Anisotropie
      und Mipmap-Filterung gegen das Flimmern der Gitterrost-Schraffur beim Drehen. */
+  /* v131: dieser Text wurde aus ZWEI Bereichen benutzt (Menue und Kaertchen) und stand nur in
+     einem davon - genau das war Pauls Meldung "GK_FARBHINWEIS is not defined". Jetzt oberste Ebene. */
+  var GK_FARBHINWEIS='Die dargestellten Farben k\u00f6nnen je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.';
   function gkTexFein(t){
     try{ t.anisotropy=8; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.needsUpdate=true; }catch(e){}
     return t;
@@ -5447,13 +5450,12 @@ var GOKOBA_LAYER_ACI = {
                  Podestroste liegen OBEN AUF ihren Traegern und muessen dort gewinnen. Die
                  Treppenstufen (AS_Stufen) duerfen das NICHT, sonst schauen sie wieder durch die
                  Wange - deshalb steht hier bewusst NUR 'gitterrost' und nicht 'stufen'. */
-              rost      : ['gitterrost'],
               ohnebg    : ['beton','mauerwerk','mmung','daemm','estrich','glas','trespa',
                            'betonwerkstein','mineralit','thermostop','bestand']
             };
             /* Tiefen-Rangfolge an EINER Stelle. Kleiner heisst: liegt bei Gleichstand vorne. Der Gitterrost
                traegt seine -2 ueber den Materialweg und steht deshalb nicht in dieser Liste. */
-            window.GK_TIEFE={gelaender:-4, traeger:-3, rost:-2, auflieger:-2, normal:0, bestand:1};
+            window.GK_TIEFE={gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
             window.gkIst=function(ly,art){
               var La=(window.GK_LAYER||{})[art]; if(!La)return false;
               for(var i=0;i<La.length;i++){
@@ -5488,7 +5490,7 @@ window._gkZf={};
 window.gkZeichenfolge=function(o,ly){
   var rang = gkIst(ly,'gelaender') ? 1
            : (gkIst(ly,'traeger')  ? 2
-           : ((gkIst(ly,'rost')||gkIst(ly,'auflieger'))? 3
+           : (gkIst(ly,'auflieger')? 3
            : (gkIst(ly,'bestand')  ? 5 : 4)));
   var n = (window._gkZf[rang] = (window._gkZf[rang]||0) + 1);
   if(n > 99000) n = 99000;
@@ -5538,32 +5540,7 @@ window.gkTiefeStreu=function(o){
                     o.material=kT;
                   }
                 }
-                if(gkIst(_ly82,'rost')){
-                  /* v129 KORREKTUR ZU v127: dort hatte ich den Gitterrosten Stufe -4 gegeben, damit
-                     sie gegen ihre Auflagertraeger gewinnen. Damit gewannen sie aber AUCH gegen die
-                     Wange - in Treppe Ost schauten die Stufenlaschen prompt wieder durch. Zurueck
-                     auf -2, also hinter den Traeger.
-                     Das Flackern auf den Podesten kam ohnehin von woanders: ALLE Gitterroste teilen
-                     sich EIN Material und damit exakt denselben Tiefenwert. Wo zwei Roste
-                     aneinanderstossen, liegen sie gleich tief, und dort kippt die Reihenfolge beim
-                     Drehen. Jeder Rost bekommt deshalb jetzt einen eigenen Mini-Zuschlag aus seiner
-                     Kennung - unter einer halben Stufe, also geometrisch unsichtbar, aber eindeutig. */
-                  var m0R=Array.isArray(o.material)?o.material[0]:o.material;
-                  if(m0R){
-                    if(!window._gkRostKlone)window._gkRostKlone={};
-                    var hR=0,nR=String(o.name||'');
-                    for(var iR=0;iR<nR.length;iR++)hR=(hR*31+nR.charCodeAt(iR))>>>0;
-                    var sR=m0R.uuid+'|'+(hR%16);
-                    var kR=window._gkRostKlone[sR];
-                    if(!kR){kR=m0R.clone();
-                      if(m0R.onBeforeCompile){kR.onBeforeCompile=m0R.onBeforeCompile;kR.customProgramCacheKey=m0R.customProgramCacheKey;}
-                      kR.polygonOffset=true;kR.polygonOffsetFactor=0;
-                      kR.polygonOffsetUnits=GK_TIEFE.rost-(hR%16)*0.03;
-                      window._gkRostKlone[sR]=kR;}
-                    o.material=kR;
-                  }
-                }
-                if(!gkIst(_ly82,'gelaender')&&!gkIst(_ly82,'rost')&&gkIst(_ly82,'traeger')){
+                if(!gkIst(_ly82,'gelaender')&&gkIst(_ly82,'traeger')){
                   /* v111 GEMESSEN in Pauls Treppenturm: die WANGEN liegen auf AS_Treppe (73 Stueck
                      U240), nicht auf AS_Traeger. Meine Rangfolge kannte nur Traeger und Stuetze,
                      also fiel die Wange auf Stufe 0 und der Gitterrost mit seinem Vorzug von zwei
@@ -5807,7 +5784,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V130_FARBEN';
+      var GOKOBA_VORLAGE='VORLAGE_V131_FARBFENSTER';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -6756,24 +6733,10 @@ window.gkTiefeStreu=function(o){
            rechts KEINEN Rand - dadurch haengt die Spalte sichtbar an genau dieser Zeile und
            alles wirkt als eine Flaeche. Es kann immer nur eine Zeile offen sein.
            Ganz unten in der AEUSSERSTEN Spalte stehen Hinweistext und der Standard-Knopf. */
-        var GK_FARBHINWEIS='Die dargestellten Farben k\u00f6nnen je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.';
         var gkStrich=function(){ var h=el('div','height:1px;background:var(--gkln);margin:7px 2px 6px;'); w.appendChild(h); };
         gkStrich();
         /* v130: die Spalten haengen jetzt an der GEKLICKTEN Zeile (top wird beim Klick gesetzt)
            und ziehen sich auf gleiche Hoehe - damit wirkt alles wie eine einzige Flaeche. */
-        var gkSpalten=el('div','position:absolute;left:100%;top:0;display:flex;align-items:stretch;');
-        /* v126 FEHLER AUS v125: hier stand w.style.position='relative'. Der Block ist aber
-           ABSOLUT positioniert (glasBox setzt position:absolute) - damit hat er seine
-           Verankerung oben links verloren und ist in den Textfluss gerutscht, also nach unten
-           zur Fusszeile. Ein absolut positionierter Block ist ohnehin schon Bezugsrahmen fuer
-           seine Kinder, die Zeile war also nicht nur schaedlich, sondern auch ueberfluessig. */
-        w.appendChild(gkSpalten);
-        var gkOffen=null;
-        function gkSpalte(breite){
-          return el('div','min-width:'+breite+'px;padding:9px 10px;background:var(--gkbg);'
-            +'border:1px solid var(--gkln);border-left:none;border-radius:0 14px 14px 0;'
-            +'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--gktx);');
-        }
         function gkPunkt(txt,pfeil,klick){
           var b=el('div','display:flex;align-items:center;justify-content:space-between;gap:10px;'
             +'padding:6px 8px;border-radius:8px;cursor:pointer;font:500 11px var(--ui);color:var(--gktx2);');
@@ -6783,86 +6746,32 @@ window.gkTiefeStreu=function(o){
           b.addEventListener('click',function(ev){ev.stopPropagation();klick(b);});
           return b;
         }
-        function gkFuss(sp,hinweis,standard){
-          var h=el('div','height:1px;background:var(--gkln);margin:8px 2px 7px;'); sp.appendChild(h);
-          var t=el('div','font:400 10px var(--ui);color:var(--gktx2);opacity:.75;line-height:1.35;padding:0 2px 8px;');
-          t.textContent=hinweis; sp.appendChild(t);
-          if(standard){
-            var b=el('div','text-align:center;cursor:pointer;font:500 10.5px var(--ui);color:var(--gktx2);'
-              +'padding:6px 10px;border:1px solid rgba(127,140,150,.28);border-radius:9px;');
-            b.textContent='Standard';
-            b.addEventListener('click',function(ev){ev.stopPropagation();standard();});
-            sp.appendChild(b);
-          }
-        }
-        function gkZu(){ gkSpalten.innerHTML=''; if(gkOffen){gkOffen.style.background='transparent';delete gkOffen.dataset.an;} gkOffen=null; }
-        function gkHaupt(txt,bauen){
-          var r=gkPunkt(txt,true,function(b){
-            if(gkOffen===b){gkZu();return;}
-            gkZu(); gkOffen=b; b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
-            gkSpalten.style.top=(b.offsetTop)+'px';
-            bauen();
-          });
-          w.appendChild(r); return r;
-        }
-        function gkEbene(nr,inhalt){        /* Spalten ab nr wegwerfen und neue anhaengen */
-          while(gkSpalten.children.length>nr) gkSpalten.removeChild(gkSpalten.lastChild);
-          var sp=gkSpalte(nr===0?150:170); inhalt(sp); gkSpalten.appendChild(sp); return sp;
-        }
-        /* ---------- Farben ---------- */
-        gkHaupt('Farben',function(){
-          gkEbene(0,function(sp){
-            [['stahlbau','Stahlbau'],['gelaender','Gel\u00e4nder'],['gitter','Gitterroste']].forEach(function(e){
-              sp.appendChild(gkPunkt(e[1],true,function(b){
-                Array.prototype.forEach.call(sp.children,function(x){x.style.background='transparent';delete x.dataset.an;});
-                b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
-                try{ ralMode=e[0]; }catch(err){}
-                if(e[0]==='gitter') gkGitterEbene(); else gkFarbEbene(e[1]);
-              }));
-            });
-            gkFuss(sp,'',null);
-          });
+        /* v131 Pauls Vorgabe, und sie ist die richtige: das ALTE Farbfenster hat einwandfrei
+           funktioniert - RAL-Gitter, Standardfarben, Verzinkt, Edelstahl, Standard, Hinweistext.
+           Ich baue es deshalb NICHT nach, sondern haenge es um: der Knopf sitzt jetzt hier im
+           linken Werkzeugkasten und klappt das vorhandene Fenster nach RECHTS auf, buendig mit
+           der Zeile. Alles darin bleibt unveraendert. */
+        var gkFarbZeile=gkPunkt('Farben',true,function(b){
+          var offen=ralpanel&&ralpanel.classList.contains('open');
+          if(offen){ gkFarbeZu(); return; }
+          b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
+          try{
+            var r=w.getBoundingClientRect();
+            ralpanel.style.left=(r.right+10)+'px';
+            ralpanel.style.top=(r.top+b.offsetTop)+'px';
+            ralpanel.style.right='auto'; ralpanel.style.bottom='auto';
+            ralAuf();
+          }catch(e){}
         });
-        function gkFarbEbene(name){
-          gkEbene(1,function(sp){
-            sp.appendChild(gkPunkt('RAL Farben',false,function(){ gkPalette('ral'); }));
-            sp.appendChild(gkPunkt('Standardfarben',false,function(){ gkPalette('normal'); }));
-            sp.appendChild(gkPunkt('Verzinkt',false,function(){ try{applyFinish('verzinkt');}catch(e){} }));
-            sp.appendChild(gkPunkt('Edelstahl',false,function(){ try{applyFinish('edelstahl');}catch(e){} }));
-            gkFuss(sp,GK_FARBHINWEIS,function(){ try{applyFinish('normal');}catch(e){} });
-          });
+        w.appendChild(gkFarbZeile);
+        function gkFarbeZu(){
+          try{ ralZu(); }catch(e){}
+          gkFarbZeile.style.background='transparent'; delete gkFarbZeile.dataset.an;
         }
-        /* v130 KORREKTUR: ich hatte '#ralcv' eingehaengt - das ist nur das kleine Vorschaufeld
-           IM Knopf, deshalb blieb die Spalte leer. Gebraucht werden die echten Farbgitter aus
-           dem alten Fenster: '.ralgrid' fuer RAL, '.ralnormal' fuer die Standardfarben. Sie
-           werden UMGEHAENGT, nicht nachgebaut - damit behalten sie ihre gesamte Logik. */
-        function gkPalette(art){
-          gkEbene(2,function(sp){
-            try{ ralType=art; }catch(e){}
-            var q=document.querySelector(art==='normal'?'#ralpanel .ralnormal':'#ralpanel .ralgrid');
-            if(q){
-              sp.appendChild(q);
-              q.style.display='block';
-              q.style.maxHeight='min(46vh,340px)'; q.style.overflow='auto'; q.style.margin='0';
-            }
-            gkFuss(sp,GK_FARBHINWEIS,null);
-          });
-        }
-        function gkGitterEbene(){
-          gkEbene(1,function(sp){
-            [['','Keine Textur'],['3030','Maschenweite 30 x 30'],['3010','Maschenweite 30 x 10']].forEach(function(e){
-              sp.appendChild(gkPunkt(e[1],false,function(){
-                try{
-                  var t=e[0]?gitterTextur(e[0]):null;
-                  gitterMats.forEach(function(m){ m.map=t; m.userData._savedMap=undefined; m.needsUpdate=true; });
-                }catch(err){}
-              }));
-            });
-            gkFuss(sp,GK_FARBHINWEIS,function(){
-              try{ var t=gitterTextur('3030'); gitterMats.forEach(function(m){m.map=t;m.needsUpdate=true;}); }catch(e){}
-            });
-          });
-        }
+        /* v131: Escape faehrt alles wieder ein - Pauls Wunsch. */
+        document.addEventListener('keydown',function(e){
+          if(e.key==='Escape'||e.key==='Esc') gkFarbeZu();
+        });
         panel.appendChild(w);
       })();
 
