@@ -1091,7 +1091,32 @@ def _wz_bauen(schnitte, fl_ringe, vol_as=None):
     #   Rekonstruktion das AS-Volumen auf 0,02 % trifft. Genau diese Wand fiel dadurch auf den
     #   alten Facettenweg zurueck - das waren die ueberstehenden Flaechen an den Tueren.
     _mitVol = (vol_as is not None and vol_as > 0.0)
-    for _a97, _l97 in (() if _mitVol else fl_ringe):  # SELBSTPRUEFUNG A
+    # ★ v103 SELBSTPRUEFUNG A, NEU GEFASST UND IMMER AKTIV.
+    #   In v102 hatte ich sie abgeschaltet, sobald das Volumen bekannt war - ein Fehler:
+    #   ein SCHIEF im Raum liegendes Bauteil laesst sich nicht durch Aufeinanderstapeln von
+    #   Quadern nachbauen, auch wenn das Volumen zufaellig stimmt. Genau das ist Paul beim
+    #   Daemmungs-Bauteil E3265 passiert.
+    #   Statt "eine einzige schraege Flaeche verbietet alles" zaehlt jetzt der FLAECHENANTEIL.
+    #   Gemessen an Pauls Balkonturm trennt das sauber:
+    #     E3265 schief 97,0 %   E3264 Sturz 85,7 %   -> ablehnen
+    #     E3254 Tuerwand 0,4 %  alle uebrigen 0,0 %  -> bauen
+    _fges = 0.0; _fschr = 0.0
+    for _a97, _l97 in fl_ringe:
+        _p97 = np.asarray(_a97, dtype=float)
+        if len(_p97) < 3: continue
+        _n97 = np.zeros(3)
+        for _i97 in range(len(_p97)):
+            _n97 += np.cross(_p97[_i97], _p97[(_i97 + 1) % len(_p97)])
+        _ln97 = float(np.linalg.norm(_n97))
+        if _ln97 < 1e-9: continue
+        _fges += _ln97 * 0.5
+        _c97 = abs(float(_n97[ax]) / _ln97)
+        if 0.02 < _c97 < 0.98: _fschr += _ln97 * 0.5
+    if _fges <= 0.0: return None
+    if _fschr > 0.05 * _fges:
+        _FLSTAT['wz_schraeg'] = _FLSTAT.get('wz_schraeg', 0) + 1
+        return None
+    for _a97, _l97 in ():                             # (alte punktweise Pruefung entfaellt)
         _p97 = np.asarray(_a97, dtype=float)
         if len(_p97) < 3: continue
         _n97 = np.zeros(3)
@@ -1135,8 +1160,10 @@ def _wz_bauen(schnitte, fl_ringe, vol_as=None):
         else:
             return None                          # SELBSTPRUEFUNG B: Abschnitt nie abgetastet
     if not absch: return None
+    if len(absch) > 60: return None      # v103: Ausreisser abfangen, statt den Bau zu ersticken
     T = _wz_koerper(absch, ax)
     if T is None or len(T) < 4: return None
+    if len(T) > 60000: return None       # v103: kein Teil braucht so viele Dreiecke
     vol = float(np.sum(np.einsum('ij,ij->i', T[:, 0], np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])))) / 6.0
     if vol <= 0.0: return None                   # Selbstkontrolle: ein Koerper hat positives Volumen
     if _mitVol:
@@ -1670,6 +1697,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
           % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
+    print('* WURZEL-WEG Formpruefung: %d Teile verworfen, weil sie schief im Raum liegen' % _FLSTAT.get('wz_schraeg', 0))
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
           % (_FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
@@ -2043,7 +2071,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v102\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v103\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
