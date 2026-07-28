@@ -5096,7 +5096,32 @@ var GOKOBA_LAYER_ACI = {
     d*=(margin||1.05);
     camera.position.copy(center).add(d0.clone().multiplyScalar(d));
     controls.target.copy(center);
+    /* v134 URSACHE DES FLACKERNS - endlich gemessen. Pauls Testfassung OHNE jeden Tiefenvorzug
+       und mit fester Zeichenreihenfolge flackerte GENAUSO. Damit ist bewiesen: die Rangfolge war
+       nie schuld. Was bleibt, ist die TIEFENGENAUIGKEIT. Zwei buendig aneinanderliegende Flaechen
+       haben fast dieselbe Tiefe; reicht die Aufloesung nicht, kippt die Entscheidung von Bildpunkt
+       zu Bildpunkt und von Bild zu Bild - genau das sieht man als Flackern beim Drehen.
+       Die Aufloesung haengt fast allein an der NAHGRENZE, und die stand fest auf zwei Promille der
+       Modellgroesse (bei 25 m also 5 cm) bei einer Fernsicht vom Zehnfachen. Das ist unnoetig
+       verschwenderisch, wenn man drei Meter vom Modell entfernt steht.
+       Jetzt wird die Tiefenspanne DEM ABSTAND NACHGEFUEHRT: die Nahgrenze waechst mit dem Abstand
+       zum Drehpunkt, die Fernsicht wird nur so weit gesetzt, wie das Modell wirklich reicht.
+       Bei zwanzig Metern Abstand bringt das rund das Zehnfache an Tiefenaufloesung. */
     camera.near=Math.max(0.002,d*0.002);camera.far=d*10;camera.updateProjectionMatrix();
+    window.gkTiefeSpanne=function(){
+      try{
+        if(window.gk2d)return;                       /* im 2D-Modus nicht eingreifen */
+        var ab=camera.position.distanceTo(controls.target);
+        if(!(ab>0))return;
+        /* Nie schlechter als bisher: der bisherige Wert ist die Untergrenze, der abstands-
+           abhaengige Wert hebt sie an, sobald man weiter weg steht. */
+        var nn=Math.max(0.002, d*0.002, ab*0.015);
+        var ff=Math.max(ab+d*1.6, d*1.2);            /* Fernsicht nur so weit wie noetig */
+        if(Math.abs(nn-camera.near)/camera.near<0.12 &&
+           Math.abs(ff-camera.far )/camera.far <0.12) return;   /* Zappeln vermeiden */
+        camera.near=nn; camera.far=ff; camera.updateProjectionMatrix();
+      }catch(e){}
+    };
     return d;
   }
   /* ★ ==========================================================================
@@ -5455,13 +5480,7 @@ var GOKOBA_LAYER_ACI = {
             };
             /* Tiefen-Rangfolge an EINER Stelle. Kleiner heisst: liegt bei Gleichstand vorne. Der Gitterrost
                traegt seine -2 ueber den Materialweg und steht deshalb nicht in dieser Liste. */
-            /* ===== TESTFASSUNG v133: die gesamte Tiefen-Rangfolge ist ABGESCHALTET. =====
-                Alle Klassen stehen auf null, kein Bauteil bekommt mehr einen Tiefenvorzug.
-                Erhalten bleibt allein die feste, eindeutige Zeichenreihenfolge je Bauteil.
-                ZWECK: Flackert es damit AUCH, war die Rangfolge nie die Ursache. Flackert es
-                NICHT, steckt die Ursache in der Rangfolge und wir haben endlich einen Ansatz.
-                Diese Datei ist NICHT fuer den Dauerbetrieb gedacht. */
-             window.GK_TIEFE={gelaender:0, traeger:0, auflieger:0, normal:0, bestand:0};
+            window.GK_TIEFE={gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
             window.gkIst=function(ly,art){
               var La=(window.GK_LAYER||{})[art]; if(!La)return false;
               for(var i=0;i<La.length;i++){
@@ -5512,7 +5531,7 @@ window.gkTiefeStreu=function(o){
               if(!k0){
                 k0=m0.clone();
                 if(m0.onBeforeCompile){k0.onBeforeCompile=m0.onBeforeCompile;k0.customProgramCacheKey=m0.customProgramCacheKey;}
-                k0.polygonOffset=false;  /* TEST v133 */
+                k0.polygonOffset=true; k0.polygonOffsetFactor=0; k0.polygonOffsetUnits=-0.03-b*0.028;
                 window._gkTieKlone[sl]=k0;
               }
               o.material=k0;
@@ -5527,7 +5546,7 @@ window.gkTiefeStreu=function(o){
                   var mA=Array.isArray(o.material)?o.material[0]:o.material; /* v85: Auflieger-Bleche (Alu-Wannen,
                     Abdeckbleche) liegen konstruktiv OBEN auf - gleicher Mini-Vorzug wie die Roste,
                     sonst scheinen die Kanten des Profils darunter durch */
-                  if(mA){mA.polygonOffset=false;}  /* TEST v133 */
+                  if(mA&&!mA.polygonOffset){mA.polygonOffset=true;mA.polygonOffsetFactor=0;mA.polygonOffsetUnits=GK_TIEFE.auflieger;}
                 }
                 if(gkIst(_ly82,'thermostop')){
                   /* v103 Pauls Wunsch: Thermostop-Platten sollen im Viewer sofort vom Stahlbau
@@ -5565,7 +5584,7 @@ window.gkTiefeStreu=function(o){
                     var kT2=window._gkTraegerKlone[m0T2.uuid];
                     if(!kT2){kT2=m0T2.clone();
                       if(m0T2.onBeforeCompile){kT2.onBeforeCompile=m0T2.onBeforeCompile;kT2.customProgramCacheKey=m0T2.customProgramCacheKey;}
-                      kT2.polygonOffset=false;  /* TEST v133 */
+                      kT2.polygonOffset=true;kT2.polygonOffsetFactor=0;kT2.polygonOffsetUnits=GK_TIEFE.traeger;
                       window._gkTraegerKlone[m0T2.uuid]=kT2;}
                     o.material=kT2;
                   }
@@ -5595,8 +5614,8 @@ window.gkTiefeStreu=function(o){
                     var kG=window._gkGelKlone[sG];
                     if(!kG){kG=m0G.clone();
                       if(m0G.onBeforeCompile){kG.onBeforeCompile=m0G.onBeforeCompile;kG.customProgramCacheKey=m0G.customProgramCacheKey;}
-                      kG.polygonOffset=false;
-                      kG.polygonOffset=false;  /* TEST v133 */
+                      kG.polygonOffset=true;kG.polygonOffsetFactor=0;
+                      kG.polygonOffsetUnits=GK_TIEFE.gelaender-(hG%16)*0.03;
                       window._gkGelKlone[sG]=kG;}
                     o.material=kG;
                   }
@@ -5604,13 +5623,13 @@ window.gkTiefeStreu=function(o){
                 if(gkIst(_ly82,'bestand')){
                   var mB=Array.isArray(o.material)?o.material[0]:o.material; /* v82: Bestand tritt hauchduenn zurueck -
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
-                  if(mB){mB.polygonOffset=false;}
+                  if(mB&&!mB.polygonOffset){mB.polygonOffset=true;mB.polygonOffsetFactor=1;mB.polygonOffsetUnits=1;}
                 }
                 if(!gkIst(_ly82,'daemmung')){ gkZeichenfolge(o,_ly82); gkTiefeStreu(o); }   /* v120: feste Zeichenreihenfolge + Rangfolge */
                 if(!gkIst(_ly82,'daemmung'))return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
-                  kk.depthWrite=true;kk.polygonOffset=false; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
+                  kk.depthWrite=true;kk.polygonOffset=true;kk.polygonOffsetFactor=0;kk.polygonOffsetUnits=1; /* v96: Versatz MINIMAL (0/1) - der kraeftige v95-Versatz (2/4) liess anliegende Gurte flackern und erzeugte Tiefen-Verspruenge an Laibungen -
                     Tiefe SCHREIBEN (Plattenstoesse und Selbstverdeckung deterministisch, kein Sortier-Flackern) +
                     kraeftiger Rueckversatz: an Beruehrflaechen gewinnt IMMER der Stahl (das fehlte v69) */
                   klone[m0.uuid]=kk;}
@@ -5666,7 +5685,7 @@ window.gkTiefeStreu=function(o){
           if(_nmR.indexOf('sonderteil')>=0||(_nmR.indexOf('alu')>=0&&_nmR.indexOf('wann')>=0)){m.userData._gelaender=false;m.userData._stahlbau=false;}
           if(m.userData._gelaender&&gelaenderMats.indexOf(m)<0)gelaenderMats.push(m);
           if(m.userData._stahlbau&&stahlbauMats.indexOf(m)<0)stahlbauMats.push(m);
-          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=false;}  /* TEST v133: Gitterrost-Vorzug aus */ /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
+          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=true;m.polygonOffsetFactor=0;m.polygonOffsetUnits=-2;} /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
           if(m.userData._dekor&&dekorMats[m.userData._dekor]&&dekorMats[m.userData._dekor].indexOf(m)<0)dekorMats[m.userData._dekor].push(m);
         });
         meshes.push(o);
@@ -5790,7 +5809,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V133_TESTFASSUNG_OHNE_RANGFOLGE';
+      var GOKOBA_VORLAGE='VORLAGE_V134_TIEFENSPANNE';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -7989,7 +8008,7 @@ window.gkTiefeStreu=function(o){
   window.addEventListener('resize',resize);
   if(window.ResizeObserver){new ResizeObserver(resize).observe(panel);}
   resize();
-  function tick(){requestAnimationFrame(tick);controls.update();if(!((window.__gkKf=((window.__gkKf||0)+1)%180))&&window.gkKantenSync)window.gkKantenSync();if(window.gkAchsTick)window.gkAchsTick();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
+  function tick(){requestAnimationFrame(tick);controls.update();if(window.gkTiefeSpanne)window.gkTiefeSpanne();if(!((window.__gkKf=((window.__gkKf||0)+1)%180))&&window.gkKantenSync)window.gkKantenSync();if(window.gkAchsTick)window.gkAchsTick();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
   tick();
 })();
 </script>
