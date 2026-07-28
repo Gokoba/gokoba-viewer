@@ -1276,9 +1276,17 @@ def _entflechten107(szene, spalt=0.4):
                 V = _np.asarray(gk.vertices, dtype=float)
                 auf = _np.abs(V @ nvec - d0) < 1e-6
                 if not auf.any(): continue
+                # v107e VORZEICHEN KORRIGIERT. Liegt die Mitte des Bauteils auf der POSITIVEN
+                #   Seite der Ebene, ist diese Flaeche seine untere Begrenzung - nach INNEN heisst
+                #   dann PLUS. Ich hatte es genau andersherum, dadurch wurden die Flaechen nach
+                #   AUSSEN geschoben und die Teile wuchsen ineinander.
                 mitte = (box[klein][0] + box[klein][1]) * 0.5
-                rein = -1.0 if float(mitte @ nvec) > d0 else 1.0
-                V[auf] += nvec * (rein * spalt * 0.001)
+                rein = 1.0 if float(mitte @ nvec) > d0 else -1.0
+                # v107f SICHERUNG: bei duennen Teilen waeren 0,4 mm sichtbar. Der Rueckzug
+                #   betraegt hoechstens 5 % der kleinsten Abmessung des Bauteils.
+                _mass = float(_np.min(box[klein][1] - box[klein][0])) * 1000.0   # mm
+                _sp = min(spalt, max(0.05, 0.05 * _mass))
+                V[auf] += nvec * (rein * _sp * 0.001)
                 try:
                     gk.vertices = V
                 except Exception:
