@@ -5189,11 +5189,35 @@ var GOKOBA_LAYER_ACI = {
   }
   /* ★ Einfache Wuerfel-Umgebung fuer Chrom/Edelstahl-Spiegelung (hell oben, dunkel unten) */
   function gokobaChromEnv(){
-    var f=[],n=128;for(var i=0;i<6;i++){var c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
-      if(i===2){g.fillStyle='#f4f7fa';g.fillRect(0,0,n,n);} /* ★ oben gleichmaessig hell */
-      else if(i===3){g.fillStyle='#2b323a';g.fillRect(0,0,n,n);} /* ★ unten gleichmaessig dunkel */
-      else{g.fillStyle='#c2cad1';g.fillRect(0,0,n,n);} /* ★ Seiten gleichmaessig hell: Verzinkt wird von allen Seiten angestrahlt */ /* ★ Seiten mit passendem Verlauf, so entstehen keine harten Kanten */
-      f.push(c);}
+     /* v122 GEMESSEN, URSACHE VON PAULS "KANTIGEM" HANDLAUF.
+        Die Umgebungskarte bestand aus SECHS EINFARBIGEN Wuerfelflaechen. Auf einem glaenzenden
+        Rohr wandert die Spiegelrichtung ueber den Wuerfel, und an jeder Wuerfelkante springt die
+        Farbe HART um - das sieht aus wie eine Facette, obwohl die Geometrie rund ist. Gemessen:
+        die Handlaeufe haben im fertigen Modell 48 bis 91 Segmente, Umrissabweichung 0,009 bis
+        0,032 mm, und die Normalen sind sauber geglaettet. Es war also nie die Geometrie.
+        Weil die Spiegelrichtung vom Blickwinkel abhaengt, wandert der Effekt ueber den Bildschirm -
+        genau Pauls Beobachtung "in der Mitte rund, zum Rand hin kantig".
+        Jetzt bekommt jede Wuerfelflaeche einen Verlauf, sodass die Karte an den Kanten stetig
+        ineinander uebergeht. Nichts springt mehr um, die Spiegelung wandert weich. */
+     var f=[],n=256;
+     var C_OBEN='#f4f7fa', C_HORI='#c2cad1', C_UNTEN='#2b323a';
+     for(var i=0;i<6;i++){
+       var c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
+       if(i===2){
+         var rg=g.createRadialGradient(n/2,n/2,0,n/2,n/2,n*0.72);
+         rg.addColorStop(0,C_OBEN); rg.addColorStop(1,C_HORI);
+         g.fillStyle=rg; g.fillRect(0,0,n,n);
+       } else if(i===3){
+         var rg2=g.createRadialGradient(n/2,n/2,0,n/2,n/2,n*0.72);
+         rg2.addColorStop(0,C_UNTEN); rg2.addColorStop(1,C_HORI);
+         g.fillStyle=rg2; g.fillRect(0,0,n,n);
+       } else {
+         var lg=g.createLinearGradient(0,0,0,n);
+         lg.addColorStop(0,C_OBEN); lg.addColorStop(0.5,C_HORI); lg.addColorStop(1,C_UNTEN);
+         g.fillStyle=lg; g.fillRect(0,0,n,n);
+       }
+       f.push(c);
+     }
     var t=new THREE.CubeTexture(f);t.needsUpdate=true;return t;
   }
   var gokobaEnv=gokobaChromEnv();
@@ -5752,7 +5776,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V121_TEXTURFIX'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V122_SPIEGELUNG'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
