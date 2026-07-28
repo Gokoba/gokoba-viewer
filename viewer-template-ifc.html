@@ -5442,12 +5442,18 @@ var GOKOBA_LAYER_ACI = {
               traeger   : ['tr\u00e4ger','traeger','st\u00fctze','stuetze','treppe','wange','podest'],
               bestand   : ['beton','mauerwerk','bestand'],
               daemmung  : ['mmung'],
+              /* v127 GEMESSEN am Treppenturm: 129 Flaechenpaare zwischen Gitterrost-Unterseite
+                 und Traeger-Oberseite liegen auf EXAKT 0,000 mm, mit Ueberlappung bis 0,16 m2.
+                 Podestroste liegen OBEN AUF ihren Traegern und muessen dort gewinnen. Die
+                 Treppenstufen (AS_Stufen) duerfen das NICHT, sonst schauen sie wieder durch die
+                 Wange - deshalb steht hier bewusst NUR 'gitterrost' und nicht 'stufen'. */
+              rost      : ['gitterrost'],
               ohnebg    : ['beton','mauerwerk','mmung','daemm','estrich','glas','trespa',
                            'betonwerkstein','mineralit','thermostop','bestand']
             };
             /* Tiefen-Rangfolge an EINER Stelle. Kleiner heisst: liegt bei Gleichstand vorne. Der Gitterrost
                traegt seine -2 ueber den Materialweg und steht deshalb nicht in dieser Liste. */
-            window.GK_TIEFE={gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
+            window.GK_TIEFE={rost:-4, gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
             window.gkIst=function(ly,art){
               var La=(window.GK_LAYER||{})[art]; if(!La)return false;
               for(var i=0;i<La.length;i++){
@@ -5480,7 +5486,7 @@ var GOKOBA_LAYER_ACI = {
    ihre bisherige Reihenfolge behalten. */
 window._gkZf={};
 window.gkZeichenfolge=function(o,ly){
-  var rang = gkIst(ly,'gelaender') ? 1
+  var rang = (gkIst(ly,'rost')||gkIst(ly,'gelaender')) ? 1
            : (gkIst(ly,'traeger')  ? 2
            : (gkIst(ly,'auflieger')? 3
            : (gkIst(ly,'bestand')  ? 5 : 4)));
@@ -5532,7 +5538,19 @@ window.gkTiefeStreu=function(o){
                     o.material=kT;
                   }
                 }
-                if(!gkIst(_ly82,'gelaender')&&gkIst(_ly82,'traeger')){
+                if(gkIst(_ly82,'rost')){
+                  var m0R=Array.isArray(o.material)?o.material[0]:o.material;
+                  if(m0R){
+                    if(!window._gkRostKlone)window._gkRostKlone={};
+                    var kR=window._gkRostKlone[m0R.uuid];
+                    if(!kR){kR=m0R.clone();
+                      if(m0R.onBeforeCompile){kR.onBeforeCompile=m0R.onBeforeCompile;kR.customProgramCacheKey=m0R.customProgramCacheKey;}
+                      kR.polygonOffset=true;kR.polygonOffsetFactor=0;kR.polygonOffsetUnits=GK_TIEFE.rost;
+                      window._gkRostKlone[m0R.uuid]=kR;}
+                    o.material=kR;
+                  }
+                }
+                if(!gkIst(_ly82,'gelaender')&&!gkIst(_ly82,'rost')&&gkIst(_ly82,'traeger')){
                   /* v111 GEMESSEN in Pauls Treppenturm: die WANGEN liegen auf AS_Treppe (73 Stueck
                      U240), nicht auf AS_Traeger. Meine Rangfolge kannte nur Traeger und Stuetze,
                      also fiel die Wange auf Stufe 0 und der Gitterrost mit seinem Vorzug von zwei
@@ -5776,7 +5794,11 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V125_MENUE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V128_QUITTUNG';
+      /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
+         bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
+         Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
+      var GOKOBA_KONVERTER='KONVERTER___KONV__'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -6707,7 +6729,12 @@ window.gkTiefeStreu=function(o){
         var gkStrich=function(){ var h=el('div','height:1px;background:var(--gkln);margin:7px 2px 6px;'); w.appendChild(h); };
         gkStrich();
         var gkSpalten=el('div','position:absolute;left:100%;top:0;display:flex;align-items:flex-start;');
-        w.style.position='relative'; w.appendChild(gkSpalten);
+        /* v126 FEHLER AUS v125: hier stand w.style.position='relative'. Der Block ist aber
+           ABSOLUT positioniert (glasBox setzt position:absolute) - damit hat er seine
+           Verankerung oben links verloren und ist in den Textfluss gerutscht, also nach unten
+           zur Fusszeile. Ein absolut positionierter Block ist ohnehin schon Bezugsrahmen fuer
+           seine Kinder, die Zeile war also nicht nur schaedlich, sondern auch ueberfluessig. */
+        w.appendChild(gkSpalten);
         var gkOffen=null;
         function gkSpalte(breite){
           return el('div','min-width:'+breite+'px;padding:9px 10px;background:var(--gkbg);'
