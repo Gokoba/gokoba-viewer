@@ -5453,7 +5453,7 @@ var GOKOBA_LAYER_ACI = {
             };
             /* Tiefen-Rangfolge an EINER Stelle. Kleiner heisst: liegt bei Gleichstand vorne. Der Gitterrost
                traegt seine -2 ueber den Materialweg und steht deshalb nicht in dieser Liste. */
-            window.GK_TIEFE={rost:-4, gelaender:-4, traeger:-3, auflieger:-2, normal:0, bestand:1};
+            window.GK_TIEFE={gelaender:-4, traeger:-3, rost:-2, auflieger:-2, normal:0, bestand:1};
             window.gkIst=function(ly,art){
               var La=(window.GK_LAYER||{})[art]; if(!La)return false;
               for(var i=0;i<La.length;i++){
@@ -5486,9 +5486,9 @@ var GOKOBA_LAYER_ACI = {
    ihre bisherige Reihenfolge behalten. */
 window._gkZf={};
 window.gkZeichenfolge=function(o,ly){
-  var rang = (gkIst(ly,'rost')||gkIst(ly,'gelaender')) ? 1
+  var rang = gkIst(ly,'gelaender') ? 1
            : (gkIst(ly,'traeger')  ? 2
-           : (gkIst(ly,'auflieger')? 3
+           : ((gkIst(ly,'rost')||gkIst(ly,'auflieger'))? 3
            : (gkIst(ly,'bestand')  ? 5 : 4)));
   var n = (window._gkZf[rang] = (window._gkZf[rang]||0) + 1);
   if(n > 99000) n = 99000;
@@ -5539,14 +5539,27 @@ window.gkTiefeStreu=function(o){
                   }
                 }
                 if(gkIst(_ly82,'rost')){
+                  /* v129 KORREKTUR ZU v127: dort hatte ich den Gitterrosten Stufe -4 gegeben, damit
+                     sie gegen ihre Auflagertraeger gewinnen. Damit gewannen sie aber AUCH gegen die
+                     Wange - in Treppe Ost schauten die Stufenlaschen prompt wieder durch. Zurueck
+                     auf -2, also hinter den Traeger.
+                     Das Flackern auf den Podesten kam ohnehin von woanders: ALLE Gitterroste teilen
+                     sich EIN Material und damit exakt denselben Tiefenwert. Wo zwei Roste
+                     aneinanderstossen, liegen sie gleich tief, und dort kippt die Reihenfolge beim
+                     Drehen. Jeder Rost bekommt deshalb jetzt einen eigenen Mini-Zuschlag aus seiner
+                     Kennung - unter einer halben Stufe, also geometrisch unsichtbar, aber eindeutig. */
                   var m0R=Array.isArray(o.material)?o.material[0]:o.material;
                   if(m0R){
                     if(!window._gkRostKlone)window._gkRostKlone={};
-                    var kR=window._gkRostKlone[m0R.uuid];
+                    var hR=0,nR=String(o.name||'');
+                    for(var iR=0;iR<nR.length;iR++)hR=(hR*31+nR.charCodeAt(iR))>>>0;
+                    var sR=m0R.uuid+'|'+(hR%16);
+                    var kR=window._gkRostKlone[sR];
                     if(!kR){kR=m0R.clone();
                       if(m0R.onBeforeCompile){kR.onBeforeCompile=m0R.onBeforeCompile;kR.customProgramCacheKey=m0R.customProgramCacheKey;}
-                      kR.polygonOffset=true;kR.polygonOffsetFactor=0;kR.polygonOffsetUnits=GK_TIEFE.rost;
-                      window._gkRostKlone[m0R.uuid]=kR;}
+                      kR.polygonOffset=true;kR.polygonOffsetFactor=0;
+                      kR.polygonOffsetUnits=GK_TIEFE.rost-(hR%16)*0.03;
+                      window._gkRostKlone[sR]=kR;}
                     o.material=kR;
                   }
                 }
@@ -5794,7 +5807,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V128_QUITTUNG';
+      var GOKOBA_VORLAGE='VORLAGE_V130_FARBEN';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5953,18 +5966,35 @@ window.gkTiefeStreu=function(o){
           });
           var af=reihe.querySelector('[data-einf]');
           if(af)af.addEventListener('click',function(ev){ev.stopPropagation();
-            if(af.querySelector('input'))return;
-            var f=document.createElement('input'); f.type='color'; f.value='#b05828';
-            f.style.cssText='width:100%;height:22px;border:none;background:transparent;cursor:pointer;';
-            f.addEventListener('input',function(){
-              var t=gewaehlt; if(!t)return;
-              var m=Array.isArray(t.material)?t.material[0]:t.material;
-              if(!m)return;
-              if(!t.userData._efMat){ var kk=m.clone(); kk.map=null; t.userData._efMat=kk; }
-              t.userData._efMat.color=new THREE.Color(f.value);
-              gewMat=t.userData._efMat;            /* nach dem Abwaehlen bleibt die Farbe */
+            /* v130 Pauls Vorgabe: KEIN Systemfenster mehr, sondern dieselbe Palette wie im
+               Werkzeug Farbe - direkt unter dem Knopf, das Kaertchen waechst dafuer nach unten.
+               Nach der Wahl klappt sie wieder zu. */
+            var alt=reihe.querySelector('[data-palette]');
+            if(alt){ alt.remove(); return; }
+            var pal=el('div','grid-column:1 / -1;margin-top:7px;padding-top:8px;'
+              +'border-top:1px solid rgba(255,255,255,.12);');
+            pal.setAttribute('data-palette','1');
+            var git=el('div','display:grid;grid-template-columns:repeat(6,1fr);gap:6px;');
+            RAL.forEach(function(r){
+              var c=el('div','width:100%;aspect-ratio:1;border-radius:7px;cursor:pointer;'
+                +'background:'+r[1]+';border:2px solid transparent;');
+              c.title=r[0];
+              c.addEventListener('click',function(e2){e2.stopPropagation();
+                var t=gewaehlt; if(t){
+                  var basis=(t.userData&&t.userData._efUr)||gewMat;
+                  if(!t.userData._efUr)t.userData._efUr=basis;
+                  var nm=(Array.isArray(basis)?basis[0]:basis).clone();
+                  nm.color=new THREE.Color(r[1]); if(nm.map)nm.map=null;
+                  t.userData._efMat=nm; gewMat=nm;
+                }
+                pal.remove();
+              });
+              git.appendChild(c);
             });
-            af.textContent=''; af.appendChild(f); f.click();
+            pal.appendChild(git);
+            var hin=el('div','font:400 9.5px var(--ui);color:var(--gktx2);opacity:.75;line-height:1.35;margin-top:8px;');
+            hin.textContent=GK_FARBHINWEIS; pal.appendChild(hin);
+            reihe.appendChild(pal);
           });
           var a3=reihe.querySelector('[data-bgweg]');
           if(a3)a3.addEventListener('click',function(ev){ev.stopPropagation();
@@ -6726,9 +6756,12 @@ window.gkTiefeStreu=function(o){
            rechts KEINEN Rand - dadurch haengt die Spalte sichtbar an genau dieser Zeile und
            alles wirkt als eine Flaeche. Es kann immer nur eine Zeile offen sein.
            Ganz unten in der AEUSSERSTEN Spalte stehen Hinweistext und der Standard-Knopf. */
+        var GK_FARBHINWEIS='Die dargestellten Farben k\u00f6nnen je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.';
         var gkStrich=function(){ var h=el('div','height:1px;background:var(--gkln);margin:7px 2px 6px;'); w.appendChild(h); };
         gkStrich();
-        var gkSpalten=el('div','position:absolute;left:100%;top:0;display:flex;align-items:flex-start;');
+        /* v130: die Spalten haengen jetzt an der GEKLICKTEN Zeile (top wird beim Klick gesetzt)
+           und ziehen sich auf gleiche Hoehe - damit wirkt alles wie eine einzige Flaeche. */
+        var gkSpalten=el('div','position:absolute;left:100%;top:0;display:flex;align-items:stretch;');
         /* v126 FEHLER AUS v125: hier stand w.style.position='relative'. Der Block ist aber
            ABSOLUT positioniert (glasBox setzt position:absolute) - damit hat er seine
            Verankerung oben links verloren und ist in den Textfluss gerutscht, also nach unten
@@ -6767,6 +6800,7 @@ window.gkTiefeStreu=function(o){
           var r=gkPunkt(txt,true,function(b){
             if(gkOffen===b){gkZu();return;}
             gkZu(); gkOffen=b; b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
+            gkSpalten.style.top=(b.offsetTop)+'px';
             bauen();
           });
           w.appendChild(r); return r;
@@ -6778,7 +6812,7 @@ window.gkTiefeStreu=function(o){
         /* ---------- Farben ---------- */
         gkHaupt('Farben',function(){
           gkEbene(0,function(sp){
-            [['stahl','Stahlbau'],['gelaender','Gel\u00e4nder'],['gitter','Gitterroste']].forEach(function(e){
+            [['stahlbau','Stahlbau'],['gelaender','Gel\u00e4nder'],['gitter','Gitterroste']].forEach(function(e){
               sp.appendChild(gkPunkt(e[1],true,function(b){
                 Array.prototype.forEach.call(sp.children,function(x){x.style.background='transparent';delete x.dataset.an;});
                 b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
@@ -6786,7 +6820,7 @@ window.gkTiefeStreu=function(o){
                 if(e[0]==='gitter') gkGitterEbene(); else gkFarbEbene(e[1]);
               }));
             });
-            gkFuss(sp,'Bauteilgruppe w\u00e4hlen, dann die Farbe oder das Finish.',null);
+            gkFuss(sp,'',null);
           });
         });
         function gkFarbEbene(name){
@@ -6795,15 +6829,23 @@ window.gkTiefeStreu=function(o){
             sp.appendChild(gkPunkt('Standardfarben',false,function(){ gkPalette('normal'); }));
             sp.appendChild(gkPunkt('Verzinkt',false,function(){ try{applyFinish('verzinkt');}catch(e){} }));
             sp.appendChild(gkPunkt('Edelstahl',false,function(){ try{applyFinish('edelstahl');}catch(e){} }));
-            gkFuss(sp,name+': Farbton oder Oberfl\u00e4che w\u00e4hlen.',function(){ try{applyFinish('normal');}catch(e){} });
+            gkFuss(sp,GK_FARBHINWEIS,function(){ try{applyFinish('normal');}catch(e){} });
           });
         }
+        /* v130 KORREKTUR: ich hatte '#ralcv' eingehaengt - das ist nur das kleine Vorschaufeld
+           IM Knopf, deshalb blieb die Spalte leer. Gebraucht werden die echten Farbgitter aus
+           dem alten Fenster: '.ralgrid' fuer RAL, '.ralnormal' fuer die Standardfarben. Sie
+           werden UMGEHAENGT, nicht nachgebaut - damit behalten sie ihre gesamte Logik. */
         function gkPalette(art){
           gkEbene(2,function(sp){
-            try{ ralType=art; if(ralpanel){ralpanel.classList.toggle('normal',art==='normal');ralpanel.classList.add('palette');} }catch(e){}
-            var cv=document.getElementById('ralcv');
-            if(cv){ sp.appendChild(cv); cv.style.display='grid'; }
-            gkFuss(sp,'Farbfeld antippen - die Gruppe wird sofort umgef\u00e4rbt.',null);
+            try{ ralType=art; }catch(e){}
+            var q=document.querySelector(art==='normal'?'#ralpanel .ralnormal':'#ralpanel .ralgrid');
+            if(q){
+              sp.appendChild(q);
+              q.style.display='block';
+              q.style.maxHeight='min(46vh,340px)'; q.style.overflow='auto'; q.style.margin='0';
+            }
+            gkFuss(sp,GK_FARBHINWEIS,null);
           });
         }
         function gkGitterEbene(){
@@ -6816,54 +6858,11 @@ window.gkTiefeStreu=function(o){
                 }catch(err){}
               }));
             });
-            gkFuss(sp,'Gitterroste: Maschenbild w\u00e4hlen.',function(){
+            gkFuss(sp,GK_FARBHINWEIS,function(){
               try{ var t=gitterTextur('3030'); gitterMats.forEach(function(m){m.map=t;m.needsUpdate=true;}); }catch(e){}
             });
           });
         }
-        /* ---------- Auswahl ---------- */
-        var gkSammelArt='et', gkSammel=[];
-        window.gkSammelAktiv=function(){ return !!(gkOffen && gkOffen.dataset.an && gkOffen.textContent.indexOf('Auswahl')===0); };
-        window.gkSammelZu=function(o){
-          if(!o)return;
-          var i=gkSammel.indexOf(o);
-          if(i>=0) gkSammel.splice(i,1); else gkSammel.push(o);
-          gkSammelListe();
-        };
-        function gkSammelListe(){
-          if(gkSpalten.children.length<2)return;
-          var sp=gkSpalten.children[1]; sp.innerHTML='';
-          if(!gkSammel.length) sp.appendChild(gkPunkt('noch nichts gesammelt',false,function(){}));
-          gkSammel.forEach(function(o){
-            var d=GOKOBA_TEILE&&GOKOBA_TEILE[o.name];
-            sp.appendChild(gkPunkt((d&&(d.ref||d.bgnr))?String(d.ref||d.bgnr):o.name,false,function(){ gkSammelZu(o); }));
-          });
-          gkFuss(sp,'Bauteile im Modell antippen zum Sammeln.',null);
-          var reihe=el('div','display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;');
-          var KS2='text-align:center;cursor:pointer;font:500 10.5px var(--ui);color:var(--gktx2);padding:6px 4px;border:1px solid rgba(127,140,150,.28);border-radius:9px;';
-          var a1=el('div',KS2); a1.textContent='Ausblenden';
-          a1.addEventListener('click',function(ev){ev.stopPropagation();
-            gkSammel.forEach(function(o){ if(gkSammelArt==='bg'){ var d=GOKOBA_TEILE[o.name];
-                if(d&&d.bgnr){ var bg=String(d.bgnr); model.traverse(function(x){ if(!x.isMesh&&!x.isLineSegments)return;
-                  var dd=GOKOBA_TEILE[x.name]; if(dd&&String(dd.bgnr||'')===bg)x.visible=false; }); return; } }
-              o.visible=false; });
-            gkSammel=[]; gkSammelListe(); });
-          var a2=el('div',KS2); a2.textContent='Leeren';
-          a2.addEventListener('click',function(ev){ev.stopPropagation(); gkSammel=[]; gkSammelListe(); });
-          reihe.appendChild(a1); reihe.appendChild(a2); sp.appendChild(reihe);
-        }
-        gkHaupt('Auswahl',function(){
-          gkEbene(0,function(sp){
-            [['et','Einzelteile'],['bg','Baugruppen']].forEach(function(e){
-              sp.appendChild(gkPunkt(e[1],true,function(b){
-                Array.prototype.forEach.call(sp.children,function(x){x.style.background='transparent';delete x.dataset.an;});
-                b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
-                gkSammelArt=e[0]; gkEbene(1,function(s2){}); gkSammelListe();
-              }));
-            });
-            gkFuss(sp,'Erst w\u00e4hlen, womit gesammelt wird.',null);
-          });
-        });
         panel.appendChild(w);
       })();
 
