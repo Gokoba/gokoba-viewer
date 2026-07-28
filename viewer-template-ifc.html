@@ -142,7 +142,7 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
       <span class="vsep"></span>
       <div class="proj"><span class="proj-tag">3D-Viewer</span><span class="proj-name" lang="de">__PROJ_NAME__</span></div>
     </div>
-    <div class="controls"><span class="ablauf" id="ablauf"></span><div class="tglset"><span class="tgllbl">&nbsp;</span><button class="ralbtn" id="raltab">Farben <span class="ralcv" id="ralcv">&#9662;</span></button></div>
+    <div class="controls"><span class="ablauf" id="ablauf"></span><div class="tglset"><span class="tgllbl">&nbsp;</span><button class="ralbtn" id="raltab" style="display:none">Farben <span class="ralcv" id="ralcv">&#9662;</span></button></div>
       <!-- v113: Darstellung (Farbe/Grautoene) auf Pauls Wunsch entfernt -->
       <div class="tglset" style="display:none"><span class="tgllbl">Schatten</span>
         <div class="toggle"><button class="tbtn" data-shade="off">Aus</button><button class="tbtn active" data-shade="on">An</button></div>
@@ -5776,7 +5776,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V123_KOPF'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
+      var GOKOBA_VORLAGE='VORLAGE_V125_MENUE'; /* v101: Versionsquittung - im Viewer suchbar, damit nie wieder unklar ist, welche Vorlage laeuft */
       function kopfVon(d){
         var art=d.art||'sonstiges', name=null, ly=(d.layer||'').toLowerCase();
         if(art==='profil'||art==='kantprofil')name=d.profil||null;
@@ -5836,6 +5836,7 @@ window.gkTiefeStreu=function(o){
       var gewaehlt=null,gewMat=null;
       var bgMark=null; /* v108: {bg, teile:[{o,mat}]} - die markierte Baugruppe */
       function bgMarkAus(){ if(bgMark){ bgMark.teile.forEach(function(t){t.o.material=t.mat;}); bgMark=null; } }
+      /* v124: ist links die Auswahl offen, sammelt ein Klick das Bauteil, statt das Kaertchen zu oeffnen */
       function abwaehlen(){bgMarkAus();if(gewaehlt){gewaehlt.material=gewMat;gewaehlt=null;gewMat=null;}karte.style.display='none';}
       window.addEventListener('keydown',function(e){if(e.key!=='Escape')return;
         try{ if(typeof aktiv!=='undefined'&&aktiv){schalte(null);return;} }catch(_e){} /* v73: ESC schliesst zuerst das offene Werkzeug */
@@ -5910,6 +5911,11 @@ window.gkTiefeStreu=function(o){
               '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'
             : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>'+
               '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>';
+          /* v124 Pauls Vorgabe: einfaerben gehoert ans EINZELNE Bauteil, also ins Kaertchen -
+             links geht es um ganze Gruppen, hier um dieses eine Teil. */
+          var _ef=el('div',KS+'cursor:pointer;color:var(--gktx2);grid-column:1 / -1;margin-top:6px;');
+          _ef.setAttribute('data-einf','1'); _ef.textContent='einf\u00e4rben';
+          reihe.appendChild(_ef);
           var a1=reihe.querySelector('[data-weg]');
           if(a1)a1.addEventListener('click',function(ev){ev.stopPropagation();
             var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});
@@ -5922,6 +5928,21 @@ window.gkTiefeStreu=function(o){
               L.push({o:o,mat:o.material}); o.material=heben(o,GK_WAHL_FARBE,0.7);
             });
             bgMark={bg:bg,teile:L}; reiheBauen();
+          });
+          var af=reihe.querySelector('[data-einf]');
+          if(af)af.addEventListener('click',function(ev){ev.stopPropagation();
+            if(af.querySelector('input'))return;
+            var f=document.createElement('input'); f.type='color'; f.value='#b05828';
+            f.style.cssText='width:100%;height:22px;border:none;background:transparent;cursor:pointer;';
+            f.addEventListener('input',function(){
+              var t=gewaehlt; if(!t)return;
+              var m=Array.isArray(t.material)?t.material[0]:t.material;
+              if(!m)return;
+              if(!t.userData._efMat){ var kk=m.clone(); kk.map=null; t.userData._efMat=kk; }
+              t.userData._efMat.color=new THREE.Color(f.value);
+              gewMat=t.userData._efMat;            /* nach dem Abwaehlen bleibt die Farbe */
+            });
+            af.textContent=''; af.appendChild(f); f.click();
           });
           var a3=reihe.querySelector('[data-bgweg]');
           if(a3)a3.addEventListener('click',function(ev){ev.stopPropagation();
@@ -6677,6 +6698,145 @@ window.gkTiefeStreu=function(o){
         gkReihe('Hintergrund','Hintergrund hell/dunkel',
                 !!document.querySelector('.tbtn[data-bg="dunkel"].active'),
                 function(an){ gkTipp('.tbtn[data-bg="'+(an?'dunkel':'hell')+'"]'); });
+        /* ============ v124 AUSFAHRENDES MENUE IM LINKEN BLOCK ============
+           Pauls Entwurf: unter "Hintergrund" ein Trennstrich, dann "Farben" und "Auswahl".
+           Beide fahren nach RECHTS in Spalten aus. Die aktive Zeile ist abgesetzt und hat
+           rechts KEINEN Rand - dadurch haengt die Spalte sichtbar an genau dieser Zeile und
+           alles wirkt als eine Flaeche. Es kann immer nur eine Zeile offen sein.
+           Ganz unten in der AEUSSERSTEN Spalte stehen Hinweistext und der Standard-Knopf. */
+        var gkStrich=function(){ var h=el('div','height:1px;background:var(--gkln);margin:7px 2px 6px;'); w.appendChild(h); };
+        gkStrich();
+        var gkSpalten=el('div','position:absolute;left:100%;top:0;display:flex;align-items:flex-start;');
+        w.style.position='relative'; w.appendChild(gkSpalten);
+        var gkOffen=null;
+        function gkSpalte(breite){
+          return el('div','min-width:'+breite+'px;padding:9px 10px;background:var(--gkbg);'
+            +'border:1px solid var(--gkln);border-left:none;border-radius:0 14px 14px 0;'
+            +'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--gktx);');
+        }
+        function gkPunkt(txt,pfeil,klick){
+          var b=el('div','display:flex;align-items:center;justify-content:space-between;gap:10px;'
+            +'padding:6px 8px;border-radius:8px;cursor:pointer;font:500 11px var(--ui);color:var(--gktx2);');
+          b.innerHTML='<span>'+txt+'</span>'+(pfeil?'<span style="opacity:.5;">&#8250;</span>':'');
+          b.addEventListener('mouseenter',function(){b.style.background='rgba(127,140,150,.14)';});
+          b.addEventListener('mouseleave',function(){if(!b.dataset.an)b.style.background='transparent';});
+          b.addEventListener('click',function(ev){ev.stopPropagation();klick(b);});
+          return b;
+        }
+        function gkFuss(sp,hinweis,standard){
+          var h=el('div','height:1px;background:var(--gkln);margin:8px 2px 7px;'); sp.appendChild(h);
+          var t=el('div','font:400 10px var(--ui);color:var(--gktx2);opacity:.75;line-height:1.35;padding:0 2px 8px;');
+          t.textContent=hinweis; sp.appendChild(t);
+          if(standard){
+            var b=el('div','text-align:center;cursor:pointer;font:500 10.5px var(--ui);color:var(--gktx2);'
+              +'padding:6px 10px;border:1px solid rgba(127,140,150,.28);border-radius:9px;');
+            b.textContent='Standard';
+            b.addEventListener('click',function(ev){ev.stopPropagation();standard();});
+            sp.appendChild(b);
+          }
+        }
+        function gkZu(){ gkSpalten.innerHTML=''; if(gkOffen){gkOffen.style.background='transparent';delete gkOffen.dataset.an;} gkOffen=null; }
+        function gkHaupt(txt,bauen){
+          var r=gkPunkt(txt,true,function(b){
+            if(gkOffen===b){gkZu();return;}
+            gkZu(); gkOffen=b; b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
+            bauen();
+          });
+          w.appendChild(r); return r;
+        }
+        function gkEbene(nr,inhalt){        /* Spalten ab nr wegwerfen und neue anhaengen */
+          while(gkSpalten.children.length>nr) gkSpalten.removeChild(gkSpalten.lastChild);
+          var sp=gkSpalte(nr===0?150:170); inhalt(sp); gkSpalten.appendChild(sp); return sp;
+        }
+        /* ---------- Farben ---------- */
+        gkHaupt('Farben',function(){
+          gkEbene(0,function(sp){
+            [['stahl','Stahlbau'],['gelaender','Gel\u00e4nder'],['gitter','Gitterroste']].forEach(function(e){
+              sp.appendChild(gkPunkt(e[1],true,function(b){
+                Array.prototype.forEach.call(sp.children,function(x){x.style.background='transparent';delete x.dataset.an;});
+                b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
+                try{ ralMode=e[0]; }catch(err){}
+                if(e[0]==='gitter') gkGitterEbene(); else gkFarbEbene(e[1]);
+              }));
+            });
+            gkFuss(sp,'Bauteilgruppe w\u00e4hlen, dann die Farbe oder das Finish.',null);
+          });
+        });
+        function gkFarbEbene(name){
+          gkEbene(1,function(sp){
+            sp.appendChild(gkPunkt('RAL Farben',false,function(){ gkPalette('ral'); }));
+            sp.appendChild(gkPunkt('Standardfarben',false,function(){ gkPalette('normal'); }));
+            sp.appendChild(gkPunkt('Verzinkt',false,function(){ try{applyFinish('verzinkt');}catch(e){} }));
+            sp.appendChild(gkPunkt('Edelstahl',false,function(){ try{applyFinish('edelstahl');}catch(e){} }));
+            gkFuss(sp,name+': Farbton oder Oberfl\u00e4che w\u00e4hlen.',function(){ try{applyFinish('normal');}catch(e){} });
+          });
+        }
+        function gkPalette(art){
+          gkEbene(2,function(sp){
+            try{ ralType=art; if(ralpanel){ralpanel.classList.toggle('normal',art==='normal');ralpanel.classList.add('palette');} }catch(e){}
+            var cv=document.getElementById('ralcv');
+            if(cv){ sp.appendChild(cv); cv.style.display='grid'; }
+            gkFuss(sp,'Farbfeld antippen - die Gruppe wird sofort umgef\u00e4rbt.',null);
+          });
+        }
+        function gkGitterEbene(){
+          gkEbene(1,function(sp){
+            [['','Keine Textur'],['3030','Maschenweite 30 x 30'],['3010','Maschenweite 30 x 10']].forEach(function(e){
+              sp.appendChild(gkPunkt(e[1],false,function(){
+                try{
+                  var t=e[0]?gitterTextur(e[0]):null;
+                  gitterMats.forEach(function(m){ m.map=t; m.userData._savedMap=undefined; m.needsUpdate=true; });
+                }catch(err){}
+              }));
+            });
+            gkFuss(sp,'Gitterroste: Maschenbild w\u00e4hlen.',function(){
+              try{ var t=gitterTextur('3030'); gitterMats.forEach(function(m){m.map=t;m.needsUpdate=true;}); }catch(e){}
+            });
+          });
+        }
+        /* ---------- Auswahl ---------- */
+        var gkSammelArt='et', gkSammel=[];
+        window.gkSammelAktiv=function(){ return !!(gkOffen && gkOffen.dataset.an && gkOffen.textContent.indexOf('Auswahl')===0); };
+        window.gkSammelZu=function(o){
+          if(!o)return;
+          var i=gkSammel.indexOf(o);
+          if(i>=0) gkSammel.splice(i,1); else gkSammel.push(o);
+          gkSammelListe();
+        };
+        function gkSammelListe(){
+          if(gkSpalten.children.length<2)return;
+          var sp=gkSpalten.children[1]; sp.innerHTML='';
+          if(!gkSammel.length) sp.appendChild(gkPunkt('noch nichts gesammelt',false,function(){}));
+          gkSammel.forEach(function(o){
+            var d=GOKOBA_TEILE&&GOKOBA_TEILE[o.name];
+            sp.appendChild(gkPunkt((d&&(d.ref||d.bgnr))?String(d.ref||d.bgnr):o.name,false,function(){ gkSammelZu(o); }));
+          });
+          gkFuss(sp,'Bauteile im Modell antippen zum Sammeln.',null);
+          var reihe=el('div','display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;');
+          var KS2='text-align:center;cursor:pointer;font:500 10.5px var(--ui);color:var(--gktx2);padding:6px 4px;border:1px solid rgba(127,140,150,.28);border-radius:9px;';
+          var a1=el('div',KS2); a1.textContent='Ausblenden';
+          a1.addEventListener('click',function(ev){ev.stopPropagation();
+            gkSammel.forEach(function(o){ if(gkSammelArt==='bg'){ var d=GOKOBA_TEILE[o.name];
+                if(d&&d.bgnr){ var bg=String(d.bgnr); model.traverse(function(x){ if(!x.isMesh&&!x.isLineSegments)return;
+                  var dd=GOKOBA_TEILE[x.name]; if(dd&&String(dd.bgnr||'')===bg)x.visible=false; }); return; } }
+              o.visible=false; });
+            gkSammel=[]; gkSammelListe(); });
+          var a2=el('div',KS2); a2.textContent='Leeren';
+          a2.addEventListener('click',function(ev){ev.stopPropagation(); gkSammel=[]; gkSammelListe(); });
+          reihe.appendChild(a1); reihe.appendChild(a2); sp.appendChild(reihe);
+        }
+        gkHaupt('Auswahl',function(){
+          gkEbene(0,function(sp){
+            [['et','Einzelteile'],['bg','Baugruppen']].forEach(function(e){
+              sp.appendChild(gkPunkt(e[1],true,function(b){
+                Array.prototype.forEach.call(sp.children,function(x){x.style.background='transparent';delete x.dataset.an;});
+                b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
+                gkSammelArt=e[0]; gkEbene(1,function(s2){}); gkSammelListe();
+              }));
+            });
+            gkFuss(sp,'Erst w\u00e4hlen, womit gesammelt wird.',null);
+          });
+        });
         panel.appendChild(w);
       })();
 
