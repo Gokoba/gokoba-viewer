@@ -1823,6 +1823,36 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     # v107d: MEHRFACH laufen lassen. Wird eine Flaeche verschoben, kann sie auf ein drittes
     #   Bauteil treffen - ein einzelner Durchgang loest deshalb nur einen Teil. Nach jedem
     #   Durchgang wird gezaehlt; bleibt nichts mehr uebrig oder aendert sich nichts, ist Schluss.
+    # ★ v108 WICKLUNG RICHTIGSTELLEN - die eigentliche Ursache des "Durchschauens".
+    #   Gemessen an Pauls Treppe Ost: 155 von 818 Bauteilen haben eine nach INNEN gerichtete
+    #   Flaechenwicklung, darunter U240-Wangen und FL-40x8-Untergurte. Die Grafikkarte schneidet
+    #   rueckwaertige Flaechen weg - bei falscher Wicklung ist das ausgerechnet die AUSSENhaut.
+    #   Man schaut dann in das Bauteil hinein und sieht, was dahinter liegt. Genau Pauls Befund:
+    #   "die aeussere Wangenflaeche fehlt" und "die obere Flaeche vom Flachstahl fehlt".
+    #   Pruefung ist das vorzeichenbehaftete Volumen: ist es negativ, zeigen die Flaechen nach
+    #   innen und alle Dreiecke des Bauteils werden umgedreht. Ein geschlossener Koerper hat
+    #   immer positives Volumen - der Test ist damit eindeutig und ohne Ermessensspielraum.
+    _drehGes108 = 0
+    try:
+        for _nm108 in list(szene.geometry.keys()):
+            _g108 = szene.geometry[_nm108]
+            try:
+                _T108 = np.asarray(_g108.triangles, dtype=float)
+            except Exception:
+                continue
+            if len(_T108) < 4: continue
+            _v108 = float(np.sum(np.einsum('ij,ij->i', _T108[:, 0],
+                          np.cross(_T108[:, 1] - _T108[:, 0], _T108[:, 2] - _T108[:, 0])))) / 6.0
+            if _v108 < -1e-12:
+                _f108 = np.asarray(_g108.faces).copy()
+                _f108 = _f108[:, ::-1]
+                _g108.faces = _f108
+                _drehGes108 += 1
+    except Exception:
+        pass
+    _FLSTAT['gedreht'] = _drehGes108
+    print('* WICKLUNG: %d Bauteile waren nach innen gewickelt und wurden umgedreht' % _drehGes108)
+
     _entGes107 = 0
     for _r107 in range(6):
         _n107 = _entflechten107(szene)
@@ -2192,7 +2222,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V107')
+    html = html.replace('__KONV__', 'V108')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2207,7 +2237,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v107\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v108\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
