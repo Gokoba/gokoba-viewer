@@ -1195,6 +1195,102 @@ def _wz_bauen(schnitte, fl_ringe, vol_as=None):
     return T
 # =================== ENDE v97 WURZEL-WEG ===================
 
+
+def _entflechten107(szene, spalt=0.4):
+    """v107 ENTFLECHTUNG - die eigentliche Loesung des Flackerns.
+
+    Gemessen an Pauls Treppe Ost: 314 Bauteilpaare haben EXAKT deckungsgleiche, sich
+    ueberlappende Flaechen - 288 davon Sonderteil gegen Sonderteil und 26 Gelaender gegen
+    Gelaender, also INNERHALB derselben Klasse. Eine Klassen-Rangfolge im Viewer kann solche
+    Paare grundsaetzlich nicht trennen, beide bekommen denselben Wert. Genau deshalb hat keine
+    der Rangfolgen geholfen, die ich gebaut habe.
+
+    Zwei Flaechen auf exakt derselben Tiefe streiten sich beim Drehen immer. Die einzige
+    verlaessliche Loesung ist, dass sie nicht mehr exakt gleich tief liegen. Dieser Durchlauf
+    zieht deshalb beim KLEINEREN Teil die betroffene Flaeche um 0,4 mm nach innen. Das Bauteil
+    bleibt geschlossen, wird an dieser einen Flaeche 0,4 mm kuerzer und ist damit dauerhaft
+    eindeutig. 0,4 mm sind im Stahlbau nicht darstellbar und in keiner Ansicht sichtbar.
+
+    Speicherschonend: je Ebene und Bauteil werden NUR die Grenzen gemerkt, nicht die Dreiecke.
+    """
+    import numpy as _np
+    try:
+        namen = list(szene.geometry.keys())
+    except Exception:
+        return 0
+    if len(namen) < 2:
+        return 0
+    ebenen = {}
+    box = {}
+    for nm in namen:
+        g = szene.geometry[nm]
+        try:
+            V = _np.asarray(g.vertices, dtype=float); T = _np.asarray(g.faces)
+        except Exception:
+            continue
+        if len(T) == 0 or len(V) == 0: continue
+        box[nm] = (V.min(axis=0), V.max(axis=0))
+        P = V[T]
+        nn = _np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0])
+        ln = _np.linalg.norm(nn, axis=1)
+        ok = ln > 1e-12
+        if not ok.any(): continue
+        nn = nn[ok] / ln[ok][:, None]
+        Q = P[ok]
+        fl = (nn[:, 0] < 0) | ((_np.abs(nn[:, 0]) < 1e-9) & ((nn[:, 1] < 0) |
+             ((_np.abs(nn[:, 1]) < 1e-9) & (nn[:, 2] < 0))))
+        nn[fl] *= -1
+        dd = _np.einsum('ij,ij->i', nn, Q[:, 0])
+        # v107b: Dreiecksnormalen sind gerechnet, nicht exakt - 3 Stellen reichen fuer
+        #   'dieselbe Ebene', 4 Stellen waren zu streng und fanden fast nichts.
+        schl = _np.column_stack([_np.round(nn, 3), _np.round(dd, 4)])
+        lo = Q.min(axis=1); hi = Q.max(axis=1)
+        for i in range(len(dd)):
+            k = (schl[i, 0], schl[i, 1], schl[i, 2], schl[i, 3])
+            e = ebenen.setdefault(k, {})
+            v = e.get(nm)
+            if v is None:
+                e[nm] = [lo[i].copy(), hi[i].copy()]
+            else:
+                _np.minimum(v[0], lo[i], out=v[0]); _np.maximum(v[1], hi[i], out=v[1])
+    getan = 0
+    for k, teile in ebenen.items():
+        if len(teile) < 2: continue
+        nvec = _np.array(k[:3], dtype=float); d0 = float(k[3])
+        ks = sorted(teile)
+        for i in range(len(ks)):
+            for j in range(i + 1, len(ks)):
+                a, b = ks[i], ks[j]
+                A = teile[a]; B = teile[b]
+                # v107c: NUR IN DER EBENE pruefen. Quer zur Ebene ist die Ausdehnung null,
+                #   ein Test ueber alle drei Richtungen konnte deshalb nie zutreffen - genau
+                #   deshalb fand der erste Anlauf so gut wie nichts.
+                u = _np.minimum(A[1], B[1]) - _np.maximum(A[0], B[0])
+                _in = _np.argsort(_np.abs(nvec))[:2]       # die beiden Richtungen IN der Ebene
+                if not (u[_in[0]] > 0.0005 and u[_in[1]] > 0.0005):
+                    continue
+                va = float(_np.prod(box[a][1] - box[a][0] + 1e-9))
+                vb = float(_np.prod(box[b][1] - box[b][0] + 1e-9))
+                klein = a if va <= vb else b
+                gk = szene.geometry[klein]
+                V = _np.asarray(gk.vertices, dtype=float)
+                auf = _np.abs(V @ nvec - d0) < 1e-6
+                if not auf.any(): continue
+                mitte = (box[klein][0] + box[klein][1]) * 0.5
+                rein = -1.0 if float(mitte @ nvec) > d0 else 1.0
+                V[auf] += nvec * (rein * spalt * 0.001)
+                try:
+                    gk.vertices = V
+                except Exception:
+                    continue
+                getan += 1
+    try:
+        _FLSTAT['entflochten'] = getan
+    except Exception:
+        pass
+    return getan
+
+
 def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     """★ DIREKT-Rohformat: T E<id> / L x y z ... (Aussenkontur) / H x y z ... (Loch,
     gehoert zur letzten L-Zeile). Millimeter. Zerlegung hier in der Cloud - das
@@ -1718,6 +1814,16 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
           % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
+    # v107d: MEHRFACH laufen lassen. Wird eine Flaeche verschoben, kann sie auf ein drittes
+    #   Bauteil treffen - ein einzelner Durchgang loest deshalb nur einen Teil. Nach jedem
+    #   Durchgang wird gezaehlt; bleibt nichts mehr uebrig oder aendert sich nichts, ist Schluss.
+    _entGes107 = 0
+    for _r107 in range(6):
+        _n107 = _entflechten107(szene)
+        _entGes107 += _n107
+        if _n107 == 0: break
+    _FLSTAT['entflochten'] = _entGes107
+    print('* ENTFLECHTUNG: %d deckungsgleiche Flaechen um 0,4 mm getrennt' % _FLSTAT.get('entflochten', 0))
     print('* WURZEL-WEG Formpruefung: %d Teile verworfen, weil sie schief im Raum liegen' % _FLSTAT.get('wz_schraeg', 0))
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
@@ -2080,7 +2186,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V106')
+    html = html.replace('__KONV__', 'V107')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2095,7 +2201,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v106\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v107\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
