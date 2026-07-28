@@ -1272,21 +1272,19 @@ def _entflechten107(szene, spalt=0.4):
                 va = float(_np.prod(box[a][1] - box[a][0] + 1e-9))
                 vb = float(_np.prod(box[b][1] - box[b][0] + 1e-9))
                 klein = a if va <= vb else b
+                # v107g GRUNDLEGEND ANDERS UND SICHER: nicht mehr die Flaeche verschieben,
+                #   sondern das GANZE Bauteil. Das Verformen einzelner Flaechen hat Teile
+                #   aufgerissen - Paul sah sie stellenweise durchsichtig. Ein starres Verschieben
+                #   um 0,4 mm kann das nicht: die Form bleibt exakt erhalten, das Volumen auch,
+                #   und die beiden Flaechen liegen trotzdem nicht mehr gleich tief.
                 gk = szene.geometry[klein]
+                gross = b if klein == a else a
                 V = _np.asarray(gk.vertices, dtype=float)
-                auf = _np.abs(V @ nvec - d0) < 1e-6
-                if not auf.any(): continue
-                # v107e VORZEICHEN KORRIGIERT. Liegt die Mitte des Bauteils auf der POSITIVEN
-                #   Seite der Ebene, ist diese Flaeche seine untere Begrenzung - nach INNEN heisst
-                #   dann PLUS. Ich hatte es genau andersherum, dadurch wurden die Flaechen nach
-                #   AUSSEN geschoben und die Teile wuchsen ineinander.
-                mitte = (box[klein][0] + box[klein][1]) * 0.5
-                rein = 1.0 if float(mitte @ nvec) > d0 else -1.0
-                # v107f SICHERUNG: bei duennen Teilen waeren 0,4 mm sichtbar. Der Rueckzug
-                #   betraegt hoechstens 5 % der kleinsten Abmessung des Bauteils.
-                _mass = float(_np.min(box[klein][1] - box[klein][0])) * 1000.0   # mm
-                _sp = min(spalt, max(0.05, 0.05 * _mass))
-                V[auf] += nvec * (rein * _sp * 0.001)
+                mk = (box[klein][0] + box[klein][1]) * 0.5
+                mg = (box[gross][0] + box[gross][1]) * 0.5
+                weg = 1.0 if float((mk - mg) @ nvec) >= 0 else -1.0   # vom Nachbarn WEG
+                V += nvec * (weg * spalt * 0.001)
+                box[klein] = (V.min(axis=0), V.max(axis=0))
                 try:
                     gk.vertices = V
                 except Exception:
