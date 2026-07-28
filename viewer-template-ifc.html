@@ -5108,20 +5108,6 @@ var GOKOBA_LAYER_ACI = {
        zum Drehpunkt, die Fernsicht wird nur so weit gesetzt, wie das Modell wirklich reicht.
        Bei zwanzig Metern Abstand bringt das rund das Zehnfache an Tiefenaufloesung. */
     camera.near=Math.max(0.002,d*0.002);camera.far=d*10;camera.updateProjectionMatrix();
-    window.gkTiefeSpanne=function(){
-      try{
-        if(window.gk2d)return;                       /* im 2D-Modus nicht eingreifen */
-        var ab=camera.position.distanceTo(controls.target);
-        if(!(ab>0))return;
-        /* Nie schlechter als bisher: der bisherige Wert ist die Untergrenze, der abstands-
-           abhaengige Wert hebt sie an, sobald man weiter weg steht. */
-        var nn=Math.max(0.002, d*0.002, ab*0.015);
-        var ff=Math.max(ab+d*1.6, d*1.2);            /* Fernsicht nur so weit wie noetig */
-        if(Math.abs(nn-camera.near)/camera.near<0.12 &&
-           Math.abs(ff-camera.far )/camera.far <0.12) return;   /* Zappeln vermeiden */
-        camera.near=nn; camera.far=ff; camera.updateProjectionMatrix();
-      }catch(e){}
-    };
     return d;
   }
   /* ★ ==========================================================================
@@ -5499,29 +5485,7 @@ var GOKOBA_LAYER_ACI = {
                exakt dieselbe Tiefe, geometrisch bleibt es unsichtbar, und die Rangfolge der Klassen wird
                nicht angetastet, weil die eine ganze Stufe auseinanderliegt. Angefasst wird NUR, was noch
                keinen eigenen Vorzug hat - Gitterroste, Auflieger, Bestand und Daemmung bleiben unberuehrt. */
-            /* v120 A50 NEU GEDACHT. Der bisherige Weg war falsch, und zwar gleich doppelt:
-   - nur 16 Toepfe fuer hunderte Bauteile, also zwangslaeufig wieder Gleichstaende
-   - vor allem aber: BRUCHTEILE einer Tiefenstufe loesen im Tiefenpuffer gar nicht auf,
-     ein Unterschied von 0,03 Stufen ist schlicht keiner
-   Bei EXAKT gleicher Tiefe entscheidet die ZEICHENREIHENFOLGE: wer zuerst gezeichnet wird,
-   schreibt die Tiefe und gewinnt. Three.js sortiert sonst nach Entfernung - und die kippt
-   beim Drehen, genau das ist Pauls Flackern. Jedes Bauteil bekommt deshalb eine EIGENE,
-   EINDEUTIGE Zeichennummer: erst nach Klasse, dann fortlaufend. Damit ist die Reihenfolge
-   festgenagelt, unabhaengig von Blickwinkel und Entfernung. Kostet nichts, skaliert nicht
-   mit der Entfernung und braucht keine zusaetzlichen Materialien.
-   Alle Werte sind NEGATIV, damit Boden, Schnittdeckel und Messgrafik (0 bis 10) unberuehrt
-   ihre bisherige Reihenfolge behalten. */
-window._gkZf={};
-window.gkZeichenfolge=function(o,ly){
-  var rang = gkIst(ly,'gelaender') ? 1
-           : (gkIst(ly,'traeger')  ? 2
-           : (gkIst(ly,'auflieger')? 3
-           : (gkIst(ly,'bestand')  ? 5 : 4)));
-  var n = (window._gkZf[rang] = (window._gkZf[rang]||0) + 1);
-  if(n > 99000) n = 99000;
-  o.renderOrder = -1000000 + rang*100000 + n;
-};
-window.gkTiefeStreu=function(o){
+            window.gkTiefeStreu=function(o){
               var m0=Array.isArray(o.material)?o.material[0]:o.material;
               if(!m0||m0.polygonOffset||m0.transparent)return;
               if(!window._gkTieKlone)window._gkTieKlone={};
@@ -5625,7 +5589,7 @@ window.gkTiefeStreu=function(o){
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
                   if(mB&&!mB.polygonOffset){mB.polygonOffset=true;mB.polygonOffsetFactor=1;mB.polygonOffsetUnits=1;}
                 }
-                if(!gkIst(_ly82,'daemmung')){ gkZeichenfolge(o,_ly82); gkTiefeStreu(o); }   /* v120: feste Zeichenreihenfolge + Rangfolge */
+                if(!gkIst(_ly82,'daemmung')) gkTiefeStreu(o);   /* v136: feste Zeichenreihenfolge entfernt */   /* v120: feste Zeichenreihenfolge + Rangfolge */
                 if(!gkIst(_ly82,'daemmung'))return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
@@ -5711,6 +5675,15 @@ window.gkTiefeStreu=function(o){
     setTimeout(function(){
       try{
         if(true)return; /* \u2605 Kanten-Overlay AUS: STEP-Standard, Kanten kommen aus dem 40-Grad-Shading */
+        /* v135 LETZTE VERBLIEBENE URSACHE. Ausgeschlossen sind inzwischen durch Messung:
+           die Tiefen-Rangfolge (Pauls Testfassung ohne jeden Vorzug flackerte genauso),
+           die Zeichenreihenfolge (jedes Bauteil hat eine eigene), die Tiefengenauigkeit
+           (25-fach verbessert, unveraendert) und doppelte Bauteile (in beiden Modellen null).
+           Was nie geprueft wurde: der Viewer zeichnet um JEDES Bauteil dunkle Kantenlinien -
+           und diese Linien hatten KEINEN Tiefenversatz. Eine Linie liegt exakt auf der Flaeche,
+           zu der sie gehoert, und streitet sich beim Drehen mit ihr und mit jeder buendig
+           anliegenden Nachbarflaeche. Genau so sieht das Flackern aus.
+           Linien bekommen jetzt einen Versatz nach vorne - der Normalfall bei Umrisslinien. */
         var kmDunkel=new THREE.LineBasicMaterial({color:0x0d1217,transparent:true,opacity:0.34});
         var kmHell=new THREE.LineBasicMaterial({color:0xE9EDF0,transparent:true,opacity:0.22});
         var kListe=[];
@@ -5809,7 +5782,7 @@ window.gkTiefeStreu=function(o){
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V134_TIEFENSPANNE';
+      var GOKOBA_VORLAGE='VORLAGE_V136_ZURUECK';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -8008,7 +7981,7 @@ window.gkTiefeStreu=function(o){
   window.addEventListener('resize',resize);
   if(window.ResizeObserver){new ResizeObserver(resize).observe(panel);}
   resize();
-  function tick(){requestAnimationFrame(tick);controls.update();if(window.gkTiefeSpanne)window.gkTiefeSpanne();if(!((window.__gkKf=((window.__gkKf||0)+1)%180))&&window.gkKantenSync)window.gkKantenSync();if(window.gkAchsTick)window.gkAchsTick();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
+  function tick(){requestAnimationFrame(tick);controls.update();if(!((window.__gkKf=((window.__gkKf||0)+1)%180))&&window.gkKantenSync)window.gkKantenSync();if(window.gkAchsTick)window.gkAchsTick();renderer.render(scene,window.gk2d?window.gk2dSync():camera);}
   tick();
 })();
 </script>
