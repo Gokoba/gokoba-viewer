@@ -5478,28 +5478,6 @@ var GOKOBA_LAYER_ACI = {
               }
               return false;
             };
-            /* v116 A50: ALLGEMEINER GLEICHSTANDS-RIEGEL.
-               Bei exakt gleicher Tiefe entscheidet sonst die Zeichenreihenfolge, und die kippt beim Drehen -
-               das ist das Flackern. Jedes Bauteil bekommt daher aus seiner eigenen Kennung einen winzigen,
-               IMMER GLEICHEN Zuschlag unter einer halben Tiefenstufe. Zwei Flaechen haben damit nie mehr
-               exakt dieselbe Tiefe, geometrisch bleibt es unsichtbar, und die Rangfolge der Klassen wird
-               nicht angetastet, weil die eine ganze Stufe auseinanderliegt. Angefasst wird NUR, was noch
-               keinen eigenen Vorzug hat - Gitterroste, Auflieger, Bestand und Daemmung bleiben unberuehrt. */
-            window.gkTiefeStreu=function(o){
-              var m0=Array.isArray(o.material)?o.material[0]:o.material;
-              if(!m0||m0.polygonOffset||m0.transparent)return;
-              if(!window._gkTieKlone)window._gkTieKlone={};
-              var h=0,nm=String(o.name||'');
-              for(var q=0;q<nm.length;q++)h=(h*31+nm.charCodeAt(q))>>>0;
-              var b=h%16, sl=m0.uuid+'|'+b, k0=window._gkTieKlone[sl];
-              if(!k0){
-                k0=m0.clone();
-                if(m0.onBeforeCompile){k0.onBeforeCompile=m0.onBeforeCompile;k0.customProgramCacheKey=m0.customProgramCacheKey;}
-                k0.polygonOffset=true; k0.polygonOffsetFactor=0; k0.polygonOffsetUnits=-0.03-b*0.028;
-                window._gkTieKlone[sl]=k0;
-              }
-              o.material=k0;
-            };
             if(!window._gkDmNach){window._gkDmNach=1;setTimeout(function(){try{ /* v68: Daemmung TEIL-basiert - greift auch wenn der GLB-Materialname den Layer nicht traegt */
               if(!GOKOBA_TEILE||!model)return; var klone={};
               model.traverse(function(o){
@@ -5589,7 +5567,6 @@ var GOKOBA_LAYER_ACI = {
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
                   if(mB&&!mB.polygonOffset){mB.polygonOffset=true;mB.polygonOffsetFactor=1;mB.polygonOffsetUnits=1;}
                 }
-                if(!gkIst(_ly82,'daemmung')) gkTiefeStreu(o);   /* v136: feste Zeichenreihenfolge entfernt */   /* v120: feste Zeichenreihenfolge + Rangfolge */
                 if(!gkIst(_ly82,'daemmung'))return;
                 var m0=Array.isArray(o.material)?o.material[0]:o.material;
                 if(!klone[m0.uuid]){var kk=m0.clone();kk.transparent=true;kk.opacity=0.80;kk.side=THREE.DoubleSide;
@@ -5782,7 +5759,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V136_ZURUECK';
+      var GOKOBA_VORLAGE='VORLAGE_V137_ZURUECK2';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
