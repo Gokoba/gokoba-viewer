@@ -5507,61 +5507,6 @@ var GOKOBA_LAYER_ACI = {
                     o.material=kT;
                   }
                 }
-                if(!gkIst(_ly82,'gelaender')&&gkIst(_ly82,'traeger')){
-                  /* v111 GEMESSEN in Pauls Treppenturm: die WANGEN liegen auf AS_Treppe (73 Stueck
-                     U240), nicht auf AS_Traeger. Meine Rangfolge kannte nur Traeger und Stuetze,
-                     also fiel die Wange auf Stufe 0 und der Gitterrost mit seinem Vorzug von zwei
-                     Stufen gewann wieder - genau deshalb schauten die Stufen erneut durch die
-                     Wange. Gelaender-Layer sind ausgenommen, damit 'Treppengelaender' nicht hier
-                     landet, sondern eine Stufe weiter vorne bleibt. */
-                  /* v104 GEMESSEN: Gitterrost- und Traegerflaechen liegen stellenweise auf 0,000 mm
-                     (z.B. E1150 gegen E4923). Die Gitterroste tragen seit v83 einen festen Vorzug von
-                     ZWEI Tiefenstufen und gewinnen deshalb IMMER - genau deshalb schauen die Stufen
-                     durch die Wange. Der Traeger bekommt jetzt DREI Stufen und liegt damit sicher
-                     davor. Der Gitterrost-Wert selbst bleibt unangetastet, er hat seine eigene
-                     Aufgabe gegenueber allem, was UNTER ihm liegt. */
-                  var m0T2=Array.isArray(o.material)?o.material[0]:o.material;
-                  if(m0T2){
-                    if(!window._gkTraegerKlone)window._gkTraegerKlone={};
-                    var kT2=window._gkTraegerKlone[m0T2.uuid];
-                    if(!kT2){kT2=m0T2.clone();
-                      if(m0T2.onBeforeCompile){kT2.onBeforeCompile=m0T2.onBeforeCompile;kT2.customProgramCacheKey=m0T2.customProgramCacheKey;}
-                      kT2.polygonOffset=true;kT2.polygonOffsetFactor=0;kT2.polygonOffsetUnits=GK_TIEFE.traeger;
-                      window._gkTraegerKlone[m0T2.uuid]=kT2;}
-                    o.material=kT2;
-                  }
-                }
-                if(gkIst(_ly82,'gelaender')){
-                  /* v102 GEMESSEN: E1548 (Gelaender FL 40x8) und E1763 (Wange U240) teilen sich
-                     0,1098 m2 in EXAKT derselben schraegen Ebene - die groesste echte koplanare
-                     Ueberlappung im ganzen Modell. Bei gleicher Tiefe entscheidet allein die
-                     Zeichenreihenfolge, und die kippt beim Drehen: genau das ist das Flackern des
-                     Untergurts. Das Gelaender bekommt deshalb einen FESTEN Mini-Vorzug von einer
-                     einzigen Tiefenstufe - geometrisch unsichtbar, aber das Ergebnis ist immer
-                     dasselbe. Eigenes Materialexemplar, damit der Vorzug NUR das Gelaender betrifft
-                     und nicht zufaellig farbgleiche Traeger mitnimmt. */
-                  /* v104: Das Gelaender liegt VOR dem Traeger (-4 gegen -3). ZUSAETZLICH bekommt
-                     JEDES Gelaenderteil einen eigenen Mini-Zuschlag aus seiner Kennung - damit haben
-                     auch zwei Gelaenderteile untereinander nie exakt dieselbe Tiefe. Genau das war
-                     beim Untergurt uebrig geblieben: gleicher Layer, also half die Rangfolge nicht.
-                     Der Zuschlag bleibt unter einer halben Tiefenstufe, geometrisch unsichtbar, aber
-                     das Ergebnis ist bei jedem Blickwinkel dasselbe. Ein Materialexemplar je Bauteil
-                     kostet hier nichts, weil ohnehin jedes Bauteil ein eigenes Netz ist. */
-                  var m0G=Array.isArray(o.material)?o.material[0]:o.material;
-                  if(m0G){
-                    if(!window._gkGelKlone)window._gkGelKlone={};
-                    var hG=0,nG=String(o.name||'');
-                    for(var iG=0;iG<nG.length;iG++)hG=(hG*31+nG.charCodeAt(iG))>>>0;
-                    var sG=m0G.uuid+'|'+(hG%16);
-                    var kG=window._gkGelKlone[sG];
-                    if(!kG){kG=m0G.clone();
-                      if(m0G.onBeforeCompile){kG.onBeforeCompile=m0G.onBeforeCompile;kG.customProgramCacheKey=m0G.customProgramCacheKey;}
-                      kG.polygonOffset=true;kG.polygonOffsetFactor=0;
-                      kG.polygonOffsetUnits=GK_TIEFE.gelaender-(hG%16)*0.03;
-                      window._gkGelKlone[sG]=kG;}
-                    o.material=kG;
-                  }
-                }
                 if(gkIst(_ly82,'bestand')){
                   var mB=Array.isArray(o.material)?o.material[0]:o.material; /* v82: Bestand tritt hauchduenn zurueck -
                     eingelassene Platten (1mm in der Wand) flimmern sonst */
@@ -5759,7 +5704,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V137_ZURUECK2';
+      var GOKOBA_VORLAGE='VORLAGE_V138_WIE_V96';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
