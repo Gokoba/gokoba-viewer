@@ -12,6 +12,10 @@ Dateikopf erkannt (ViewDefinition SteelFabricationView), nicht am Namen. Ohne EM
 laeuft die Wandlung normal, nur ohne Gelaender-Positionsnummern.
 """
 import sys, os, json, re
+# ★ v110 SCHALTER: die Entflechtung verschiebt echte Bauteile, um deckungsgleiche Flaechen
+#   zu trennen. Sie ist AUS, weil der Versatz an Profilstoessen und am Bestand sichtbar war.
+#   Auf True setzen holt die gedeckelte v109-Fassung zurueck (ein Durchlauf, 0,4 mm je Bauteil).
+GK_ENTFLECHTEN = False
 import numpy as np
 import ifcopenshell, ifcopenshell.geom
 import ifcopenshell.util.element as ue
@@ -1870,16 +1874,25 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     except Exception:
         pass
     _FLSTAT['gedreht'] = _drehGes108
-    print('* WICKLUNG v109: %d Bauteile nach innen gewickelt und umgedreht (Bezug: Bauteilmitte)' % _drehGes108)
+    print('* WICKLUNG v110: %d Bauteile nach innen gewickelt und umgedreht (Bezug: Bauteilmitte)' % _drehGes108)
 
+    # ★ v110 ENTFLECHTUNG ABGESCHALTET. Auch der gedeckelte Rest war noch zu viel: gemessen
+    #   an Pauls Balkon verschob sie 504 Bauteile, darunter 38 Traeger-/Gelaenderprofile
+    #   (sichtbarer Restversatz an den Stoessen) und 18 der 20 BESTANDSTEILE - eine Betondecke
+    #   0,4 mm vor ihrer Betonwand ist genau die "ueberstehende Flaeche", die Paul gemeldet hat.
+    #   Ein Anzeigeproblem darf nicht durch das Verschieben echter Geometrie geloest werden;
+    #   das Modell steht jetzt wieder bitgenau so da, wie Advance Steel es liefert.
+    #   RUECKNAHME: GK_ENTFLECHTEN oben in dieser Datei auf True setzen (dann wieder ein
+    #   Durchlauf mit Deckel je Bauteil, so wie in v109).
     # ★ v109: EIN Durchlauf. Die sechs Wiederholungen waren der zweite Teil des Schadens -
     #   ein verschobenes Bauteil erzeugte neue Ueberdeckungen und wurde in der naechsten Runde
     #   weitergeschoben; der Vorgang kam nie zur Ruhe (4113 "Trennungen" bei nur 504 wirklich
     #   vorhandenen Paaren). Ein Durchlauf mit Deckel trennt alle 504 Paare und bewegt nichts
     #   weiter als 0,4 mm.
-    _entGes107 = _entflechten107(szene)
+    _entGes107 = _entflechten107(szene) if GK_ENTFLECHTEN else 0
     _FLSTAT['entflochten'] = _entGes107
-    print('* ENTFLECHTUNG v109: %d Bauteile um einmalig 0,4 mm getrennt (Deckel je Bauteil aktiv)' % _FLSTAT.get('entflochten', 0))
+    print('* ENTFLECHTUNG v110: %s (%d Bauteile verschoben) - Geometrie bleibt wie in Advance Steel'
+          % ('AN' if GK_ENTFLECHTEN else 'AUS', _FLSTAT.get('entflochten', 0)))
     print('* WURZEL-WEG Formpruefung: %d Teile verworfen, weil sie schief im Raum liegen' % _FLSTAT.get('wz_schraeg', 0))
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
@@ -2242,7 +2255,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V109')
+    html = html.replace('__KONV__', 'V110')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2257,7 +2270,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v109\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v110\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
