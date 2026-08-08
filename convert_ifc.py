@@ -1254,6 +1254,7 @@ def _entflechten107(szene, spalt=0.4):
             else:
                 _np.minimum(v[0], lo[i], out=v[0]); _np.maximum(v[1], hi[i], out=v[1])
     getan = 0
+    schon = set()   # ★ v109: jedes Bauteil darf hoechstens EINMAL verschoben werden
     for k, teile in ebenen.items():
         if len(teile) < 2: continue
         nvec = _np.array(k[:3], dtype=float); d0 = float(k[3])
@@ -1272,6 +1273,13 @@ def _entflechten107(szene, spalt=0.4):
                 va = float(_np.prod(box[a][1] - box[a][0] + 1e-9))
                 vb = float(_np.prod(box[b][1] - box[b][0] + 1e-9))
                 klein = a if va <= vb else b
+                # ★ v109 DECKEL: ohne diese Sperre wurde dasselbe Bauteil in JEDER Ebene
+                #   erneut verschoben, in der es einen Nachbarn hat, und das sechsmal
+                #   hintereinander. Gemessen an Pauls Balkon: 433 von 1067 Bauteilen
+                #   verschoben, groesster Weg 16,42 mm - genau die Spalte und Versatzmasse,
+                #   die er an den Profilstoessen gesehen hat. Mit der Sperre bleibt es bei
+                #   einmal 0,4 mm je Bauteil, und das ist in keiner Ansicht darstellbar.
+                if klein in schon: continue
                 # v107g GRUNDLEGEND ANDERS UND SICHER: nicht mehr die Flaeche verschieben,
                 #   sondern das GANZE Bauteil. Das Verformen einzelner Flaechen hat Teile
                 #   aufgerissen - Paul sah sie stellenweise durchsichtig. Ein starres Verschieben
@@ -1290,6 +1298,7 @@ def _entflechten107(szene, spalt=0.4):
                 except Exception:
                     continue
                 getan += 1
+                schon.add(klein)
     try:
         _FLSTAT['entflochten'] = getan
     except Exception:
@@ -1841,6 +1850,16 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             except Exception:
                 continue
             if len(_T108) < 4: continue
+            # ★ v109 BEZUGSPUNKT: das vorzeichenbehaftete Volumen wird um die BAUTEILMITTE
+            #   gerechnet, nicht mehr um den Weltursprung. Nur bei vollstaendig geschlossenen
+            #   Koerpern ist der Wert lageunabhaengig; unsere Bauteile sind aber offene Schalen
+            #   (Vertices gesplittet, einzelne Deckel fehlen). Dort haengt das Vorzeichen an der
+            #   Modelllage - gemessen an Pauls Balkon hat der alte Test 264 KORREKT gewickelte
+            #   Bauteile umgedreht (Traeger RR 30x20x2, Hutmuttern, Unterlegscheiben), waehrend
+            #   der Test um die Bauteilmitte NULL Teile beanstandet. Gegenprobe an 50 kuenstlich
+            #   umgedrehten Teilen: Bauteilmitte erkennt 50/50, Weltursprung nur 34/50.
+            _m108 = (_T108.reshape(-1, 3).min(axis=0) + _T108.reshape(-1, 3).max(axis=0)) * 0.5
+            _T108 = _T108 - _m108
             _v108 = float(np.sum(np.einsum('ij,ij->i', _T108[:, 0],
                           np.cross(_T108[:, 1] - _T108[:, 0], _T108[:, 2] - _T108[:, 0])))) / 6.0
             if _v108 < -1e-12:
@@ -1851,15 +1870,16 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     except Exception:
         pass
     _FLSTAT['gedreht'] = _drehGes108
-    print('* WICKLUNG: %d Bauteile waren nach innen gewickelt und wurden umgedreht' % _drehGes108)
+    print('* WICKLUNG v109: %d Bauteile nach innen gewickelt und umgedreht (Bezug: Bauteilmitte)' % _drehGes108)
 
-    _entGes107 = 0
-    for _r107 in range(6):
-        _n107 = _entflechten107(szene)
-        _entGes107 += _n107
-        if _n107 == 0: break
+    # ★ v109: EIN Durchlauf. Die sechs Wiederholungen waren der zweite Teil des Schadens -
+    #   ein verschobenes Bauteil erzeugte neue Ueberdeckungen und wurde in der naechsten Runde
+    #   weitergeschoben; der Vorgang kam nie zur Ruhe (4113 "Trennungen" bei nur 504 wirklich
+    #   vorhandenen Paaren). Ein Durchlauf mit Deckel trennt alle 504 Paare und bewegt nichts
+    #   weiter als 0,4 mm.
+    _entGes107 = _entflechten107(szene)
     _FLSTAT['entflochten'] = _entGes107
-    print('* ENTFLECHTUNG: %d deckungsgleiche Flaechen um 0,4 mm getrennt' % _FLSTAT.get('entflochten', 0))
+    print('* ENTFLECHTUNG v109: %d Bauteile um einmalig 0,4 mm getrennt (Deckel je Bauteil aktiv)' % _FLSTAT.get('entflochten', 0))
     print('* WURZEL-WEG Formpruefung: %d Teile verworfen, weil sie schief im Raum liegen' % _FLSTAT.get('wz_schraeg', 0))
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
@@ -2222,7 +2242,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V108')
+    html = html.replace('__KONV__', 'V109')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2237,7 +2257,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v108\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v109\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
