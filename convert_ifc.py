@@ -171,6 +171,36 @@ ART_LAYER = {
     'AS_Sonderteile':'sonderteil',
     'AS_Betondecken':'beton','AS_Betonw?nde':'beton','AS_Betonfundament':'beton','AS_Betontr?ger':'beton',
 }
+# ★ v117 DICHTMACHEN - Pauls Weg konsequent zu Ende gedacht: "betrachte es als Volumenkoerper".
+#   Der Rasterweg aus v113 macht zwar einen geschlossenen Koerper, kann aber nur achsparallele
+#   Flaechen - eine um 1,1 Grad geneigte Fundamentoberkante wird dort zur TREPPE (Pauls E5131).
+#   Viel naeher am STEP-Weg ist das hier: die ORIGINALFLAECHEN behalten, wie sie aus Advance
+#   Steel kommen, und nur die LOECHER schliessen. Dann bleibt jede Schraege exakt erhalten und
+#   der Koerper ist trotzdem dicht. Gemessen: Pauls Fassadenwand E2773 wird so mit 184 statt
+#   992 Dreiecken gebaut, Volumen bitgenau 25,2966 m3, null offene Kanten - und sein geneigtes
+#   Fundament E5130 kommt auf 0,00 % Volumenabweichung mit erhaltener 6,08-m2-Schraege.
+#   Schlaegt das fehl (Flaechenliste zu luecken- oder widerspruchsvoll), bleibt alles beim Alten.
+def _dichtmachen117(dreiecke, asvol):
+    """Originalflaechen behalten, Loecher schliessen. None = nicht brauchbar."""
+    if not dreiecke or not asvol or float(asvol) <= 0: return None
+    try:
+        T = np.vstack(dreiecke).astype(float)
+        if len(T) < 4 or len(T) > 60000: return None
+        V = T.reshape(-1, 3)
+        m = trimesh.Trimesh(vertices=np.round(V, 6), faces=np.arange(len(V)).reshape(-1, 3), process=True)
+        m.merge_vertices()
+        trimesh.repair.fill_holes(m)
+        trimesh.repair.fix_normals(m)
+        if len(m.faces) < 4: return None
+        _e = np.sort(m.edges, axis=1)
+        _u, _n = np.unique(_e, axis=0, return_counts=True)
+        if int((_n == 1).sum()) > 0: return None      # noch offene Kanten -> unbrauchbar
+        _v = abs(float(m.volume))
+        if _v <= 0 or abs(_v - float(asvol)) > 0.01 * float(asvol): return None
+        return np.asarray(m.triangles, dtype=float)
+    except Exception:
+        return None
+
 # ★ v114 SONDERTEILE, Pauls Vorgabe: ein Bauteil, das in Advance Steel ein SONDERTEIL ist,
 #   bleibt eines - auch wenn es auf einem anderen Layer liegt. Paul legt Sonderteile bewusst
 #   auf einen Farb-Layer (z.B. AS_Traeger), damit sie im Viewer eine andere Farbe bekommen;
@@ -1510,11 +1540,21 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             #   fehl (schief im Raum, Raster zu gross, Volumen passt nicht), bleibt alles
             #   genau wie bisher.
             _vk113 = None
+            _dicht117 = False
             if _istBest113:
-                try:
-                    _vk113 = _vollkoerper113(dreiecke, (info.get(kn, {}) or {}).get('volumen'))
-                except Exception:
-                    _vk113 = None
+                _asv117 = (info.get(kn, {}) or {}).get('volumen')
+                # ★ v117 ZUERST der schonende Weg: Originalflaechen behalten, nur Loecher zu.
+                _vk113 = _dichtmachen117(dreiecke, _asv117)
+                if _vk113 is not None:
+                    _dicht117 = True
+                    _FLSTAT['dichtgemacht'] = _FLSTAT.get('dichtgemacht', 0) + 1
+                if _vk113 is None:
+                    try:
+                        _vk113 = _vollkoerper113(dreiecke, _asv117)
+                        if _vk113 is not None:
+                            _FLSTAT['rasterkoerper'] = _FLSTAT.get('rasterkoerper', 0) + 1
+                    except Exception:
+                        _vk113 = None
             if _vk113 is not None:
                 dreiecke[:] = [_vk113]
                 fl_ntris[:] = [len(_vk113)]
@@ -1736,8 +1776,15 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             except Exception:
                 pass
             try:  # v56: Orientierung VOR den Knick-Normalen richten (vorher andersrum!)
-                m.fix_normals()
-                if m.is_watertight and m.volume < 0: m.invert()
+                # ★ v118 GEMESSEN und deshalb hier ausgenommen: bei einem Teil, das v117 schon
+                #   dichtgemacht hat, orientiert trimesh jede TEILSCHALE einzeln nach aussen.
+                #   Pauls Fassadenwand E2773 besteht aus SECHS Teilschalen - danach zeigten die
+                #   inneren nach aussen und die Volumina addierten sich: 25,2966 -> 38,1249 m3
+                #   bei unveraenderten Punkten und gleicher Dreieckszahl. Der Koerper ist an
+                #   dieser Stelle bereits fertig und richtig orientiert, hier ist nichts zu tun.
+                if not _dicht117:
+                    m.fix_normals()
+                    if m.is_watertight and m.volume < 0: m.invert()
                 if m.is_watertight: _FLSTAT['dicht'] = _FLSTAT.get('dicht', 0) + 1
             except Exception:
                 pass
@@ -1982,7 +2029,8 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
 
     print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
-    print('* VOLLKOERPER v113: %d Bestandsteile als geschlossener Koerper gebaut' % _FLSTAT.get('vollkoerper', 0))
+    print('* DICHTGEMACHT v117: %d Bestandsteile mit Originalflaechen, nur Loecher geschlossen' % _FLSTAT.get('dichtgemacht', 0))
+    print('* VOLLKOERPER v113: %d Bestandsteile ueber das Raster gebaut' % _FLSTAT.get('rasterkoerper', 0))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
           % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
     # v107d: MEHRFACH laufen lassen. Wird eine Flaeche verschoben, kann sie auf ein drittes
@@ -2409,7 +2457,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V114')
+    html = html.replace('__KONV__', 'V118')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2424,12 +2472,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v114\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v118\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\nrund=%d\nrund_verworfen=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0), _FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\ndichtgemacht=%d\nvollkoerper=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\nrund=%d\nrund_verworfen=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('dichtgemacht', 0), _FLSTAT.get('rasterkoerper', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0), _FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
