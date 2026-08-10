@@ -5821,7 +5821,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V147_KNOEPFE_ENG';
+      var GOKOBA_VORLAGE='VORLAGE_V148_FOTO_SAMMELKNOPF';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -7721,22 +7721,72 @@ var GOKOBA_LAYER_ACI = {
         var chip=el('div','display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:12px;cursor:zoom-in;'+
           'background:'+GLAS+';border:'+RAND+';backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
           'color:var(--gktx);font:600 12px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.2);');
+        chip.setAttribute('data-foto','1');   /* ★ v148: so findet der Sammelknopf seine Fotos */
         chip.innerHTML='<img src="'+halter.url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
           '<span>Foto '+nr+'</span>'+
-          '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
-          '<span data-mail title="Alle Fotos als PDF-Mappe" style="cursor:pointer;color:'+AKZENT+';font:700 9px var(--ui);letter-spacing:.04em;">PDF</span>'+
+          '<span data-dl title="Dieses Foto herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
         '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--gktx2);font-size:15px;">\u00d7</span>';
         chip.addEventListener('click',function(){zeigGross(halter,chip.querySelector('img'));});
         chip.querySelector('[data-dl]').addEventListener('click',function(e){
           e.stopPropagation();
           var a=document.createElement('a');a.href=halter.url;a.download='gokoba-foto-'+nr+'.png';
-          document.body.appendChild(a);a.click();a.remove();chip.remove();
+          document.body.appendChild(a);a.click();a.remove();fotoWeg148(chip);
         });
-        chip.querySelector('[data-mail]').addEventListener('click',function(e){
-          e.stopPropagation(); fotosAlsPdf();
-        });
-        chip.querySelector('[data-weg]').addEventListener('click',function(e){e.stopPropagation();chip.remove();});
+        chip.querySelector('[data-weg]').addEventListener('click',function(e){e.stopPropagation();fotoWeg148(chip);});
+        fotoListe148.push({halter:halter, chip:chip});
         fotoLeisteHol().appendChild(chip);
+        fotoKopfBauen148();
+      }
+      /* ★ v148 Pauls Ablauf, und er ist der richtige: an den Fotos selbst steht KEIN
+         PDF-Zeichen mehr - das war nicht selbsterklaerend ("warum baue ich die Mappe an
+         EINEM Foto?"). Stattdessen sitzt UEBER der Fotoleiste ein Knopf in Kaertchenbreite:
+             solange lose Fotos daliegen   ->  "Alle Fotos als PDF zusammenfuehren"
+             nach dem Zusammenfuehren      ->  "PDF-Mappe - N Fotos" mit
+                                               "weitere Fotos hinzufuegen" und "herunterladen"
+         Beim Zusammenfuehren wandern die Bilder in die Sammlung und die Kaertchen verschwinden -
+         genau das, was Paul beschrieben hat. Gebaut wird die Datei erst beim Herunterladen. */
+      var fotoListe148=[], pdfSammlung148=[], fotoKopf148=null;
+      function fotoWeg148(chip){
+        for(var i=0;i<fotoListe148.length;i++){ if(fotoListe148[i].chip===chip){ fotoListe148.splice(i,1); break; } }
+        chip.remove(); fotoKopfBauen148();
+      }
+      function fotoKopfBauen148(){
+        var leiste=fotoLeisteHol();
+        if(!fotoKopf148){
+          fotoKopf148=el('div','align-self:stretch;padding:8px 10px;border-radius:12px;'+
+            'background:'+GLAS+';border:'+RAND+';backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);'+
+            'color:var(--gktx);font:600 11.5px var(--ui);box-shadow:0 8px 22px rgba(0,0,0,.2);text-align:center;');
+          fotoKopf148.id='gkfotokopf';
+        }
+        if(!fotoListe148.length && !pdfSammlung148.length){ if(fotoKopf148.parentNode)fotoKopf148.remove(); return; }
+        if(fotoKopf148.parentNode!==leiste) leiste.insertBefore(fotoKopf148, leiste.firstChild);
+        var ZK='display:block;width:100%;margin-top:7px;padding:7px 8px;border-radius:9px;cursor:pointer;'+
+               'font:600 11px var(--ui);letter-spacing:.02em;';
+        if(fotoListe148.length){
+          fotoKopf148.innerHTML=
+            (pdfSammlung148.length?('<div style="color:var(--gktx2);font:500 10.5px var(--ui);">bereits in der Mappe: '+pdfSammlung148.length+'</div>'):'')+
+            '<div data-sam style="'+ZK+'background:'+AKZENT+';color:#0d1216;margin-top:'+(pdfSammlung148.length?'6px':'0')+';">Alle Fotos als PDF zusammenf\u00fchren</div>';
+          fotoKopf148.querySelector('[data-sam]').addEventListener('click',function(e){
+            e.stopPropagation();
+            fotoListe148.forEach(function(f){ pdfSammlung148.push(f.halter.url); f.chip.remove(); });
+            fotoListe148=[];
+            fotoKopfBauen148();
+            sagHinweis('PDF-Mappe: '+pdfSammlung148.length+' Fotos zusammengef\u00fchrt.');
+          });
+        } else {
+          var teilbar=false;
+          try{ teilbar=!!(navigator.canShare&&navigator.canShare({files:[new File([new Blob()],'p.pdf',{type:'application/pdf'})]})); }catch(e){}
+          fotoKopf148.innerHTML=
+            '<div style="color:var(--gktx);">PDF-Mappe \u00b7 '+pdfSammlung148.length+' Foto'+(pdfSammlung148.length===1?'':'s')+'</div>'+
+            '<div data-mehr style="'+ZK+'border:'+RAND+';color:var(--gktx2);">weitere Fotos hinzuf\u00fcgen</div>'+
+            '<div data-hol  style="'+ZK+'background:'+AKZENT+';color:#0d1216;">'+(teilbar?'PDF teilen':'PDF herunterladen')+'</div>';
+          fotoKopf148.querySelector('[data-mehr]').addEventListener('click',function(e){
+            e.stopPropagation(); schalte('foto');
+          });
+          fotoKopf148.querySelector('[data-hol]').addEventListener('click',function(e){
+            e.stopPropagation(); fotosAlsPdf();
+          });
+        }
       }
       /* ★ v143 Pauls Vorgabe: alle Fotos der Leiste - MIT allen Markierungen, Texten und
          Pfeilen, so wie sie im Viewer liegen - kommen in EINE PDF-Mappe. Zwei Fotos je Seite,
@@ -7766,8 +7816,10 @@ var GOKOBA_LAYER_ACI = {
         });
       }
       function fotosAlsPdf(){
-        var leiste=fotoLeisteHol(), quellen=[];
-        if(leiste)Array.prototype.forEach.call(leiste.querySelectorAll('img'),function(im){quellen.push(im.src);});
+        /* ★ v148: Quelle ist die SAMMLUNG; noch lose Kaertchen kommen hinten dran,
+           damit nichts verloren geht, falls jemand direkt herunterlaedt. */
+        var quellen=pdfSammlung148.slice();
+        fotoListe148.forEach(function(f){ quellen.push(f.halter.url); });
         if(!quellen.length){ sagHinweis('Noch keine Fotos vorhanden.'); return; }
         var proj='Modell';
         try{ var pn=document.querySelector('.proj-name'); if(pn&&pn.textContent.trim())proj=pn.textContent.trim(); }catch(e){}
