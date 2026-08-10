@@ -1562,7 +1562,17 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                             if abs(float(_omn[_ax94] - _jmn[_ax94])) > 2.0: continue
                             _dz94 = np.abs((_omn + _omx) - (_jmn + _jmx)) / 2.0
                             _dg94 = np.abs(_og - _jg)
-                            if (np.sort(_dz94)[:2] < 400.0).all() and (np.sort(_dg94)[:2] < 800.0).all():
+                            # ★ v112: die beiden GROSSEN Achsen werden jetzt namentlich geprueft.
+                            #   Vorher stand hier np.sort(...)[:2] - die zwei KLEINSTEN Werte. Bei einer
+                            #   ebenen Flaeche ist die Dickenachse aber immer 0, also blieb effektiv nur
+                            #   EINE grosse Achse uebrig: Uebereinstimmung in einer Richtung genuegte, um
+                            #   eine Flaeche als Duplikat wegzuwerfen. An Pauls Balkon hat das die
+                            #   Wandflaeche 6693..7023 mm (6,17 m2) der Fassade E2773 verschluckt, weil sie
+                            #   dieselbe Hoehe hat wie die grosse gelochte Flaeche daneben - obwohl sie
+                            #   2425 mm daneben liegt und nur ein Zehntel so breit ist. Dort fehlte danach
+                            #   die Aussenhaut, und man sah die dahinterliegenden Flaechen ueberstehen.
+                            _and94 = [_q for _q in (0, 1, 2) if _q != _ax94]
+                            if all(_dz94[_q] < 400.0 for _q in _and94) and all(_dg94[_q] < 800.0 for _q in _and94):
                                 _weg90[_i94] = True
                                 _FLSTAT['voll_duplikat'] = _FLSTAT.get('voll_duplikat', 0) + 1
                                 break
@@ -2269,7 +2279,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V111')
+    html = html.replace('__KONV__', 'V112')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2284,7 +2294,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v111\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v112\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
