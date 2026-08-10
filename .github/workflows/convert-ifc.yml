@@ -57,10 +57,58 @@ jobs:
           # ★ gltfpack fest auf 1.1.0, wie im STEP-Workflow (1.2.0 haengt beim Komprimieren).
           npm install -g gltfpack@1.1.0
 
+      # ★ NEU: Abgelaufene Modelle entfernen. Jede Veroeffentlichung stellt das GESAMTE
+      #   Repository online - je mehr alte Modellordner unter docs/v/ liegen, desto laenger
+      #   dauert jeder Upload. Die Links gelten 40 Tage; alles, was aelter als 45 Tage ist,
+      #   wird hier geloescht. 45 statt 40, damit ein gerade abgelaufener Link nicht mitten
+      #   in einer Kundensitzung verschwindet.
+      # ★ NEU (10.08.): Das Aufraeumen hat bisher NIE gegriffen. Es las das Alter ueber
+      #   "git log -1 -- <ordner>", actions/checkout holt aber nur EINEN Commit - fuer fast
+      #   jeden Ordner kam damit nichts zurueck und die naechste Zeile hat ihn uebersprungen.
+      #   Jetzt steht das Datum da, wo es ohnehin schon steht: in der Marke jobs-ifc/<id>/.done,
+      #   die dieser Workflow beim Fertigstellen selbst schreibt. Das ist unabhaengig von der
+      #   Checkout-Tiefe und kostet nichts.
+      #   SICHERUNGEN: geloescht wird NUR, wenn eine .done-Marke existiert UND ein lesbares
+      #   Datum enthaelt UND aelter als 45 Tage ist (die Links gelten 40 Tage). Ordner ohne
+      #   Marke oder mit unlesbarem Datum bleiben unangetastet. Zusaetzlich hoechstens 40
+      #   Loeschungen je Lauf, damit ein Denkfehler nicht auf einen Schlag alles abraeumt.
+      - name: Abgelaufene Modelle aufraeumen
+        run: |
+          set +e
+          GRENZE=$(date -u -d '45 days ago' +%s 2>/dev/null || echo 0)
+          [ "$GRENZE" = "0" ] && { echo "Datumsrechnung nicht moeglich, uebersprungen."; exit 0; }
+          WEG=0
+          KAPPE=40
+          for d in docs/v/*/; do
+            [ "$WEG" -ge "$KAPPE" ] && { echo "Kappe von $KAPPE Loeschungen erreicht - Rest beim naechsten Lauf."; break; }
+            id=$(basename "$d")
+            M="jobs-ifc/$id/.done"
+            [ -f "$M" ] || continue
+            S=$(head -c 40 "$M" | tr -d '\r\n')
+            T=$(date -u -d "$S" +%s 2>/dev/null)
+            case "$T" in ''|*[!0-9]*) continue;; esac
+            if [ "$T" -lt "$GRENZE" ]; then
+              rm -rf "$d" "jobs-ifc/$id"
+              WEG=$((WEG + 1))
+              echo "  abgelaufen entfernt: $id (fertig am $S)"
+            fi
+          done
+          echo "Abgelaufene Modelle entfernt: $WEG"
+          echo "Noch vorhandene Modelle: $(ls -1d docs/v/*/ 2>/dev/null | wc -l)"
+
       - name: Offene IFC-Jobs verarbeiten
         run: |
           # ★ Kein "set -e": ein fehlerhafter Job darf die anderen nicht blockieren.
           shopt -s nullglob
+          # ★ NEU (10.08.): erst den AKTUELLEN Stand holen. Die Laeufe stehen wegen der
+          #   concurrency-Gruppe in einer Reihe; der zweite hat sein Repository aber schon
+          #   VOR dem Push des ersten ausgecheckt und sah dessen fertige Modelle nicht -
+          #   deshalb wurden einzelne Modelle ZWEIMAL gebaut (nachgewiesen an 89efd93e0f1e
+          #   und 40516c92cfad). Ein Abgleich vorweg kostet Sekunden und spart einen ganzen
+          #   Durchlauf. Schlaegt er fehl, laeuft alles weiter wie bisher.
+          git config user.name "gokoba-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git pull --rebase -X theirs origin main || git rebase --abort >/dev/null 2>&1 || true
           PROBLEME=0
           # ★ Neueste Auftraege zuerst: frische Kunden-Uploads ueberholen Altlasten.
           LISTE=$(for d in jobs-ifc/*/; do t=$(git log -1 --format=%ct -- "$d" 2>/dev/null || echo 0); echo "$t $d"; done | sort -rn | awk '{print $2}')
