@@ -949,6 +949,93 @@ def _rd_runden(faces, ziel=48, kappe=4):
 
 # =================== ENDE v98 RUNDUNG ===================
 
+# ===================== v113 VOLLKOERPER-WEG =====================
+# Pauls Hinweis, der den Knoten geloest hat: ueber den STEP-Weg gibt es diese
+# Ueberstaende NIE - dort kommen echte VOLUMENKOERPER an, hier eine Flaechenliste.
+# Genau daran lag es: Pauls Fassadenwand E2773 kam mit 80 offenen Kanten und
+# 163 m Lochumfang an, war also gar kein geschlossener Koerper. Durch die Loecher
+# sieht man die dahinterliegenden Flaechen - das ist der "Flaechenueberstand".
+# Alle bisherigen Regeln (Tuerdeckel, Vollflaechen-Duplikat, Schalen-Ergaenzung)
+# haben an genau diesem Symptom herumgeflickt, statt einen Koerper zu bauen.
+#
+# DER WEG: Bestandsteile sind achsparallele Bloecke. Aus allen vorkommenden
+# x-, y- und z-Werten wird ein Raster aufgespannt; fuer jede Zelle sagt die
+# VERALLGEMEINERTE WINDUNGSZAHL, ob sie im Material liegt - die vertraegt
+# loechrige Netze, im Gegensatz zur Strahlenparitaet. Aus den gefuellten Zellen
+# wird die Aussenhaut gebaut: garantiert geschlossen, ohne eine einzige
+# Innenflaeche. Schiedsrichter bleibt das echte AS-Volumen (1 %).
+#
+# GEMESSEN an Pauls Balkon: 15 von 20 Bestandsteilen getroffen, die meisten auf
+# 0,00 %, E2773 auf 0,13 %; alle 15 mit NULL offenen Kanten. Die uebrigen 5 liegen
+# schief im Raum und fallen unveraendert auf den bisherigen Weg zurueck.
+def _windungszahl113(P, T):
+    w = np.zeros(len(P))
+    for a, b, c in T:
+        A = a - P; B = b - P; C = c - P
+        la = np.linalg.norm(A, axis=1); lb = np.linalg.norm(B, axis=1); lc = np.linalg.norm(C, axis=1)
+        num = np.einsum('ij,ij->i', A, np.cross(B, C))
+        den = (la * lb * lc + np.einsum('ij,ij->i', A, B) * lc
+               + np.einsum('ij,ij->i', B, C) * la + np.einsum('ij,ij->i', C, A) * lb)
+        w += 2 * np.arctan2(num, den)
+    return w / (4 * np.pi)
+
+def _vollkoerper113(dreiecke, asvol):
+    """Baut aus der Flaechenliste einen geschlossenen Vollkoerper. None = nicht anwendbar."""
+    if not dreiecke or not asvol or float(asvol) <= 0: return None
+    T = np.vstack(dreiecke).astype(float)
+    if len(T) < 4 or len(T) > 20000: return None
+    nv = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])
+    ln = np.linalg.norm(nv, axis=1)
+    gut = ln > 1e-9
+    if not gut.any(): return None
+    _flA = ln / 2.0
+    _e = np.zeros_like(nv); _e[gut] = nv[gut] / ln[gut][:, None]
+    _schief = gut & (np.abs(_e).max(axis=1) < 0.9999)
+    # ★ Ein Raster kann nur achsparallele Koerper abbilden. Eine WINZIGE Schraege darf
+    #   trotzdem dabei sein - Pauls Fassadenwand E2773 hat oben an der Attika drei geneigte
+    #   Dreiecke mit 0,46 % der Gesamtflaeche, und daran darf der ganze Koerper nicht
+    #   scheitern. Ueber 1 % wird abgebrochen, damit kein schiefes Bauteil zur Treppe wird
+    #   (genau der Fehler, den Paul am Daemmungsteil E3265 gefunden hat). Das echte
+    #   AS-Volumen prueft danach ohnehin gegen.
+    if _flA[_schief].sum() > 0.01 * _flA[gut].sum(): return None
+    V = T.reshape(-1, 3)
+    achsen = [np.unique(np.round(V[:, i], 4)) for i in range(3)]
+    n = [len(a) - 1 for a in achsen]
+    if min(n) < 1: return None
+    if n[0] * n[1] * n[2] > 200000: return None
+    mit = [(a[:-1] + a[1:]) / 2.0 for a in achsen]
+    G = np.stack(np.meshgrid(*mit, indexing='ij'), axis=-1).reshape(-1, 3)
+    voll = (_windungszahl113(G, T) > 0.5).reshape(n)
+    if not voll.any(): return None
+    d = [np.diff(a) for a in achsen]
+    vol = float((voll * (d[0][:, None, None] * d[1][None, :, None] * d[2][None, None, :])).sum())
+    if abs(vol - float(asvol)) > 0.01 * float(asvol): return None   # Schiedsrichter: echtes AS-Volumen
+    # Aussenhaut: jede Grenzflaeche zwischen gefuellter und leerer Zelle
+    P = np.pad(voll, 1, constant_values=False)
+    ker = P[1:-1, 1:-1, 1:-1]
+    quads = []
+    for achse in (0, 1, 2):
+        for seite, versch in ((1, -1), (0, 1)):
+            frei = ~np.roll(P, versch, axis=achse)[1:-1, 1:-1, 1:-1]
+            for i, j, k in zip(*np.where(ker & frei)):
+                gr = [[achsen[0][i], achsen[0][i + 1]], [achsen[1][j], achsen[1][j + 1]],
+                      [achsen[2][k], achsen[2][k + 1]]]
+                w = gr[achse][seite]
+                a1, a2 = [q for q in (0, 1, 2) if q != achse]
+                ecken = []
+                for u, v in ((0, 0), (1, 0), (1, 1), (0, 1)):
+                    p = [0.0, 0.0, 0.0]; p[achse] = w; p[a1] = gr[a1][u]; p[a2] = gr[a2][v]
+                    ecken.append(p)
+                if seite == 0: ecken = ecken[::-1]
+                quads.append(ecken)
+    if not quads: return None
+    Q = np.array(quads, dtype=float)
+    tri = np.empty((2 * len(Q), 3, 3), dtype=float)
+    tri[0::2] = Q[:, [0, 1, 2]]
+    tri[1::2] = Q[:, [0, 2, 3]]
+    return tri
+# =================== ENDE v113 VOLLKOERPER-WEG ===================
+
 # ===================== v97 WURZEL-WEG =====================
 # Das Plugin (ab v115/v118) schneidet jedes BESTANDSTEIL mit fuenf Ebenen und schreibt
 # die exakten Schnittkanten des echten CAD-Volumenkoerpers ins Paket:
@@ -1394,13 +1481,35 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         if kn is None: return
         try:
             if not dreiecke: return
+            _istBest113 = any(_w in str((info.get(kn, {}) or {}).get('layer') or '').lower()
+                              for _w in ('mmung', 'daemm', 'mauerwerk', 'beton', 'bestand', 'estrich'))
             # v97 WURZEL-WEG: Liegen fuer dieses Teil Schnittdaten aus dem CAD-Kern vor,
             #   wird der Koerper daraus NEU GEBAUT und ersetzt die Facetten vollstaendig.
             #   Damit entfaellt jedes Raten an der lueckenhaften Flaechenliste - und mit
             #   ihm die v96-Schalen-Ergaenzung, die nur ein Symptom geflickt hat.
             #   Nur EINE Flaeche mit Kennung 'breite Ebene' -> Kanten bleiben scharf,
             #   Waende flach (Schwelle 8 Grad statt 26).
-            if schnitte:
+            # ★ v113 VOLLKOERPER-WEG zuerst: liefert einen garantiert geschlossenen Koerper
+            #   und macht damit jedes Flicken an der Flaechenliste ueberfluessig. Schlaegt er
+            #   fehl (schief im Raum, Raster zu gross, Volumen passt nicht), bleibt alles
+            #   genau wie bisher.
+            _vk113 = None
+            if _istBest113:
+                try:
+                    _vk113 = _vollkoerper113(dreiecke, (info.get(kn, {}) or {}).get('volumen'))
+                except Exception:
+                    _vk113 = None
+            if _vk113 is not None:
+                dreiecke[:] = [_vk113]
+                fl_ntris[:] = [len(_vk113)]
+                fl_breitL[:] = [True]
+                fl_hatLoch[:] = [False]
+                _bb113 = _vk113.reshape(-1, 3)
+                fl_outBB[:] = [(_bb113.min(axis=0), _bb113.max(axis=0))]
+                fl_lochB[:] = [[]]
+                fl_ringe[:] = []          # schaltet Schalen-Ergaenzung und Duplikat-Regeln ab
+                _FLSTAT['vollkoerper'] = _FLSTAT.get('vollkoerper', 0) + 1
+            elif schnitte:
                 _wzT = None
                 try:
                     _wzT = _wz_bauen(schnitte, fl_ringe, (info.get(kn, {}) or {}).get('volumen'))
@@ -1855,6 +1964,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
 
     print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
+    print('* VOLLKOERPER v113: %d Bestandsteile als geschlossener Koerper gebaut' % _FLSTAT.get('vollkoerper', 0))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
           % (_FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0)))
     # v107d: MEHRFACH laufen lassen. Wird eine Flaeche verschoben, kann sie auf ein drittes
@@ -2279,7 +2389,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V112')
+    html = html.replace('__KONV__', 'V113')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2294,7 +2404,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v112\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v113\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
