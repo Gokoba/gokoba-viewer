@@ -5240,6 +5240,16 @@ var GOKOBA_LAYER_ACI = {
      warf beim Laden einen Fehler und der Viewer blieb bei "Modell wird geladen" stehen.
      Er gehoert auf die oberste Ebene, VOR die erste Textur. Inhalt unveraendert: Anisotropie
      und Mipmap-Filterung gegen das Flimmern der Gitterrost-Schraffur beim Drehen. */
+  /* ★ v145 Pauls Vorgabe: solange Advance Steel KEINE Baugruppe vergeben hat, darf beim
+     Benutzer auch keine stehen. Mein Plugin vergibt in diesem Fall intern eine Ersatzkennung
+     aus den Schweissnaehten (SG1, SG2, ...), damit 'BG markieren' und 'BG ausblenden'
+     trotzdem funktionieren - die bleibt, wird aber NICHT mehr angezeigt. Statt ihrer stehen
+     sechs Punkte, damit man sieht: das Feld ist noch leer, nicht vergessen.
+     Erkannt wird die Ersatzkennung an ihrem Muster SG + Ziffern und NICHTS sonst - eine
+     echte Baugruppe heisst bei Paul 'BG 1', 'BG 20'. */
+  var GK_BG_LEER='\u00b7 \u00b7 \u00b7 \u00b7 \u00b7 \u00b7';
+  function gkBgVorlaeufig(v){ return /^SG[0-9]+$/.test(String(v==null?'':v)); }
+
   /* ===== PDF-Mappe ohne Fremdbibliothek =====
      Ein JPEG laesst sich in ein PDF DIREKT einbetten (DCTDecode) - es muss nicht
      umgerechnet werden. Damit kostet die ganze Mappe keine einzige zusaetzliche
@@ -5811,7 +5821,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V144_FUSSZEILE';
+      var GOKOBA_VORLAGE='VORLAGE_V145_BG_LEER';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5863,7 +5873,9 @@ var GOKOBA_LAYER_ACI = {
         if(art!=='schraube'&&art!=='kopfbolzen'&&art!=='anker'&&art!=='sonderteil'&&art!=='gitterrost'&&art!=='gitterroststufe'&&!_plw){ /* v81: auch Roste/Stufen ohne Baugruppen-Zeile */ /* v59: Platten-Werkstoffe ohne Baugruppen-Zeile (Pauls Vorgabe) */
           var bgN=d.bgname||null; /* v48: Attribut 1 laeuft jetzt als Benutzerattribut-Zeile, nicht mehr als Baugruppen-Ersatz */
           if(riff&&bgN&&d.masse&&(art==='blech'||art==='kantblech'))bgN=null; /* steht schon in der Kopfzeile */
-          if(d.bgnr)zeile('Baugruppe',bgN?('BG '+d.bgnr+' \u00b7 '+bgN):('BG '+d.bgnr)); /* v77: Pauls Format */
+          if(d.bgnr)zeile('Baugruppe', gkBgVorlaeufig(d.bgnr)
+            ? (bgN?(GK_BG_LEER+' \u00b7 '+bgN):GK_BG_LEER)                      /* v145: noch nicht positioniert */
+            : (bgN?('BG '+d.bgnr+' \u00b7 '+bgN):('BG '+d.bgnr))); /* v77: Pauls Format */
           else if(bgN)zeile('Baugruppe',bgN);
         }
         return z;
@@ -7364,7 +7376,7 @@ var GOKOBA_LAYER_ACI = {
           });
         });
         inhalt.innerHTML=
-          '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Baugruppe</span><strong style="color:var(--gktx);">'+(d.bgnr||d.bg)+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Baugruppe</span><strong style="color:var(--gktx);">'+(gkBgVorlaeufig(d.bgnr||d.bg)?GK_BG_LEER:(d.bgnr||d.bg))+'</strong></div>'+
           (d.bgname?('<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span>Bezeichnung</span><strong style="color:var(--gktx);text-align:right;">'+d.bgname+'</strong></div>'):'')+
           '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Teile</span><strong style="color:var(--gktx);">'+teilN+'</strong></div>'+
           '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>Gewicht</span><strong style="color:var(--gktx);">'+fmtKg(gew)+'</strong></div>';
