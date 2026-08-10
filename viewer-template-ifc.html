@@ -5700,7 +5700,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V140_KEIN_EINFAERBEN';
+      var GOKOBA_VORLAGE='VORLAGE_V141_FARBFENSTER_RECHTS';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -6650,21 +6650,35 @@ var GOKOBA_LAYER_ACI = {
           if(offen){ gkFarbeZu(); return; }
           b.dataset.an='1'; b.style.background='rgba(127,140,150,.18)';
           try{
-            var r=w.getBoundingClientRect();
+            var r=w.getBoundingClientRect(), R=10;
+            /* ★ v141 DER FEHLER, den Paul als abgeschnittenes Fenster gesehen hat: das
+               Fenster traegt aus seiner alten Rolle (mittig oben ueber dem Bild) die
+               CSS-Regel transform:translateX(-50%) - und die BLEIBT beim Umhaengen aktiv.
+               Es rutschte dadurch um seine halbe Breite nach LINKS aus dem Bild, und die
+               Begrenzungsrechnung darunter ging ins Leere, weil sie left setzt, waehrend
+               die Verschiebung davon unberuehrt bleibt. Jetzt wird die Verschiebung
+               abgeschaltet, dann sitzt das Fenster genau da, wo left und top es hinstellen. */
+            ralpanel.style.transform='none';
             ralpanel.style.right='auto'; ralpanel.style.bottom='auto';
-            ralpanel.style.left=(r.right+10)+'px';
+            var li=r.right+10;
+            /* ★ Breite auf den Platz RECHTS DANEBEN begrenzen, damit es nicht mehr unter
+               den Werkzeugkasten zurueckweichen muss; darunter wird es schmaler statt
+               abgeschnitten. */
+            ralpanel.style.maxWidth=Math.max(320, window.innerWidth-li-R)+'px';
+            /* ★ Hoehe auf das Fenster begrenzen und notfalls rollen lassen - das RAL-Gitter
+               ist auf kleinen Bildschirmen hoeher als der Browser. */
+            ralpanel.style.maxHeight=(window.innerHeight-2*R)+'px';
+            ralpanel.style.overflowY='auto';
+            ralpanel.style.left=li+'px';
             ralpanel.style.top=(r.top+b.offsetTop)+'px';
             ralAuf();
-            /* v132: nach dem Aufklappen ins Bild ruecken - das Fenster ist breit und ragte
-               sonst rechts hinaus. Erst oeffnen, dann messen, dann begrenzen. */
+            /* v132: erst oeffnen, dann messen, dann ins Bild ruecken. */
             setTimeout(function(){
               try{
-                var q=ralpanel.getBoundingClientRect(), R=10;
-                var li=Math.min(r.right+10, window.innerWidth-q.width-R);
-                if(li<R) li=R;
-                var ob=Math.min(r.top+b.offsetTop, window.innerHeight-q.height-R);
-                if(ob<R) ob=R;
-                ralpanel.style.left=li+'px'; ralpanel.style.top=ob+'px';
+                var q=ralpanel.getBoundingClientRect();
+                var l2=Math.min(li, window.innerWidth-q.width-R); if(l2<R) l2=R;
+                var ob=Math.min(r.top+b.offsetTop, window.innerHeight-q.height-R); if(ob<R) ob=R;
+                ralpanel.style.left=l2+'px'; ralpanel.style.top=ob+'px';
               }catch(e){}
             },0);
           }catch(e){}
@@ -6672,6 +6686,12 @@ var GOKOBA_LAYER_ACI = {
         w.appendChild(gkFarbZeile);
         function gkFarbeZu(){
           try{ ralZu(); }catch(e){}
+          /* ★ v141: die beim Aufklappen gesetzten Masse wieder abraeumen, damit das Fenster
+             beim naechsten Mal frisch gemessen wird und nichts haengen bleibt. */
+          try{
+            ralpanel.style.transform=''; ralpanel.style.maxWidth='';
+            ralpanel.style.maxHeight=''; ralpanel.style.overflowY='';
+          }catch(e){}
           gkFarbZeile.style.background='transparent'; delete gkFarbZeile.dataset.an;
         }
         /* v131: Escape faehrt alles wieder ein - Pauls Wunsch. */
