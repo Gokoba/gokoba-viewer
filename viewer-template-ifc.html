@@ -5250,6 +5250,23 @@ var GOKOBA_LAYER_ACI = {
   var GK_BG_LEER='\u00b7 \u00b7 \u00b7 \u00b7 \u00b7 \u00b7';
   function gkBgVorlaeufig(v){ return /^SG[0-9]+$/.test(String(v==null?'':v)); }
 
+  /* ★ v150 Pauls Vorgabe fuer den Dateinamen: "Modellfotos_" plus der Projektname aus der
+     Kopfzeile. Umlaute werden AUSGESCHRIEBEN (ae, oe, ue, ss) statt weggeworfen - ein
+     Dateiname darf sie zwar tragen, aber quer ueber Windows, Mac, Mailanhaenge und
+     Dateiablagen kommen sie zuverlaessig verstuemmelt an. Erst die deutschen Umlaute
+     ersetzen, DANACH die uebrigen Akzente abstreifen (sonst wuerde aus ue wieder u).
+     Alles andere wird zu einem Unterstrich, Mehrfach-Striche fallen zusammen. */
+  function gkDateiName150(proj){
+    var t=String(proj==null?'':proj);
+    t=t.replace(/\u00e4/g,'ae').replace(/\u00f6/g,'oe').replace(/\u00fc/g,'ue')
+       .replace(/\u00c4/g,'Ae').replace(/\u00d6/g,'Oe').replace(/\u00dc/g,'Ue')
+       .replace(/\u00df/g,'ss');
+    try{ t=t.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+    t=t.replace(/[^A-Za-z0-9_.-]+/g,'_').replace(/_+/g,'_').replace(/^[_.-]+|[_.-]+$/g,'');
+    if(!t)t='Modell';
+    return 'Modellfotos_'+t.slice(0,80)+'.pdf';
+  }
+
   /* ===== PDF-Mappe ohne Fremdbibliothek =====
      Ein JPEG laesst sich in ein PDF DIREKT einbetten (DCTDecode) - es muss nicht
      umgerechnet werden. Damit kostet die ganze Mappe keine einzige zusaetzliche
@@ -5821,7 +5838,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V149_MAPPE_SCHLIESSEN';
+      var GOKOBA_VORLAGE='VORLAGE_V150_DATEINAME';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -7864,7 +7881,7 @@ var GOKOBA_LAYER_ACI = {
             .then(function(logo){
               var datum=new Date().toLocaleDateString('de-DE');
               var roh=gkPdfBauen(bilder,{logo:logo,projekt:proj,datum:datum});
-              var name='Gokoba-Fotos-'+proj.replace(/[^A-Za-z0-9_.-]+/g,'_').slice(0,60)+'.pdf';
+              var name=gkDateiName150(proj);
               var blob=new Blob([roh],{type:'application/pdf'});
               var datei=null;
               try{ datei=new File([blob],name,{type:'application/pdf'}); }catch(e){}
