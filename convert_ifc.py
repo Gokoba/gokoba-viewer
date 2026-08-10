@@ -171,6 +171,22 @@ ART_LAYER = {
     'AS_Sonderteile':'sonderteil',
     'AS_Betondecken':'beton','AS_Betonw?nde':'beton','AS_Betonfundament':'beton','AS_Betontr?ger':'beton',
 }
+# ★ v114 SONDERTEILE, Pauls Vorgabe: ein Bauteil, das in Advance Steel ein SONDERTEIL ist,
+#   bleibt eines - auch wenn es auf einem anderen Layer liegt. Paul legt Sonderteile bewusst
+#   auf einen Farb-Layer (z.B. AS_Traeger), damit sie im Viewer eine andere Farbe bekommen;
+#   die Art darf davon nicht abhaengen, denn die kommt aus dem CAD-Kern, nicht vom Layer.
+#   VORSICHT, und deshalb keine pauschale Umkehrung: auf dem Layer AS_Schrauben liegen bei
+#   Paul 486 Bauteile, die AS ebenfalls als SpecialPart fuehrt (Hutmuttern, Scheiben) - die
+#   sollen Schrauben bleiben. Der Layer behaelt deshalb ueberall dort das letzte Wort, wo er
+#   eine eindeutige Sonderrolle hat (Schrauben, Anker, Kopfbolzen, Gitterroste, Stufen,
+#   Beton). Ueberschrieben wird nur, wo der Layer nichts Genaueres sagt als
+#   Traeger / Blech / unbekannt.
+_SONDER_UEBERSCHREIBBAR114 = ('profil', 'kantprofil', 'blech', 'kantblech', 'sonstiges')
+def _sonderteil114(art, klasse):
+    if art not in _SONDER_UEBERSCHREIBBAR114: return art
+    return 'sonderteil' if 'specialpart' in str(klasse or '').lower() else art
+
+
 def art_von(layer, typ):
     a = ART_LAYER.get(norm_layer(layer))
     if a: return a
@@ -1825,9 +1841,11 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             m = _knick_normalen(m, fl_id=fl_id, fl_breit=fl_breit)
             d0 = info.get(kn, {}) or {}
             L = d0.get('layer')
-            art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
+            _artL = ART_LAYER.get(norm_layer(L))          # ★ v114: Art AUS DEM LAYER, getrennt gemerkt
+            art = _artL or klasse_art(d0.get('klasse')) or 'sonstiges'
+            art = _sonderteil114(art, d0.get('klasse'))
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'): return
-            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art, d0.get('farbe')))
+            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, _artL or art, d0.get('farbe')))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
             d = {'ref': _pseudo(d0.get('pos')), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
                  'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
@@ -2146,10 +2164,12 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
             m = trimesh.Trimesh(vertices=v, faces=np.asarray(m.faces), process=False)
             d0 = info.get(kn, {}) or {}
             L = d0.get('layer')
-            art = ART_LAYER.get(norm_layer(L)) or klasse_art(d0.get('klasse')) or 'sonstiges'
+            _artL = ART_LAYER.get(norm_layer(L))          # ★ v114: Art AUS DEM LAYER, getrennt gemerkt
+            art = _artL or klasse_art(d0.get('klasse')) or 'sonstiges'
+            art = _sonderteil114(art, d0.get('klasse'))
             if ohne_schrauben and art in ('schraube', 'anker', 'kopfbolzen'):
                 continue
-            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, art, d0.get('farbe')))
+            m.visual = trimesh.visual.TextureVisuals(material=material_fuer(L, _artL or art, d0.get('farbe')))
             szene.add_geometry(m, node_name=kn, geom_name=kn)
             d = {'ref': _pseudo(d0.get('pos')), 'profil': saniere_profil(d0.get('profil')), 'farbe': d0.get('farbe'), 'familie': d0.get('familie'),
                  'material': ('Alu' if str(d0.get('material') or '').strip().lower() == 'al' else d0.get('material')), 'laenge': d0.get('laenge'),
@@ -2389,7 +2409,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V113')
+    html = html.replace('__KONV__', 'V114')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2404,7 +2424,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v113\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v114\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
