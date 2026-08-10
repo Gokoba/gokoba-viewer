@@ -5821,7 +5821,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V146_ET_ISOLIEREN';
+      var GOKOBA_VORLAGE='VORLAGE_V147_KNOEPFE_ENG';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5922,7 +5922,7 @@ var GOKOBA_LAYER_ACI = {
               gibt es keine Baugruppennummer und der rechte Knopf bleibt sichtbar, aber stumm. */
            '<div data-knopfreihe style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>';
         karte.querySelector('[data-zu]').addEventListener('click',function(ev){ev.stopPropagation();abwaehlen();});
-        /* v108 Pauls Ablauf: erst 'ET ausblenden | BG markieren'. Sobald die Baugruppe markiert
+        /* v108 Pauls Ablauf: erst 'ausblenden | BG markieren'. Sobald die Baugruppe markiert
            ist, interessiert das Einzelteil nicht mehr - dann steht links 'BG markieren' (jetzt zum
            Aufheben) und rechts neu 'BG ausblenden'. Das markierte Teil selbst bleibt aussen vor,
            es traegt schon die Auswahlfarbe. */
@@ -5947,8 +5947,8 @@ var GOKOBA_LAYER_ACI = {
           return gkIst(t,'ohnebg');   /* v116: Stichwoerter stehen zentral in GK_LAYER */
         }
         /* ★ v146 Pauls Vorgabe fuer das Kaertchen:
-             NICHT markiert   Zeile 1: [ET ausblenden] [BG markieren]
-                              Zeile 2: [ET isolieren]
+             NICHT markiert   Zeile 1: [ausblenden] [BG markieren]
+                              Zeile 2: [isolieren]
              MARKIERT         Zeile 1: [zurueck zu ET] [BG ausblenden]
                               Zeile 2:                 [BG isolieren]
            Sobald die Baugruppe markiert ist, interessiert das Einzelteil nicht mehr - die
@@ -5963,21 +5963,22 @@ var GOKOBA_LAYER_ACI = {
         }
         function reiheBauen(){
           var hatBG=!!d.bgnr&&!ohneBG(d), an=!!(bgMark&&bgMark.bg===String(d.bgnr||''));
-          var Z2='grid-column:1;margin-top:6px;';   /* zweite Zeile, linke Spalte */
-          var Z2r='grid-column:2;margin-top:6px;';  /* zweite Zeile, rechte Spalte */
+          var Z2='grid-column:1;';   /* ★ v147 Pauls Wunsch: die zweite Knopfzeile sitzt jetzt dicht
+                                        unter der ersten - der Abstand ist nur noch der Gitterspalt. */
+          var Z2r='grid-column:2;';
           if(ohneBG(d)){
             reihe.style.gridTemplateColumns='1fr';
-            reihe.innerHTML='<div data-weg style="'+KS+'cursor:pointer;color:var(--gktx2);">ET ausblenden</div>'+
-                            '<div data-etiso style="'+KS+'margin-top:6px;cursor:pointer;color:var(--gktx2);">ET isolieren</div>';
+            reihe.innerHTML='<div data-weg style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>'+
+                            '<div data-etiso style="'+KS+'cursor:pointer;color:var(--gktx2);">isolieren</div>';
           } else {
             reihe.style.gridTemplateColumns='1fr 1fr';
             reihe.innerHTML = an
               ? '<div data-bgmark style="'+KS+'cursor:pointer;color:var(--gktx);">zur\u00fcck zu ET</div>'+
                 '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'+
                 '<div data-bgiso146  style="'+KS+Z2r+'cursor:pointer;color:var(--gktx2);">BG isolieren</div>'
-              : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ET ausblenden</div>'+
+              : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>'+
                 '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>'+
-                '<div data-etiso  style="'+KS+Z2+'cursor:pointer;color:var(--gktx2);">ET isolieren</div>';
+                '<div data-etiso  style="'+KS+Z2+'cursor:pointer;color:var(--gktx2);">isolieren</div>';
           }
           /* v140: der Knopf 'farblich markieren' ist ERSATZLOS RAUS - dieselbe Funktion
              steht rechts in den Werkzeugen. */
