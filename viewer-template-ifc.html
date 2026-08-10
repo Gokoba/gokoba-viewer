@@ -5240,6 +5240,110 @@ var GOKOBA_LAYER_ACI = {
      warf beim Laden einen Fehler und der Viewer blieb bei "Modell wird geladen" stehen.
      Er gehoert auf die oberste Ebene, VOR die erste Textur. Inhalt unveraendert: Anisotropie
      und Mipmap-Filterung gegen das Flimmern der Gitterrost-Schraffur beim Drehen. */
+  /* ===== PDF-Mappe ohne Fremdbibliothek =====
+     Ein JPEG laesst sich in ein PDF DIREKT einbetten (DCTDecode) - es muss nicht
+     umgerechnet werden. Damit kostet die ganze Mappe keine einzige zusaetzliche
+     Bibliothek. Seiten sind immer A4 HOCH und die Bilder werden aufrecht in ihrem
+     eigenen Seitenverhaeltnis eingepasst - so muss niemand im PDF-Betrachter drehen. */
+  function gkPdfBauen(bilder, kopf){
+    var A4B=595.28, A4H=841.89, RAND=36;
+    var teile=[], laenge=0;
+    function roh(s){ var a=new Uint8Array(s.length); for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i)&255; return a; }
+    function schreib(x){ var a=(typeof x==='string')?roh(x):x; teile.push(a); laenge+=a.length; return laenge; }
+    /* WinAnsi: Umlaute bleiben erhalten; die typografischen Zeichen haben dort eigene
+       Plaetze und muessen umgesetzt werden, sonst steht im PDF ein Fragezeichen. */
+    var WINANSI={0x2013:0x96,0x2014:0x97,0x2018:0x91,0x2019:0x92,0x201A:0x82,0x201C:0x93,
+                 0x201D:0x94,0x201E:0x84,0x2020:0x86,0x2022:0x95,0x2026:0x85,0x20AC:0x80};
+    function txt(s){
+      var o=''; s=String(s==null?'':s);
+      for(var i=0;i<s.length;i++){ var c=s.charCodeAt(i);
+        if(c>255){ if(WINANSI[c])c=WINANSI[c]; else {o+='-';continue;} }
+        if(c===40||c===41||c===92)o+='\\';
+        o+=String.fromCharCode(c); }
+      return o; }
+
+    var obj=[], zaehler=0;
+    function neu(inhalt, daten){ zaehler++; obj[zaehler]={inhalt:inhalt,daten:daten}; return zaehler; }
+
+    /* Bilder als XObjects */
+    var bildNr=[];
+    for(var i=0;i<bilder.length;i++){
+      var b=bilder[i];
+      bildNr.push(neu('<< /Type /XObject /Subtype /Image /Width '+b.w+' /Height '+b.h+
+        ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+b.bytes.length+' >>', b.bytes));
+    }
+    var logoNr=0;
+    if(kopf&&kopf.logo){ logoNr=neu('<< /Type /XObject /Subtype /Image /Width '+kopf.logo.w+' /Height '+kopf.logo.h+
+        ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+kopf.logo.bytes.length+' >>', kopf.logo.bytes); }
+    var fReg=neu('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+    var fFet=neu('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+
+    var proSeite=2;
+    var seitenAnz=Math.max(1, Math.ceil(bilder.length/proSeite));
+    var kopfH=48, fussH=26;
+    var platzH=(A4H-RAND*2-kopfH-fussH-14)/proSeite;   /* 14 = Luft zwischen den beiden Plaetzen */
+    var platzB=A4B-RAND*2;
+
+    var seitenNr=[], inhaltNr=[];
+    for(var s=0;s<seitenAnz;s++){
+      var c=[];
+      var oben=A4H-RAND;
+      /* Kopf: Logo, Projektname */
+      if(logoNr){ c.push('q 34 0 0 34 '+RAND+' '+(oben-34).toFixed(2)+' cm /L'+logoNr+' Do Q'); }
+      c.push('BT /F'+fFet+' 13 Tf 0.12 0.18 0.23 rg 1 0 0 1 '+(RAND+(logoNr?44:0))+' '+(oben-15).toFixed(2)+' Tm ('+txt(kopf&&kopf.projekt||'Modell')+') Tj ET');
+      c.push('BT /F'+fReg+' 8.5 Tf 0.45 0.50 0.55 rg 1 0 0 1 '+(RAND+(logoNr?44:0))+' '+(oben-27).toFixed(2)+' Tm ('+txt('3D-Viewer  \u2013  Fotos'+(kopf&&kopf.datum?'  \u2013  '+kopf.datum:''))+') Tj ET');
+      c.push('0.80 0.83 0.86 RG 0.7 w '+RAND+' '+(oben-kopfH+6).toFixed(2)+' m '+(A4B-RAND)+' '+(oben-kopfH+6).toFixed(2)+' l S');
+      /* Bilder */
+      for(var k=0;k<proSeite;k++){
+        var idx=s*proSeite+k; if(idx>=bilder.length)break;
+        var bl=bilder[idx];
+        var feldO=oben-kopfH-k*(platzH+14);
+        var nutzH=platzH-13;                       /* 13 = Zeile fuer die Bildunterschrift */
+        var sk=Math.min(platzB/bl.w, nutzH/bl.h);
+        var bw=bl.w*sk, bh=bl.h*sk;
+        var bx=RAND+(platzB-bw)/2, by=feldO-bh;
+        c.push('q '+bw.toFixed(2)+' 0 0 '+bh.toFixed(2)+' '+bx.toFixed(2)+' '+by.toFixed(2)+' cm /X'+bildNr[idx]+' Do Q');
+        c.push('BT /F'+fReg+' 8.5 Tf 0.42 0.47 0.52 rg 1 0 0 1 '+bx.toFixed(2)+' '+(by-11).toFixed(2)+' Tm ('+txt(bl.titel||('Foto '+(idx+1)))+') Tj ET');
+      }
+      /* Fuss */
+      c.push('BT /F'+fReg+' 7.5 Tf 0.55 0.59 0.63 rg 1 0 0 1 '+RAND+' '+(RAND-4)+' Tm (Erstellt mit Gokoba 3D-Viewer  \u2013  www.gokoba.com) Tj ET');
+      c.push('BT /F'+fReg+' 7.5 Tf 0.55 0.59 0.63 rg 1 0 0 1 '+(A4B-RAND-46)+' '+(RAND-4)+' Tm ('+txt('Seite '+(s+1)+' von '+seitenAnz)+') Tj ET');
+      var strom=c.join('\n');
+      var iNr=neu('<< /Length '+strom.length+' >>', roh(strom));
+      inhaltNr.push(iNr);
+    }
+    var eltern=zaehler+seitenAnz+1;
+    for(var s2=0;s2<seitenAnz;s2++){
+      var res='<< /Font << /F'+fReg+' '+fReg+' 0 R /F'+fFet+' '+fFet+' 0 R >> /XObject << ';
+      for(var k2=0;k2<proSeite;k2++){ var ix=s2*proSeite+k2; if(ix<bilder.length) res+='/X'+bildNr[ix]+' '+bildNr[ix]+' 0 R '; }
+      if(logoNr)res+='/L'+logoNr+' '+logoNr+' 0 R ';
+      res+='>> >>';
+      seitenNr.push(neu('<< /Type /Page /Parent '+eltern+' 0 R /MediaBox [0 0 '+A4B+' '+A4H+'] /Resources '+res+' /Contents '+inhaltNr[s2]+' 0 R >>'));
+    }
+    var kids=seitenNr.map(function(n){return n+' 0 R';}).join(' ');
+    var pagesNr=neu('<< /Type /Pages /Count '+seitenAnz+' /Kids ['+kids+'] >>');
+    var katNr=neu('<< /Type /Catalog /Pages '+pagesNr+' 0 R >>');
+
+    /* Datei zusammensetzen */
+    schreib('%PDF-1.4\n'); schreib(new Uint8Array([0x25,0xE2,0xE3,0xCF,0xD3,0x0A]));
+    var offs=[];
+    for(var n=1;n<=zaehler;n++){
+      offs[n]=laenge;
+      schreib(n+' 0 obj\n'+obj[n].inhalt+'\n');
+      if(obj[n].daten){ schreib('stream\n'); schreib(obj[n].daten); schreib('\nendstream\n'); }
+      schreib('endobj\n');
+    }
+    var xref=laenge;
+    var x='xref\n0 '+(zaehler+1)+'\n0000000000 65535 f \n';
+    for(var n2=1;n2<=zaehler;n2++){ x+=('0000000000'+offs[n2]).slice(-10)+' 00000 n \n'; }
+    x+='trailer\n<< /Size '+(zaehler+1)+' /Root '+katNr+' 0 R >>\nstartxref\n'+xref+'\n%%EOF\n';
+    schreib(x);
+
+    var alles=new Uint8Array(laenge), p=0;
+    for(var t=0;t<teile.length;t++){ alles.set(teile[t],p); p+=teile[t].length; }
+    return alles;
+  }
+
   /* v131: dieser Text wurde aus ZWEI Bereichen benutzt (Menue und Kaertchen) und stand nur in
      einem davon - genau das war Pauls Meldung "GK_FARBHINWEIS is not defined". Jetzt oberste Ebene. */
   var GK_FARBHINWEIS='Die dargestellten Farben k\u00f6nnen je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.';
@@ -5707,7 +5811,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V142_ZINK_FEIN';
+      var GOKOBA_VORLAGE='VORLAGE_V144_FUSSZEILE';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -7572,7 +7676,7 @@ var GOKOBA_LAYER_ACI = {
         chip.innerHTML='<img src="'+halter.url+'" style="height:34px;border-radius:7px;display:block;" alt="">'+
           '<span>Foto '+nr+'</span>'+
           '<span data-dl title="Herunterladen" style="cursor:pointer;color:'+AKZENT+';font-size:15px;">\u2b07</span>'+
-          '<span data-mail title="Alle Fotos per E-Mail" style="cursor:pointer;color:'+AKZENT+';font-size:14px;">\u2709</span>'+
+          '<span data-mail title="Alle Fotos als PDF-Mappe" style="cursor:pointer;color:'+AKZENT+';font:700 9px var(--ui);letter-spacing:.04em;">PDF</span>'+
         '<span data-weg title="Verwerfen" style="cursor:pointer;color:var(--gktx2);font-size:15px;">\u00d7</span>';
         chip.addEventListener('click',function(){zeigGross(halter,chip.querySelector('img'));});
         chip.querySelector('[data-dl]').addEventListener('click',function(e){
@@ -7581,39 +7685,74 @@ var GOKOBA_LAYER_ACI = {
           document.body.appendChild(a);a.click();a.remove();chip.remove();
         });
         chip.querySelector('[data-mail]').addEventListener('click',function(e){
-          e.stopPropagation(); fotosPerMail();
+          e.stopPropagation(); fotosAlsPdf();
         });
         chip.querySelector('[data-weg]').addEventListener('click',function(e){e.stopPropagation();chip.remove();});
         fotoLeisteHol().appendChild(chip);
       }
-      function fotosPerMail(){
-        /* ★ Alle Fotos der Leiste in EINE E-Mail. Browser koennen keine fertige Mail mit
-           Anhang bauen - zwei ehrliche Wege:
-           1) Teilen-Dialog (Handy/Tablet): haengt alle Bilder direkt an die Mail-App an.
-           2) Arbeitsplatz: erstes Bild in die Zwischenablage + leere Mail oeffnen -> Strg+V. */
-        var bilder=[]; var leiste=fotoLeisteHol();
-        if(leiste)Array.prototype.forEach.call(leiste.querySelectorAll('img'),function(im,i){bilder.push({url:im.src,nr:i+1});});
-        if(!bilder.length)return;
-        var betreff='3D-Modell '+(document.title.split(', ')[1]||'Gokoba');
-        var text='Ansicht aus dem Gokoba 3D-Viewer: '+location.href;
-        Promise.all(bilder.map(function(b){return fetch(b.url).then(function(r){return r.blob();}).then(function(bl){return new File([bl],'gokoba-foto-'+b.nr+'.png',{type:'image/png'});});}))
-        .then(function(dateien){
-          if(navigator.canShare&&navigator.canShare({files:dateien})){
-            return navigator.share({files:dateien,title:betreff,text:text}).catch(function(){});
-          }
-          /* Arbeitsplatz-Weg */
-          var p=Promise.resolve();
-          if(navigator.clipboard&&window.ClipboardItem){
-            p=fetch(bilder[0].url).then(function(r){return r.blob();})
-             .then(function(bl){return navigator.clipboard.write([new ClipboardItem({'image/png':bl})]);}).catch(function(){});
-          }
-          return p.then(function(){
-            window.location.href='mailto:?subject='+encodeURIComponent(betreff)+'&body='+encodeURIComponent(text+'\n\n(Foto ist in der Zwischenablage - mit Strg+V hier einfuegen.)');
-            sagHinweis(bilder.length>1
-              ? 'Erstes Foto in der Zwischenablage - mit Strg+V in die E-Mail einfuegen. Weitere Fotos bitte per Pfeil herunterladen und anhaengen.'
-              : 'Foto in der Zwischenablage - mit Strg+V in die E-Mail einfuegen.');
-          });
-        }).catch(function(){ sagHinweis('E-Mail-Weg hier nicht verfuegbar - bitte Fotos herunterladen und anhaengen.'); });
+      /* ★ v143 Pauls Vorgabe: alle Fotos der Leiste - MIT allen Markierungen, Texten und
+         Pfeilen, so wie sie im Viewer liegen - kommen in EINE PDF-Mappe. Zwei Fotos je Seite,
+         Seiten immer aufrecht, damit im PDF-Betrachter nie gedreht werden muss. Oben Logo und
+         Projektname wie im Viewer-Kopf, unten klein der Hinweis auf den Gokoba 3D-Viewer.
+         Warum PDF und nicht "per E-Mail": ein mailto kann KEINE Anhaenge tragen, das ist eine
+         Grenze des Verfahrens. Eine fertige Datei dagegen haengt jeder an seine Mail an -
+         egal ob Outlook, Gmail im Browser oder Handy. */
+      function jpegAus(quelle, maxKante){
+        return new Promise(function(fertig, schief){
+          var im=new Image();
+          im.onload=function(){
+            var w=im.naturalWidth||im.width, h=im.naturalHeight||im.height;
+            var sk=Math.min(1, (maxKante||2000)/Math.max(w,h));
+            var c=document.createElement('canvas');
+            c.width=Math.max(1,Math.round(w*sk)); c.height=Math.max(1,Math.round(h*sk));
+            var g=c.getContext('2d');
+            g.fillStyle='#ffffff'; g.fillRect(0,0,c.width,c.height);   /* JPEG kennt keine Transparenz */
+            g.drawImage(im,0,0,c.width,c.height);
+            var d=c.toDataURL('image/jpeg',0.86).split(',')[1];
+            var roh=atob(d), by=new Uint8Array(roh.length);
+            for(var i=0;i<roh.length;i++)by[i]=roh.charCodeAt(i)&255;
+            fertig({bytes:by,w:c.width,h:c.height});
+          };
+          im.onerror=function(){schief(new Error('Bild nicht lesbar'));};
+          im.src=quelle;
+        });
+      }
+      function fotosAlsPdf(){
+        var leiste=fotoLeisteHol(), quellen=[];
+        if(leiste)Array.prototype.forEach.call(leiste.querySelectorAll('img'),function(im){quellen.push(im.src);});
+        if(!quellen.length){ sagHinweis('Noch keine Fotos vorhanden.'); return; }
+        var proj='Modell';
+        try{ var pn=document.querySelector('.proj-name'); if(pn&&pn.textContent.trim())proj=pn.textContent.trim(); }catch(e){}
+        var logoQ=null;
+        try{ var lg=document.querySelector('.logo img'); if(lg)logoQ=lg.src; }catch(e){}
+        sagHinweis('PDF-Mappe wird erstellt ...');
+        Promise.all(quellen.map(function(q,i){
+          return jpegAus(q,2000).then(function(b){ b.titel='Foto '+(i+1); return b; });
+        })).then(function(bilder){
+          return (logoQ?jpegAus(logoQ,160).catch(function(){return null;}):Promise.resolve(null))
+            .then(function(logo){
+              var datum=new Date().toLocaleDateString('de-DE');
+              var roh=gkPdfBauen(bilder,{logo:logo,projekt:proj,datum:datum});
+              var name='Gokoba-Fotos-'+proj.replace(/[^A-Za-z0-9_.-]+/g,'_').slice(0,60)+'.pdf';
+              var blob=new Blob([roh],{type:'application/pdf'});
+              var datei=null;
+              try{ datei=new File([blob],name,{type:'application/pdf'}); }catch(e){}
+              /* Handy und Tablet: Teilen-Menue, dort haengt die Mappe direkt an der Mail.
+                 Klappt das nicht (oder gibt es das nicht), wird sie heruntergeladen. */
+              if(datei&&navigator.canShare&&navigator.canShare({files:[datei]})){
+                return navigator.share({files:[datei],title:proj,text:'Fotos aus dem Gokoba 3D-Viewer'})
+                  .then(function(){ sagHinweis('PDF-Mappe geteilt.'); })
+                  .catch(function(){ herunterladen(blob,name); });
+              }
+              herunterladen(blob,name);
+            });
+        }).catch(function(){ sagHinweis('Die PDF-Mappe konnte nicht erstellt werden.'); });
+      }
+      function herunterladen(blob,name){
+        var u=URL.createObjectURL(blob), a=document.createElement('a');
+        a.href=u; a.download=name; document.body.appendChild(a); a.click();
+        setTimeout(function(){ a.remove(); URL.revokeObjectURL(u); },1500);
+        sagHinweis('PDF-Mappe gespeichert - diese eine Datei an die E-Mail anhaengen.');
       }
       cv.addEventListener('pointerdown',function(e){
         if(aktiv!=='foto')return;
