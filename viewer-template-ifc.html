@@ -68,8 +68,10 @@ footer{border-top:1px solid var(--barln);padding:11px 22px;}
 .cpr a{color:var(--ftx2);text-decoration:none;border-bottom:1px solid transparent;transition:color .18s,border-color .18s;}
 .cpr a:hover{color:var(--steel-lt);border-color:var(--steel-lt);}
 .hint{font-size:.6rem;color:var(--ftx2);opacity:.85;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;}
-.ablauf{font-size:.82rem;color:var(--tx3);opacity:.85;white-space:nowrap;text-transform:none;letter-spacing:.01em;align-self:center;order:99;margin-left:auto;padding-left:20px;} /* v123: rutscht ganz nach rechts und ist groesser */ /* v115: sitzt jetzt oben links neben Farben */
-.ablauf{font-size:.58rem;color:var(--ftx2);opacity:.7;margin-right:14px;white-space:nowrap;}
+/* ★ v142: hier stand eine ZWEITE .ablauf-Regel, die von der Zeile darunter vollstaendig
+   ueberschrieben wurde (gleiche Spezifitaet, spaeter im Text gewinnt) - sie war wirkungslos
+   und hat nur verschleiert, welche Groesse wirklich gilt. Ersatzlos entfernt. */
+.ablauf{font-size:.9rem;color:var(--ftx2);opacity:.7;margin-right:14px;white-space:nowrap;} /* ★ v142 Pauls Vorgabe: die Gueltigkeitsangabe war mit .58rem zu klein, jetzt .9rem - Farbe und Platz bleiben unveraendert */
 @media (max-width:820px){
   .header-inner{justify-content:center;gap:10px;}
   .controls{width:100%;justify-content:center;flex-wrap:nowrap;gap:6px;}
@@ -5242,10 +5244,15 @@ var GOKOBA_LAYER_ACI = {
      einem davon - genau das war Pauls Meldung "GK_FARBHINWEIS is not defined". Jetzt oberste Ebene. */
   var GK_FARBHINWEIS='Die dargestellten Farben k\u00f6nnen je nach Bildschirm oder Grafik vom Original abweichen und sollen nur einen optischen Ersteindruck vermitteln.';
   function verzinktTextur(){
-    var n=256,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
+    /* ★ v142 Pauls Vorgabe: die Zinkblumen sind zu grob. Statt die Flecken kleiner zu
+       zeichnen (dann werden die Vielecke pixelig), wird die Kachel auf 512 verdoppelt und
+       die Fleckenzahl vervierfacht - gleiche Deckung, aber jede Blume ist gegenueber der
+       Kachel nur noch HALB so gross, also erscheint das Muster auf dem Bauteil doppelt so
+       fein. 512 bleibt eine Zweierpotenz, damit die Filterung sauber greift. */
+    var n=512,c=document.createElement('canvas');c.width=c.height=n;var g=c.getContext('2d');
     g.fillStyle='#c3c7ca';g.fillRect(0,0,n,n); /* v50: STEP-Original-Grund */
     try{g.filter='blur(0.6px)';}catch(e){} /* v50: nur ein Hauch verschwommener als das STEP-Original */
-    for(var i=0;i<240;i++){var x=Math.random()*n,y=Math.random()*n,sz=6+Math.random()*13,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
+    for(var i=0;i<960;i++){var x=Math.random()*n,y=Math.random()*n,sz=6+Math.random()*13,li=Math.random()>0.5,sd=3+Math.floor(Math.random()*3);
       g.beginPath();for(var j=0;j<sd;j++){var a=j/sd*6.283+Math.random()*0.9,rr=sz*(0.6+Math.random()*0.6),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(j===0)g.moveTo(px,py);else g.lineTo(px,py);}
       g.closePath();g.fillStyle=li?'rgba(232,235,238,0.40)':'rgba(190,194,198,0.30)'; /* v50: kristallin wie STEP, dunkle schwaecher */g.fill();} /* \u2605 v47: Zinkblumen DEUTLICH schwaecher */
         try{g.filter='none';}catch(e){}
@@ -5700,7 +5707,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V141_FARBFENSTER_RECHTS';
+      var GOKOBA_VORLAGE='VORLAGE_V142_ZINK_FEIN';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
