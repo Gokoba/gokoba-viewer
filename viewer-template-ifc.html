@@ -5821,7 +5821,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V145_BG_LEER';
+      var GOKOBA_VORLAGE='VORLAGE_V146_ET_ISOLIEREN';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5946,28 +5946,53 @@ var GOKOBA_LAYER_ACI = {
                  .replace(/\u00e4/g,'a').replace(/\u00f6/g,'o').replace(/\u00fc/g,'u');
           return gkIst(t,'ohnebg');   /* v116: Stichwoerter stehen zentral in GK_LAYER */
         }
+        /* ★ v146 Pauls Vorgabe fuer das Kaertchen:
+             NICHT markiert   Zeile 1: [ET ausblenden] [BG markieren]
+                              Zeile 2: [ET isolieren]
+             MARKIERT         Zeile 1: [zurueck zu ET] [BG ausblenden]
+                              Zeile 2:                 [BG isolieren]
+           Sobald die Baugruppe markiert ist, interessiert das Einzelteil nicht mehr - die
+           beiden ET-Knoepfe verschwinden also, so wie es vorher schon war. Zurueckgeholt wird
+           die Sicht ueber "alle Bauteile anzeigen" oben links, deshalb braucht das Isolieren
+           hier keinen eigenen Rueckweg. */
+        function nurZeigen146(pruef){
+          model.traverse(function(o){
+            if(!o.isMesh&&!o.isLineSegments)return;
+            o.visible=!!pruef(o);
+          });
+        }
         function reiheBauen(){
           var hatBG=!!d.bgnr&&!ohneBG(d), an=!!(bgMark&&bgMark.bg===String(d.bgnr||''));
+          var Z2='grid-column:1;margin-top:6px;';   /* zweite Zeile, linke Spalte */
+          var Z2r='grid-column:2;margin-top:6px;';  /* zweite Zeile, rechte Spalte */
           if(ohneBG(d)){
             reihe.style.gridTemplateColumns='1fr';
-            reihe.innerHTML='<div data-weg style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>';
-            var a0=reihe.querySelector('[data-weg]');
-            if(a0)a0.addEventListener('click',function(ev){ev.stopPropagation();
-              var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});
-            return;
+            reihe.innerHTML='<div data-weg style="'+KS+'cursor:pointer;color:var(--gktx2);">ET ausblenden</div>'+
+                            '<div data-etiso style="'+KS+'margin-top:6px;cursor:pointer;color:var(--gktx2);">ET isolieren</div>';
+          } else {
+            reihe.style.gridTemplateColumns='1fr 1fr';
+            reihe.innerHTML = an
+              ? '<div data-bgmark style="'+KS+'cursor:pointer;color:var(--gktx);">zur\u00fcck zu ET</div>'+
+                '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'+
+                '<div data-bgiso146  style="'+KS+Z2r+'cursor:pointer;color:var(--gktx2);">BG isolieren</div>'
+              : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ET ausblenden</div>'+
+                '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>'+
+                '<div data-etiso  style="'+KS+Z2+'cursor:pointer;color:var(--gktx2);">ET isolieren</div>';
           }
-          reihe.style.gridTemplateColumns='1fr 1fr';
-          reihe.innerHTML = an
-            ? '<div data-bgmark style="'+KS+'cursor:pointer;color:var(--gktx);">BG markiert</div>'+
-              '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'
-            : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>'+
-              '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>';
-          /* v140 Pauls Vorgabe: der Knopf 'farblich markieren' ist ERSATZLOS RAUS -
-             er braucht ihn im Kaertchen nicht, dieselbe Funktion steht rechts in den
-             Werkzeugen. Erzeugung und Klick-Behandlung sind beide entfernt. */
+          /* v140: der Knopf 'farblich markieren' ist ERSATZLOS RAUS - dieselbe Funktion
+             steht rechts in den Werkzeugen. */
           var a1=reihe.querySelector('[data-weg]');
           if(a1)a1.addEventListener('click',function(ev){ev.stopPropagation();
             var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});
+          var ai=reihe.querySelector('[data-etiso]');
+          if(ai)ai.addEventListener('click',function(ev){ev.stopPropagation();
+            /* ★ nur DIESES Bauteil stehen lassen. Ueber den NAMEN, nicht ueber das Objekt -
+               zu einem Bauteil gehoeren Koerper UND Kantenlinien, beide tragen dieselbe
+               Kennung; ueber das Objekt allein verschwaenden die Kanten. */
+            var t=gewaehlt; if(!t)return;
+            var kn=t.name; abwaehlen();
+            nurZeigen146(function(o){return o.name===kn;});
+          });
           var a2=reihe.querySelector('[data-bgmark]');
           if(a2&&hatBG)a2.addEventListener('click',function(ev){ev.stopPropagation();
             if(bgMark){bgMarkAus();reiheBauen();return;}
@@ -5984,7 +6009,17 @@ var GOKOBA_LAYER_ACI = {
             bgMarkAus(); abwaehlen();
             bgTeile(bg).forEach(function(o){o.visible=false;});
           });
+          var a4=reihe.querySelector('[data-bgiso146]');
+          if(a4)a4.addEventListener('click',function(ev){ev.stopPropagation();
+            var bg=bgMark?bgMark.bg:String(d.bgnr||'');
+            bgMarkAus(); abwaehlen();
+            nurZeigen146(function(o){
+              var dd=GOKOBA_TEILE&&GOKOBA_TEILE[o.name];
+              return !!(dd&&String(dd.bgnr||'')===bg);
+            });
+          });
         }
+
         reiheBauen();
         karte.style.display='block';
         var pw=panel.clientWidth,ph=panel.clientHeight,kw=karte.offsetWidth,kh=karte.offsetHeight;
