@@ -5700,7 +5700,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V139_TEXTUR_ZURUECK';
+      var GOKOBA_VORLAGE='VORLAGE_V140_KEIN_EINFAERBEN';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
@@ -5839,11 +5839,9 @@ var GOKOBA_LAYER_ACI = {
               '<div data-bgweg  style="'+KS+'cursor:pointer;color:var(--gktx2);">BG ausblenden</div>'
             : '<div data-weg    style="'+KS+'cursor:pointer;color:var(--gktx2);">ausblenden</div>'+
               '<div data-bgmark style="'+KS+(hatBG?'cursor:pointer;color:var(--gktx2);':'opacity:.35;cursor:default;')+'">BG markieren</div>';
-          /* v124 Pauls Vorgabe: einfaerben gehoert ans EINZELNE Bauteil, also ins Kaertchen -
-             links geht es um ganze Gruppen, hier um dieses eine Teil. */
-          var _ef=el('div',KS+'cursor:pointer;color:var(--gktx2);grid-column:1 / -1;margin-top:6px;');
-          _ef.setAttribute('data-einf','1'); _ef.textContent='farblich markieren';
-          reihe.appendChild(_ef);
+          /* v140 Pauls Vorgabe: der Knopf 'farblich markieren' ist ERSATZLOS RAUS -
+             er braucht ihn im Kaertchen nicht, dieselbe Funktion steht rechts in den
+             Werkzeugen. Erzeugung und Klick-Behandlung sind beide entfernt. */
           var a1=reihe.querySelector('[data-weg]');
           if(a1)a1.addEventListener('click',function(ev){ev.stopPropagation();
             var t=gewaehlt; abwaehlen(); if(t)t.visible=false;});
@@ -5856,48 +5854,6 @@ var GOKOBA_LAYER_ACI = {
               L.push({o:o,mat:o.material}); o.material=heben(o,GK_WAHL_FARBE,0.7);
             });
             bgMark={bg:bg,teile:L}; reiheBauen();
-          });
-          var af=reihe.querySelector('[data-einf]');
-          if(af)af.addEventListener('click',function(ev){ev.stopPropagation();
-            /* v130 Pauls Vorgabe: KEIN Systemfenster mehr, sondern dieselbe Palette wie im
-               Werkzeug Farbe - direkt unter dem Knopf, das Kaertchen waechst dafuer nach unten.
-               Nach der Wahl klappt sie wieder zu. */
-            var alt=reihe.querySelector('[data-palette]');
-            if(alt){ alt.remove(); if(window.gkKarteRein)window.gkKarteRein(); return; }
-            var pal=el('div','grid-column:1 / -1;margin-top:7px;padding-top:8px;'
-              +'border-top:1px solid rgba(255,255,255,.12);');
-            pal.setAttribute('data-palette','1');
-            var git=el('div','display:grid;grid-template-columns:repeat(6,22px);gap:6px;justify-content:start;');
-            RAL.forEach(function(r){
-              var c=el('div','width:22px;height:22px;border-radius:6px;cursor:pointer;'
-                +'background:'+r[1]+';border:2px solid transparent;justify-self:center;');
-              c.title=r[0];
-              c.addEventListener('click',function(e2){e2.stopPropagation();
-                /* v132 Pauls Vorgabe: ist die Baugruppe markiert, wird die GANZE Baugruppe
-                   eingefaerbt - sonst waere das Markieren sinnlos. Ohne Markierung nur das Teil. */
-                var ziele=[];
-                if(bgMark){ bgMark.teile.forEach(function(x){ziele.push(x.o);}); if(gewaehlt)ziele.push(gewaehlt); }
-                else if(gewaehlt){ ziele.push(gewaehlt); }
-                ziele.forEach(function(t){
-                  var basis=(t.userData&&t.userData._efUr)||((t===gewaehlt)?gewMat:(bgMark&&(function(){
-                      for(var i=0;i<bgMark.teile.length;i++) if(bgMark.teile[i].o===t) return bgMark.teile[i].mat;
-                      return t.material;})()));
-                  if(!t.userData._efUr)t.userData._efUr=basis;
-                  var nm=(Array.isArray(basis)?basis[0]:basis).clone();
-                  nm.color=new THREE.Color(r[1]); if(nm.map)nm.map=null;
-                  t.userData._efMat=nm;
-                  if(t===gewaehlt) gewMat=nm; else t.material=nm;
-                  if(bgMark) for(var j=0;j<bgMark.teile.length;j++) if(bgMark.teile[j].o===t) bgMark.teile[j].mat=nm;
-                });
-                pal.remove();
-              });
-              git.appendChild(c);
-            });
-            pal.appendChild(git);
-            var hin=el('div','font:400 9.5px var(--ui);color:var(--gktx2);opacity:.75;line-height:1.35;margin-top:8px;');
-            hin.textContent=GK_FARBHINWEIS; pal.appendChild(hin);
-            reihe.appendChild(pal);
-            if(window.gkKarteRein)window.gkKarteRein();
           });
           var a3=reihe.querySelector('[data-bgweg]');
           if(a3)a3.addEventListener('click',function(ev){ev.stopPropagation();
