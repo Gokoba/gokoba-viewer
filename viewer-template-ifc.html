@@ -5705,7 +5705,15 @@ var GOKOBA_LAYER_ACI = {
           if(_nmR.indexOf('sonderteil')>=0||(_nmR.indexOf('alu')>=0&&_nmR.indexOf('wann')>=0)){m.userData._gelaender=false;m.userData._stahlbau=false;}
           if(m.userData._gelaender&&gelaenderMats.indexOf(m)<0)gelaenderMats.push(m);
           if(m.userData._stahlbau&&stahlbauMats.indexOf(m)<0)stahlbauMats.push(m);
-          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=true;m.polygonOffsetFactor=0;m.polygonOffsetUnits=-2;} /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
+          if(m.userData._gitter&&gitterMats.indexOf(m)<0){gitterMats.push(m);m.polygonOffset=true;m.polygonOffsetFactor=0;
+            /* ★ v151 GEMESSEN an Pauls Treppenmodell 23eee4475b0b: 75 Flaechenpaare liegen auf
+               EXAKT 0,000 mm zwischen AS_Gitterroste und AS_Stufen. Beide Ebenen tragen die ACI 75,
+               bekamen deshalb DENSELBEN Vorzug -2 und stritten miteinander - das ist das Flimmern
+               am Uebergang von Podestrost zu Treppenstufe. Die Stufen ruecken jetzt eine Stufe
+               zurueck (-1): am Beruehrpunkt gewinnt der Podestrost, gegenueber Traeger und Wange
+               (beide 0) gewinnen die Stufen weiterhin - der Vorzug wird also nur SCHWAECHER,
+               nie staerker. Unterschieden werden sie am Materialnamen, der den Layer traegt. */
+            m.polygonOffsetUnits=((m.name||'').toLowerCase().indexOf('stufen')>=0)?-1:-2;} /* v83: NUR konstanter Mini-Vorzug (2 Tiefenstufen) - der winkelabhaengige Faktor liess Stufen/Laschen durch die Wange scheinen; buendige Zargen bleiben getrennt */
           if(m.userData._dekor&&dekorMats[m.userData._dekor]&&dekorMats[m.userData._dekor].indexOf(m)<0)dekorMats[m.userData._dekor].push(m);
         });
         meshes.push(o);
@@ -5838,7 +5846,7 @@ var GOKOBA_LAYER_ACI = {
       var ART_TITEL={profil:'Profil',kantprofil:'Kanttr\u00e4ger',blech:'Blech',kantblech:'Kantblech',
         gitterrost:'Gitterrost',gitterroststufe:'Gitterroststufe',schraube:'Schraube',
         kopfbolzen:'Kopfbolzen',anker:'Anker',sonderteil:'Sonderteil',beton:'Betonteil',sonstiges:'Bauteil'};
-      var GOKOBA_VORLAGE='VORLAGE_V150_DATEINAME';
+      var GOKOBA_VORLAGE='VORLAGE_V151_STUFEN_TIEFE';
       /* v128: Auch die KONVERTER-Version steht jetzt im Viewer. Bisher liess sie sich nur in der
          bericht.txt nachschlagen, und genau daran ist die Fehlersuche mehrfach haengengeblieben.
          Im Quelltext nach KONVERTER_V suchen - dann ist beides mit einem Griff sichtbar. */
