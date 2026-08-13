@@ -1222,7 +1222,7 @@ def _wz_koerper(abschnitte, ax):
                     tris.append(np.array([[A[j], A[k], B[k]], [A[j], B[k], B[j]]]))
     return np.vstack(tris) if tris else None
 
-def _wz_bauen(schnitte, fl_ringe, vol_as=None):
+def _wz_bauen(schnitte, fl_ringe, vol_as=None, tol=0.01):
     """schnitte: [{'ax','min','max','lage','S'}] + die Rohkonturen des Teils.
        Rueckgabe: Dreiecke (M,3,3) in mm oder None (dann bleibt der alte Weg).
        ZWEI SELBSTPRUEFUNGEN, beide an Pauls Paket vom 27.07. gemessen (je 0 Verstoesse):
@@ -1326,7 +1326,7 @@ def _wz_bauen(schnitte, fl_ringe, vol_as=None):
     if vol <= 0.0: return None                   # Selbstkontrolle: ein Koerper hat positives Volumen
     if _mitVol:
         # 1 % Toleranz - das deckt Rundung und Vermaschung ab, faengt aber jede echte Entgleisung.
-        if abs(vol - vol_as) > 0.01 * vol_as:
+        if abs(vol - vol_as) > tol * vol_as:
             _FLSTAT['wz_volumen'] = _FLSTAT.get('wz_volumen', 0) + 1
             return None
     return T
@@ -1566,9 +1566,37 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                 fl_ringe[:] = []          # schaltet Schalen-Ergaenzung und Duplikat-Regeln ab
                 _FLSTAT['vollkoerper'] = _FLSTAT.get('vollkoerper', 0) + 1
             elif schnitte:
+                # ★ v120 MASSSTAB FUER DIE ANNAHME: Wie streng der Nachbau geprueft wird, haengt
+                #   davon ab, wie gut das ist, was ohne ihn dastuende. Ist die Flaechenliste in
+                #   Ordnung (Bestandsteile, die routinemaessig Schnitte mitbringen), bleibt es bei
+                #   1 % - dort darf ein Nachbau nichts verschlechtern. Ist sie NACHWEISLICH KAPUTT,
+                #   umschliesst sie also weniger als die Haelfte oder mehr als das Anderthalbfache
+                #   des echten Volumens, dann sind 6 % erlaubt.
+                #   Gemessen an Pauls Treppenmodell 501e1142de43: von 31 abgelehnten Nachbauten
+                #   lagen 30 zwischen Faktor 0,95 und 1,04 - also fast perfekt - und wurden nur an
+                #   der 1-%-Huerde abgewiesen, waehrend die Alternative eine Huelle mit dem 99- bis
+                #   504-fachen Volumen war. Der eine echte Ausreisser (Faktor 5,87) faellt auch bei
+                #   6 % weiterhin durch.
+                _volAS120 = (info.get(kn, {}) or {}).get('volumen')
+                _tol120 = 0.01
+                try:
+                    if _volAS120 and float(_volAS120) > 0.0 and fl_ringe:
+                        _vfl120 = 0.0
+                        for _a120, _l120 in fl_ringe:
+                            _p120 = np.asarray(_a120, dtype=float)
+                            if len(_p120) < 3: continue
+                            for _q120 in range(1, len(_p120) - 1):
+                                _x, _y, _z = _p120[0], _p120[_q120], _p120[_q120 + 1]
+                                _vfl120 += float(np.dot(_x, np.cross(_y, _z))) / 6.0
+                        _vfl120 = abs(_vfl120)
+                        if _vfl120 > 1.5 * float(_volAS120) or _vfl120 < 0.5 * float(_volAS120):
+                            _tol120 = 0.06
+                            _FLSTAT['wz_kaputt'] = _FLSTAT.get('wz_kaputt', 0) + 1
+                except Exception:
+                    _tol120 = 0.01
                 _wzT = None
                 try:
-                    _wzT = _wz_bauen(schnitte, fl_ringe, (info.get(kn, {}) or {}).get('volumen'))
+                    _wzT = _wz_bauen(schnitte, fl_ringe, _volAS120, _tol120)
                 except Exception:
                     _wzT = None
                 if _wzT is not None:
@@ -2095,6 +2123,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
           % ('AN' if GK_ENTFLECHTEN else 'AUS', _FLSTAT.get('entflochten', 0)))
     print('* WURZEL-WEG Formpruefung: %d Teile verworfen, weil sie schief im Raum liegen' % _FLSTAT.get('wz_schraeg', 0))
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
+    print('* WURZEL-WEG: %d Teile hatten eine nachweislich kaputte Flaechenliste - dort galt die weitere Grenze von 6 %%' % _FLSTAT.get('wz_kaputt', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
           % (_FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
     for pz in probeZeilen:
@@ -2457,7 +2486,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V118')
+    html = html.replace('__KONV__', 'V120')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2472,7 +2501,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v118\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v120\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
