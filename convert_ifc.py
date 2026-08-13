@@ -1486,6 +1486,16 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
         # ★ Objekt-Farbe (nicht 'Von Layer') schlaegt die Layertabelle - fuer alle Bauteile
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
+        # ★ v121 WEISS IST KEIN FARBWUNSCH. Im AutoCAD-Protokoll steht bei genau diesen
+        #   Bauteilen "Methode=ByAci Index=7 -> #FFFFFF": die Farbnummer 7 ist die VOREINSTELLUNG
+        #   ("weiss/schwarz", je nach Hintergrund), also gerade KEINE bewusst vergebene Farbe.
+        #   Sie kam hier trotzdem als Eigenfarbe an und ueberschrieb die Layerfarbe - im Modell
+        #   Treppe West betraf das 59 Bauteile: 16 Schrauben, 23 Gitterroste und Antrittskanten,
+        #   9 Stufen, 6 Bleche, 5 Traeger (U240 und HEB 220). Genau die, die Paul weiss sieht.
+        #   Ein Bauteil, das WIRKLICH weiss sein soll, bekommt das ueber seinen Layer
+        #   (Edelstahl, Bestand) - dort aendert sich nichts.
+        if eigen is not None and str(eigen).lstrip('#').upper() in ('FFFFFF', 'FFF'):
+            eigen = None
         schl = (layer, eigen)
         if schl in material_cache: return material_cache[schl]
         col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
@@ -2214,6 +2224,16 @@ def wandle_direkt(obj_pfad, json_pfad, ohne_schrauben=False):
         # ★ Objekt-Farbe (nicht 'Von Layer') schlaegt die Layertabelle - fuer alle Bauteile
         if layer not in LAYER_FARBE and art in ART_ERSATZ:
             layer = ART_ERSATZ[art]
+        # ★ v121 WEISS IST KEIN FARBWUNSCH. Im AutoCAD-Protokoll steht bei genau diesen
+        #   Bauteilen "Methode=ByAci Index=7 -> #FFFFFF": die Farbnummer 7 ist die VOREINSTELLUNG
+        #   ("weiss/schwarz", je nach Hintergrund), also gerade KEINE bewusst vergebene Farbe.
+        #   Sie kam hier trotzdem als Eigenfarbe an und ueberschrieb die Layerfarbe - im Modell
+        #   Treppe West betraf das 59 Bauteile: 16 Schrauben, 23 Gitterroste und Antrittskanten,
+        #   9 Stufen, 6 Bleche, 5 Traeger (U240 und HEB 220). Genau die, die Paul weiss sieht.
+        #   Ein Bauteil, das WIRKLICH weiss sein soll, bekommt das ueber seinen Layer
+        #   (Edelstahl, Bestand) - dort aendert sich nichts.
+        if eigen is not None and str(eigen).lstrip('#').upper() in ('FFFFFF', 'FFF'):
+            eigen = None
         schl = (layer, eigen)
         if schl in material_cache: return material_cache[schl]
         col = LAYER_FARBE.get(norm_layer(layer), STANDARD_FARBE)
@@ -2486,7 +2506,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V120')
+    html = html.replace('__KONV__', 'V121')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2501,7 +2521,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v120\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v121\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
