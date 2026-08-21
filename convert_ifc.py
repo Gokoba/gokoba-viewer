@@ -171,6 +171,102 @@ ART_LAYER = {
     'AS_Sonderteile':'sonderteil',
     'AS_Betondecken':'beton','AS_Betonw?nde':'beton','AS_Betonfundament':'beton','AS_Betontr?ger':'beton',
 }
+# ★ v124 DER STEP-WEG - Pauls Massstab, woertlich genommen: "wenn ich eine STEP-Datei
+#   erstelle und hochlade, funktioniert es perfekt". Genau das passiert hier. Fuer die
+#   Bauteile, deren Flaechenliste nachweislich unvollstaendig ist, liegt jetzt ein echter
+#   STEP-Koerper aus Advance Steel im Paket. Er wird mit cascadio vernetzt - demselben
+#   OpenCascade-Kern, den der STEP-Zweig des Viewers seit jeher benutzt - und tritt an die
+#   Stelle der kaputten Liste. Kein Nachbau, keine Schnittlagen, keine Naeherung.
+#   AN PAULS DATEN BEWIESEN: 16 von 16 G-200x5-Profilen kamen mit NULL offenen Kanten
+#   heraus, Ausklinkungen und Bohrungen exakt drin, und die Zuordnung ueber den
+#   Schwerpunkt traf jedes Teil auf 0,0 mm genau.
+_STEP124 = {'geladen': False, 'koerper': []}
+
+class _Fertig124(Exception):
+    """★ v124: Abkuerzung - dieser Koerper ist fertig und wird nicht nachbearbeitet."""
+    pass
+
+def _step_laden124(ordner):
+    """Sucht eine STEP-Datei im Paket und vernetzt sie. Fehlt sie, passiert nichts."""
+    if _STEP124['geladen']: return
+    _STEP124['geladen'] = True
+    try:
+        import glob as _g
+        kand = []
+        for _m in ('*.stp', '*.step', '*.STP', '*.STEP'):
+            kand += _g.glob(os.path.join(ordner, _m))
+        if not kand: return
+        try:
+            import cascadio
+        except Exception:
+            print('* STEP-WEG v124: cascadio fehlt - STEP-Datei wird uebersprungen')
+            return
+        import tempfile as _tf
+        pfad = sorted(kand, key=os.path.getsize)[-1]
+        _t0 = _t74.time()
+        glb = os.path.join(_tf.gettempdir(), 'gokoba_step124.glb')
+        cascadio.step_to_glb(pfad, glb)
+        sz = trimesh.load(glb)
+        koerper = []
+        try:
+            knoten = list(sz.graph.nodes_geometry)
+        except Exception:
+            knoten = []
+        for _n in knoten:
+            try:
+                T, gname = sz.graph[_n]
+                g = sz.geometry[gname]
+                # STEP rechnet in METERN, unser Paket in Millimetern.
+                V = trimesh.transform_points(np.asarray(g.vertices, dtype=float), T) * 1000.0
+                F = np.asarray(g.faces)
+                if len(F) < 4: continue
+                koerper.append(((V.min(axis=0) + V.max(axis=0)) / 2.0, V, F, str(gname)))
+            except Exception:
+                continue
+        _STEP124['koerper'] = koerper
+        print('* STEP-WEG v124: %s gelesen, %d Koerper in %.0fs'
+              % (os.path.basename(pfad), len(koerper), _t74.time() - _t0))
+    except Exception as e:
+        print('* STEP-WEG v124: STEP-Datei nicht lesbar (%s) - der bisherige Weg bleibt' % e)
+
+def _step_holen124(dreiecke, asvol):
+    """Sucht den passenden STEP-Koerper ueber den Schwerpunkt. None = keiner brauchbar."""
+    if not _STEP124['koerper'] or not dreiecke or not asvol or float(asvol) <= 0: return None
+    try:
+        T = np.vstack(dreiecke).astype(float)
+        lo = T.reshape(-1, 3).min(axis=0); hi = T.reshape(-1, 3).max(axis=0)
+        # ★ v124 HUELLBOX-MITTE, nicht Punktmittel: der Schwerpunkt der Punktwolke haengt
+        #   davon ab, wo viele Punkte sitzen - eine fein tessellierte Rundung zieht ihn zu
+        #   sich. An Pauls E1358 lagen die Punktmittel 14,0 mm auseinander und das Teil fiel
+        #   durch, obwohl es der richtige Partner war. Ueber die Huellbox-Mitte sind es
+        #   0,038 mm. Die Huellbox haengt nur an der Form, nicht an der Punktdichte.
+        mitte = (lo + hi) / 2.0
+        best = None; babst = None
+        for _c, _V, _F, _nm in _STEP124['koerper']:
+            _d = float(np.linalg.norm(_c - mitte))
+            if babst is None or _d < babst:
+                babst = _d; best = (_V, _F, _nm)
+        # Der Schwerpunkt muss sitzen - an Pauls Daten war er auf 0,0 mm genau.
+        #   5 mm Spielraum fangen Rundungen ab, ohne ein Nachbarteil zu erwischen.
+        if best is None or babst > 5.0: return None
+        _V, _F, _nm = best
+        # Gegenprobe ueber die Huellbox: ein falscher Partner faellt hier auf.
+        if (np.abs(_V.min(axis=0) - lo) > 2.0).any() or (np.abs(_V.max(axis=0) - hi) > 2.0).any():
+            return None
+        m = trimesh.Trimesh(vertices=np.round(_V, 4), faces=_F, process=True)
+        m.merge_vertices()
+        _e = np.sort(m.edges, axis=1)
+        _u, _n = np.unique(_e, axis=0, return_counts=True)
+        if int((_n == 1).sum()) > 0: return None          # nicht dicht -> nicht nehmen
+        _v = abs(float(m.volume))
+        # ★ 5 % statt 1 %: eine Tessellierung schneidet an Kantungsradien systematisch
+        #   Sehnen ab - an Pauls G-Profilen waren es durchweg 2,2 bis 3,3 % zu wenig.
+        if _v <= 0 or abs(_v - float(asvol)) > 0.05 * float(asvol): return None
+        return np.asarray(m.triangles, dtype=float)
+    except Exception:
+        return None
+
+
 # ★ v117 DICHTMACHEN - Pauls Weg konsequent zu Ende gedacht: "betrachte es als Volumenkoerper".
 #   Der Rasterweg aus v113 macht zwar einen geschlossenen Koerper, kann aber nur achsparallele
 #   Flaechen - eine um 1,1 Grad geneigte Fundamentoberkante wird dort zur TREPPE (Pauls E5131).
@@ -1578,7 +1674,50 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             #   genau wie bisher.
             _vk113 = None
             _dicht117 = False
-            if _istBest113:
+            # ★ v124 ZUERST DER STEP-WEG - fuer JEDES Bauteil, dessen Flaechenliste
+            #   nachweislich nicht zum echten Volumen passt. Greift er, ist das Teil fertig
+            #   und keiner der alten Wege wird noch angefasst. Greift er nicht, laeuft alles
+            #   genau wie bisher weiter.
+            _asv124 = (info.get(kn, {}) or {}).get('volumen')
+            if _STEP124['koerper'] and _asv124 and float(_asv124) > 0.0:
+                try:
+                    _vfl124 = 0.0
+                    for _tt in dreiecke:
+                        _P = np.asarray(_tt, dtype=float)
+                        _vfl124 += float(np.sum(np.einsum('ij,ij->i', _P[:, 0],
+                                        np.cross(_P[:, 1] - _P[:, 0], _P[:, 2] - _P[:, 0])))) / 6.0
+                    _vfl124 = abs(_vfl124)
+                    # ★ v124 WANN DER STEP-KOERPER GEHOLT WIRD. Das Volumen allein reicht als
+                    #   Frage NICHT: Pauls E1358 hatte 1177 offene Kanten - also grosse Loecher,
+                    #   durch die man hindurchsieht - und trotzdem ein Volumen, das nur 3,4 %
+                    #   danebenlag. Es waere nie geprueft worden. Deshalb zaehlt jetzt auch die
+                    #   DICHTHEIT: ist die vorhandene Flaechenliste nicht geschlossen, wird der
+                    #   STEP-Koerper geholt. Er wird ohnehin nur genommen, wenn er selbst dicht
+                    #   ist und das AS-Volumen auf 5 % trifft - schlechter kann es also nie werden.
+                    _offen124 = 0
+                    try:
+                        _Tm = np.vstack(dreiecke).astype(float)
+                        _Vm = _Tm.reshape(-1, 3)
+                        _mm = trimesh.Trimesh(vertices=np.round(_Vm, 4),
+                                              faces=np.arange(len(_Vm)).reshape(-1, 3), process=True)
+                        _mm.merge_vertices()
+                        _em = np.sort(_mm.edges, axis=1)
+                        _uu, _nn = np.unique(_em, axis=0, return_counts=True)
+                        _offen124 = int((_nn == 1).sum())
+                    except Exception:
+                        _offen124 = 0
+                    if (_vfl124 > 1.25 * float(_asv124) or _vfl124 < 0.8 * float(_asv124)
+                            or _offen124 > 0):
+                        _st124 = _step_holen124(dreiecke, _asv124)
+                        if _st124 is not None:
+                            _vk113 = _st124
+                            _dicht117 = True     # ★ v124: fertiger Koerper - nicht mehr nachbearbeiten
+                            _FLSTAT['stepweg'] = _FLSTAT.get('stepweg', 0) + 1
+                        else:
+                            _FLSTAT['stepweg_fehl'] = _FLSTAT.get('stepweg_fehl', 0) + 1
+                except Exception:
+                    pass
+            if _vk113 is None and _istBest113:
                 _asv117 = (info.get(kn, {}) or {}).get('volumen')
                 # ★ v117 ZUERST der schonende Weg: Originalflaechen behalten, nur Loecher zu.
                 _vk113 = _dichtmachen117(dreiecke, _asv117)
@@ -1844,6 +1983,12 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
             except Exception:
                 pass
             try:  # v56: exakte Doppel-Dreiecke raus (Flimmer-Fragmente)
+                # ★ v124: Bei einem fertigen Koerper (STEP oder dichtgemacht) wird NICHTS mehr
+                #   entfernt. Diese Regel war fuer die groben AS-Facetten gedacht; auf einer
+                #   feinen Tessellierung mit tausenden kleinen Dreiecken riss sie Loecher -
+                #   an Pauls G-Profilen aus 8480 Dreiecken 1787 gemacht und 1177 offene Kanten
+                #   hinterlassen.
+                if _dicht117: raise _Fertig124()
                 srt = np.sort(m.faces, axis=1)
                 _, uidx = np.unique(srt, axis=0, return_index=True)
                 if len(uidx) < len(m.faces):
@@ -2067,6 +2212,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     kaputt = 0
     nT = nL = nH = 0; nD = nS = 0; flLeer = 0; probeZeilen = []
     schnitte = []
+    _step_laden124(os.path.dirname(os.path.abspath(geo_pfad)))
     with open(geo_pfad, encoding='utf-8', errors='replace') as fh:
         for zeile in fh:
             try:
@@ -2107,6 +2253,8 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
 
     print('* DIREKT (geo) vermascht: %d Bauteile | Fehler: %d | %.0fs' % (n, fehler, _t.time() - t0))
     print('* DIREKT-Diagnose: T=%d L=%d H=%d D=%d S=%d | Flaechen ohne Zerlegung: %d | unlesbare Zeilen: %d' % (nT, nL, nH, nD, nS, flLeer, kaputt))
+    print('* STEP-WEG v124: %d Bauteile aus dem echten STEP-Koerper uebernommen, %d ohne passenden Partner'
+          % (_FLSTAT.get('stepweg', 0), _FLSTAT.get('stepweg_fehl', 0)))
     print('* DICHTGEMACHT v117: %d Bestandsteile mit Originalflaechen, nur Loecher geschlossen' % _FLSTAT.get('dichtgemacht', 0))
     print('* VOLLKOERPER v113: %d Bestandsteile ueber das Raster gebaut' % _FLSTAT.get('rasterkoerper', 0))
     print('* WURZEL-WEG: %d Teile aus den CAD-Schnitten neu gebaut, %d mit Schnittdaten aber ohne Erfolg (alter Weg)'
@@ -2548,7 +2696,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V123')
+    html = html.replace('__KONV__', 'V124')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2563,12 +2711,12 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v123\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v124\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
             bf.write('lochdeckel_probe=%s\n' % ';'.join(_FLSTAT.get('lochdeckel_probe', [])))
-            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\ndichtgemacht=%d\nvollkoerper=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\nrund=%d\nrund_verworfen=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('dichtgemacht', 0), _FLSTAT.get('rasterkoerper', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0), _FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
+            bf.write('loch_aussen=%d\ntuerdeckel=%d\ndoppel_facette=%d\nvoll_duplikat=%d\nschale_ergaenzt=%d\nstepweg=%d\nstepweg_fehl=%d\ndichtgemacht=%d\nvollkoerper=%d\nwurzelweg=%d\nwurzelweg_fehl=%d\nrund=%d\nrund_verworfen=%d\n' % (_FLSTAT.get('loch_aussen', 0), _FLSTAT.get('tuerdeckel', 0), _FLSTAT.get('doppel_facette', 0), _FLSTAT.get('voll_duplikat', 0), _FLSTAT.get('schale_ergaenzt', 0), _FLSTAT.get('stepweg', 0), _FLSTAT.get('stepweg_fehl', 0), _FLSTAT.get('dichtgemacht', 0), _FLSTAT.get('rasterkoerper', 0), _FLSTAT.get('wurzelweg', 0), _FLSTAT.get('wurzelweg_fehl', 0), _FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
             bf.write('deckelkill_probe=%s\n' % ';'.join(_FLSTAT.get('deckelkill_probe', [])))
             bf.write('dauer_konverter_s=%.1f\n' % (_t74.time() - _T0))  # v74: wo stecken die Minuten?
         print('* Flaechen-Bericht: gesamt=%d leer=%d unplanar=%d (bericht.txt)'
