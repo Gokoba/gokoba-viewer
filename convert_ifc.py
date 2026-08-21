@@ -1300,6 +1300,7 @@ def _wz_bauen(schnitte, fl_ringe, vol_as=None, tol=0.01):
     #   ob ein Abschnitt LEER war oder gar nicht abgetastet wurde. Aeltere Pakete kennen das
     #   nicht; fuer die gilt weiter das feste Raster 10/30/50/70/90 Prozent.
     absch = []
+    _lueck122 = []                               # ★ v122: nie abgetastete Abschnitte, in Reihenfolge
     for a, b in zip(ebenen[:-1], ebenen[1:]):
         rs = None; getastet = False
         for s in schnitte:                       # STRENG innen - Lagen auf der Trennebene sind mehrdeutig
@@ -1314,10 +1315,36 @@ def _wz_bauen(schnitte, fl_ringe, vol_as=None, tol=0.01):
         elif _raster97 and any(a + 0.5 < r < b - 0.5 for r in _soll97):
             continue                             # altes Paket: Soll-Lage lag darin, also leer
         elif _mitVol:
+            _lueck122.append((float(a), float(b), len(absch)))
             continue                             # v102: das Volumen entscheidet, nicht die Heuristik
         else:
             return None                          # SELBSTPRUEFUNG B: Abschnitt nie abgetastet
     if not absch: return None
+    # ★ v122 DIE ENDEN ANSETZEN - gemessen an Pauls Balkonmodell db9529f312ef.
+    #   Sein gekantetes Fassadenprofil G 200x5 hat 140 Konturebenen (jede Rundung an jeder
+    #   Kantung bringt eine eigene), aber nur 40 Schnittlagen. Die schmalen Streifen ganz
+    #   aussen wurden dadurch nie abgetastet und stillschweigend weggelassen - der Nachbau
+    #   war 10 mm ZU KURZ. Weil das das Volumen um weniger als ein Prozent bewegt, liess die
+    #   Volumenpruefung ihn durch. Genau das sah Paul als "das Profil wird senkrecht
+    #   durchgeschnitten".
+    #   Angesetzt wird NUR AUSSEN: der Streifen vor dem ersten und nach dem letzten
+    #   abgetasteten Abschnitt bekommt dessen Querschnitt. Nach innen wird NICHTS gefuellt -
+    #   dort koennte eine Ausklinkung sitzen, und ein falsch gefuellter Zwischenraum waere
+    #   schlimmer als ein fehlender Streifen. Ob das Ansetzen richtig war, entscheidet wie
+    #   immer der Volumenvergleich mit Advance Steel am Ende.
+    _ang122 = 0
+    _vorn = [g for g in _lueck122 if g[2] == 0]
+    if _vorn:
+        _a0 = min(g[0] for g in _vorn)
+        if abs(_a0 - absch[0][0]) > 1e-6 and _a0 < absch[0][0]:
+            absch[0] = (_a0, absch[0][1], absch[0][2]); _ang122 += 1
+    _hint = [g for g in _lueck122 if g[2] == len(absch)]
+    if _hint:
+        _b0 = max(g[1] for g in _hint)
+        if abs(_b0 - absch[-1][1]) > 1e-6 and _b0 > absch[-1][1]:
+            absch[-1] = (absch[-1][0], _b0, absch[-1][2]); _ang122 += 1
+    if _ang122:
+        _FLSTAT['wz_enden'] = _FLSTAT.get('wz_enden', 0) + 1
     if len(absch) > 60: return None      # v103: Ausreisser abfangen, statt den Bau zu ersticken
     T = _wz_koerper(absch, ax)
     if T is None or len(T) < 4: return None
@@ -2133,6 +2160,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
           % ('AN' if GK_ENTFLECHTEN else 'AUS', _FLSTAT.get('entflochten', 0)))
     print('* WURZEL-WEG Formpruefung: %d Teile verworfen, weil sie schief im Raum liegen' % _FLSTAT.get('wz_schraeg', 0))
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
+    print('* WURZEL-WEG v122: bei %d Teilen wurden die Enden bis zur wahren Bauteilkante angesetzt' % _FLSTAT.get('wz_enden', 0))
     print('* WURZEL-WEG: %d Teile hatten eine nachweislich kaputte Flaechenliste - dort galt die weitere Grenze von 6 %%' % _FLSTAT.get('wz_kaputt', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
           % (_FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
@@ -2506,7 +2534,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V121')
+    html = html.replace('__KONV__', 'V122')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2521,7 +2549,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v121\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v122\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
