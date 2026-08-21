@@ -1629,6 +1629,19 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
                         if _vfl120 > 1.5 * float(_volAS120) or _vfl120 < 0.5 * float(_volAS120):
                             _tol120 = 0.06
                             _FLSTAT['wz_kaputt'] = _FLSTAT.get('wz_kaputt', 0) + 1
+                        # ★ v123 GEMESSEN an Pauls Balkonmodell 942225ecefc5: vier seiner
+                        #   G-200x5-Fassadenprofile (E4953, E7795, E10534, E12739) wurden vom
+                        #   Nachbau auf 0,933 getroffen - also 6,7 % zu wenig - und scheiterten
+                        #   damit knapp an der 6-%-Huerde. Die Alternative war eine Flaechenliste,
+                        #   die das 5- bis 60-fache des echten Volumens umschliesst: ein Teil mit
+                        #   Loechern, durch das man hindurchsieht. Deshalb steigt die Huerde auf
+                        #   10 %, wenn die vorhandene Liste um mehr als das FUENFFACHE danebenliegt
+                        #   oder weniger als ein Fuenftel umschliesst. Der Massstab richtet sich
+                        #   weiter danach, wie schlecht das ist, was ohne den Nachbau dastuende -
+                        #   ein sauberes Teil wird davon nicht beruehrt, dort gelten weiter 1 %.
+                        if _vfl120 > 5.0 * float(_volAS120) or _vfl120 < 0.2 * float(_volAS120):
+                            _tol120 = 0.10
+                            _FLSTAT['wz_ruine'] = _FLSTAT.get('wz_ruine', 0) + 1
                 except Exception:
                     _tol120 = 0.01
                 _wzT = None
@@ -2162,6 +2175,7 @@ def _wandle_geo(geo_pfad, json_pfad, ohne_schrauben=False):
     print('* WURZEL-WEG Volumenpruefung: %d Teile verworfen, weil das Ergebnis nicht zum AS-Volumen passte' % _FLSTAT.get('wz_volumen', 0))
     print('* WURZEL-WEG v122: bei %d Teilen wurden die Enden bis zur wahren Bauteilkante angesetzt' % _FLSTAT.get('wz_enden', 0))
     print('* WURZEL-WEG: %d Teile hatten eine nachweislich kaputte Flaechenliste - dort galt die weitere Grenze von 6 %%' % _FLSTAT.get('wz_kaputt', 0))
+    print('* WURZEL-WEG v123: %d Teile hatten eine voellig unbrauchbare Flaechenliste - dort galten 10 %%' % _FLSTAT.get('wz_ruine', 0))
     print('* RUNDUNG: %d Bauteile feiner tesselliert, %d vom Selbsttest verworfen (Original behalten)'
           % (_FLSTAT.get('rund', 0), _FLSTAT.get('rund_verworfen', 0)))
     for pz in probeZeilen:
@@ -2534,7 +2548,7 @@ def main():
     html = html.replace('__PROJ_NAME__', args.model_name)
     # v105: die Konverter-Version in den Viewer schreiben, damit sie ohne bericht.txt
     #   nachschlagbar ist (im Quelltext nach KONVERTER_V suchen).
-    html = html.replace('__KONV__', 'V122')
+    html = html.replace('__KONV__', 'V123')
     # ★ Startzustand aus dem Plugin-Dialog (leer = Platzhalter bleibt = Standard)
     import json as _j70
     html = html.replace("JSON.parse('__ACHSEN__')", _j70.dumps(ACHSEN_ROH) if ACHSEN_ROH else "null")  # v70: rohes Array-Literal
@@ -2549,7 +2563,7 @@ def main():
     print('OK: ' + args.output + ' (%d KB)' % (os.path.getsize(args.output) // 1024))
     try:
         with open(os.path.join(os.path.dirname(args.output), 'bericht.txt'), 'w', encoding='utf-8') as bf:
-            bf.write('konverter=v122\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
+            bf.write('konverter=v123\nknick=breitenregel-26-8\nflaechen_gesamt=%d\nflaechen_leer=%d\nflaechen_unplanar_1mm=%d\ndoppelflaechen=%d\nteile_dicht=%d\nkoplanar_flaechen=%d\ndeckel_verworfen=%d\nlochdeckel=%d\n'
                      % (_FLSTAT['gesamt'], _FLSTAT['leer'], _FLSTAT['unplanar'], _FLSTAT.get('doppel', 0), _FLSTAT.get('dicht', 0), _FLSTAT.get('koplanar', 0), _FLSTAT.get('deckel', 0), _FLSTAT.get('lochdeckel', 0)))
             bf.write('gew_profil_stahl=%.2f\ngew_profil_gelaender=%.2f\ngew_blech_stahl=%.2f\ngew_blech_gelaender=%.2f\ngew_nichtstahl_ausgeschlossen=%.2f\n'
                      % (_FLSTAT.get('gw_prof', 0.0), _FLSTAT.get('gw_prof_gel', 0.0), _FLSTAT.get('gw_blech', 0.0), _FLSTAT.get('gw_blech_gel', 0.0), _FLSTAT.get('gw_nichtstahl', 0.0)))
