@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-ifc-v1
+          key: pip-ifc-v2      # ★ v2: cascadio kam dazu, deshalb neuer Schluessel
 
       - name: Paket-Cache (npm)
         uses: actions/cache@v4
@@ -53,7 +53,11 @@ jobs:
       - name: Abhaengigkeiten installieren
         run: |
           python -m pip install --upgrade pip
-          pip install ifcopenshell trimesh numpy mapbox_earcut
+          # ★ cascadio kam am 21.08. dazu: es liest die STEP-Datei, die das Plugin ab v133
+          #   mit ins Paket legt (OpenCascade-Kern, derselbe wie im STEP-Zweig). Ohne dieses
+          #   Paket meldet der Konverter 'cascadio fehlt' und ueberspringt die STEP-Datei -
+          #   genau das ist am 21.08. passiert, stepweg blieb auf 0.
+          pip install ifcopenshell trimesh numpy mapbox_earcut cascadio
           # ★ gltfpack fest auf 1.1.0, wie im STEP-Workflow (1.2.0 haengt beim Komprimieren).
           npm install -g gltfpack@1.1.0
 
