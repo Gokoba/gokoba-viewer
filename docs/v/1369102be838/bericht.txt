@@ -1,9 +1,0 @@
-konverter=v58
-knick=breitenregel-26-8
-flaechen_gesamt=270
-flaechen_leer=0
-flaechen_unplanar_1mm=0
-doppelflaechen=0
-teile_dicht=0
-koplanar_flaechen=3
-deckel_verworfen=0
