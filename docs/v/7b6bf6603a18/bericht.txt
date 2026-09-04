@@ -1,9 +1,0 @@
-konverter=v64
-knick=breitenregel-26-8
-flaechen_gesamt=235002
-flaechen_leer=47
-flaechen_unplanar_1mm=0
-doppelflaechen=509
-teile_dicht=0
-koplanar_flaechen=56045
-deckel_verworfen=4147
